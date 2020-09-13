@@ -1,0 +1,28 @@
+
+<h2>Base32 decode / encode (conversion w/ padding)</h2>
+encoded: <input name=b32 value="abc234">
+<button name=decode onclick="decode_click(event)">decode</button>
+<br>decoded: <input name=string value="">
+<button name=encode onclick="encode_click(event)">encode</button>
+
+
+<script src=base32.js></script>
+<script>
+
+function decode_click(ev) {
+  let b32 = document.getElementsByName('b32')[0].value;
+  console.log('b32:',b32)
+  let bin = base32.decode(b32);
+  console.log('bin:',bin)
+  document.getElementsByName('string')[0].value = bin
+}
+function encode_click(ev) {
+  let str = document.getElementsByName('string')[0].value;
+  console.log('str:',str)
+  let b32 = base32.encode(str);
+  console.log('b32:',b32)
+  document.getElementsByName('b32')[0].value = b32
+}
+
+
+</script>
