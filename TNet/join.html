@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    <meta charset="utf-8">
+    <title>A simple Javascript Biff on IPFS</title>
+    <link rel="stylesheet" href="style.css">
+
+    <script src="js/sha256.js"></script>
+    <script src="js/js-yaml.js" type=text/javascript></script>
+    <script src="js/essential.js"></script>
+    <script src="js/ipfs.js"></script>
+    <script src="js/functions.js"></script>
+    </head>
+<body>
+<button id="join" onclick="join(event)">join</button> the TNetwork ...
+
+<p>Charter: <span id=charter></span>
+</p>
+
+<!-- 
+<button id="view" onclick="display_members(event)">view members</button>
+-->
+<p>peerids:<br><textarea id=peerids></textarea>
+</p>
+
+
+<script>
+  var api_url = 'http://127.0.0.1:5001/api/v0/';
+  const PUBLICID = 'QmezgbyqFCEybpSxCtGNxfRD9uDxC53aNv5PfhB3fGUhJZ';
+  const TNET_CHARTER = 'QmaeiKYDCmndBprGxs89tMrCRabDnV9te7dKPRK4U2JVg9';
+  var members = [];
+ 
+main();
+async function main() {
+     let [callee, caller] = functionNameJS();
+  members = await get_members(TNET_CHARTER);
+   console.debug(callee+'.members:',members)
+
+  //selected = members.sort( randomly )
+  //console.debug(callee+'.selected:',selected)
+
+   let peerids = members.map( (o) => o.Responses[0].ID );
+   selected = peerids.sort( randomly )
+   console.debug(callee+'.selected:',selected)
+   for (peerkey of selected) {
+      let mboxid = getNid('urn:message:to:'+PUBLICID+':from:'+peerkey);
+      let mbox_path = '/my/outbox/'+mboxid+'.json';
+      let ipfs_path = await getMutableHead(peerkey,mbox_path);
+      console.debug(callee+'.ipfs_path',ipfs_path);
+      let mbox = await ipfsGetContentByPath(ipfs_path);
+      console.debug(callee+'.mbox:',mbox);
+
+   }
+}
+
+
+function randomly(a,b) {
+  return (Math.random(1) > 0.5)? -1 : 1;
+}
+  function join(ev) {
+     let [callee, caller] = functionNameJS();
+     return fetch(api_url+'pin/add?arg='+TNET_CHARTER,{ method:'POST'})
+        .then( resp => resp.json() )
+        .then( obj => { console.debug(callee+'.obj:',obj); return obj.Pins[0] })
+        .then( hash => { document.getElementById('charter').innerHTML =
+              `<a href="https://gateway.ipfs.io/ipfs/${hash}/charter.md">/ipfs/${hash}/charter.md</a>`; })
+        .catch(console.error);
+  }
+
+async function display_members(ev) {
+   let [callee, caller] = functionNameJS();
+   let peerids = members.map( (o) => o.Responses[0].ID );
+   console.debug(callee+'.peerids:',peerids)
+   document.getElementById('peerids').innerHTML = peerids;
+   ipfsWriteJson('/my/network/peerids.json',peerids);
+}
+
+function get_members(qm) {
+   let [callee, caller] = functionNameJS();
+   return fetch(api_url+'dht/findprovs?arg='+qm+'&verbose=true&num-providers=4&timeout=2s',{ method:'POST'})
+      .then( resp => resp.text() )
+      .then( text => {
+           let objs = text.replace(/(\n|\r)+$/, '').split("\n");
+           let members = objs.map( (s) => JSON.parse(s) ).filter( (o) => o.Type == 4 );
+           console.debug(callee+'.members:',members)
+           return members;
+      })
+      .catch(console.error);
+
+}
+  
+</script>
