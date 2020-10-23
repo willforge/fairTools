@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 
 # intent:
 #  create a set of number (size = nl) and compute the median
@@ -33,7 +33,8 @@ for $i (0 .. $nl-1) {
      sum => 0, d_order => 0, u_order => 0, r_order => $rank[$i],
      children => [], medians => [] };
   $tree = &insert($node,$tree);
-  printf "node%s: %d\n",$node->{id},$node->{val};
+  printf "node-%s: %d (n=%d, m=%.2f) inserted\n",$node->{id},$node->{val},$node->{n},$tree->{median};
+  printf "list: %s\n",join',',sort { $a <=> $b } @values[0 .. $i];
 }
 use YAML::Syck qw(Dump);
 printf "tree: %s...\n",Dump($tree);
@@ -52,101 +53,155 @@ exit $?;
 
 # --------------------------------------------------------------
 sub insert {
- my $node = shift;
- my $tree = shift;
- my $root = $tree;
- my @parents = ($root);
- if (! exists $root->{children}) { # empty tree
-  $node->{n}++;
-  $node->{medians} = [$node,$node];
-  $node->{median} = $node->{val};
-  return $node;
- }
- my $pos = undef;
- my $comp0 = &compare($node,$root->{medians}[0]);
- my $comp1 = &compare($node,$root->{medians}[1]);
- if ($comp0 <0) {  # smaller than smallest median
-    my $medianm = $root->{medians}[0];
-    if (exists $medianm->{children}[0]) {
-      $pos = $medianm->{children}[0];
-    } else {
-      $pos = $medianm;
-    }
- } elsif ($comp1 > 0) { # bigger than biggest median
-    my $medianp = $root->{medians}[1];
-    if (exists $medianp->{children}[1]) {
-       $pos = $medianp->{children}[1];
-    } else {
-       $pos = $medianp;
-    }
- } else { # in between
-    my $medianm = $root->{medians}[0];
-    my $medianp = $root->{medians}[1];
-    if (! exists $medianp->{children}[0]) {
-      $pos = $medianp;
-    } elsif (! exists $median->{children}[1]) {
-      $pos = $medianm;
-    } else {
-      $pos = $medianm->{children}[1];
-    }
- }
+   my $node = shift;
+   printf "insert-node: %s:%d\n",$node->{id},$node->{val};
+   my $tree = shift;
+   my $root = $tree;
+   my @parents = ();
+   if (! exists $root->{children}) { # empty tree
+      $node->{n} = 1;
+      $node->{medians} = [$node,$node];
+      $node->{median} = $node->{val};
+      return $node;
+   }
+   my $pos = undef;
+   my $spot = undef; # place where node is to be inserted;
+   my $medianm = $root->{medians}[0];
+   my $medianp = $root->{medians}[1];
+   my $comp0 = &compare($node,$medianm);
+   my $comp1 = &compare($node,$medianp);
+   printf "median-comp0: %s <=> %s:%d = %s\n",$node->{id},$medianm->{id},$medianm->{val},$comp0;
+   printf "median-comp1: %s <=> %s:%d = %s\n",$node->{id},$medianp->{id},$medianp->{val},$comp1;
 
- my $spot = undef; # place where node is to be inserted
- while (! $spot) {
+   if ($comp0 < 0) {  # smaller than smallest median
+      @parents = ($medianm);
+      if (exists $medianm->{children}[0]) {
+         $pos = $medianm->{children}[0];
+         printf "start-at-medianm: %s:%d (left red branch)\n",$pos->{id},$pos->{val};
+      } else {
+         $pos = $medianm;
+#$spot = $medianm;
+      }
+   } elsif ($comp1 > 0) { # bigger than biggest median
+      if (exists $medianp->{children}[1]) {
+         $pos = $medianp->{children}[1];
+         printf "start-at-medianp: %s:%d (right blue branch)\n",$pos->{id},$pos->{val};
+      } else {
+         $pos = $medianp;
+#$spot = $medianp;
+      }
+   } else { # in between
+      if (! exists $medianp->{children}[0]) {
+         $pos = $medianp;
+#$spot = $medianp;
+      } elsif (! exists $medianm->{children}[1]) {
+         $pos = $medianm;
+#$spot = $medianm;
+      } else {
+         warn "m- red branch and m+ blue branch exist)";
+         $pos = $medianm;
+      }
+      printf "between-median: %s:%d, %s:%d\n",$medianm->{id},$medianm->{val},$medianp->{id},$medianp->{val};
+   }
+   $pos = $root;
+   printf "start-at-root: %s:%d (reset)\n",$pos->{id},$pos->{val};
 
- my $comp = &compare($node,$pos);
- if ($comp > 0) {
-    if (! exists $pos->{children}[1]) {
-       # computes node's metrics
-       $node->{sum} = $pos->{sum} + $node->{val};
-       $node->{n}++;
-       do { $_->{n} = $_->{n} + 1 } for @parents;
-       # attach node to tree (right branch);
-       $pos->{children}[1] = $node;
-       $spot = $pos;
-       # update medians
-       if ($node->{n} % 2) { # odd
-         $root->{medians}[0] = $root->{medians}[1];
-         $root->{median} = $root->{medians}[1]->{val};
-       } else { # even
-         $root->{medians}[0] = $root->{medians}[1];
-         $root->{medians}[1] = &find_next($root->{medians}[1],@parents);
+   while (! $spot) {
+      push @parents, $pos;
+
+      my $comp = &compare($node,$pos);
+      printf "comp: %s <=> %s = %s\n",$node->{id},$pos->{id},$comp;
+      if ($comp > 0) {
+         if (! exists $pos->{children}[1]) {
+            # attach node to tree (right branch);
+            $pos->{children}[1] = $node;
+            $spot = $pos;
+         } else { # no spot available at this level : go down the right branch
+            $pos = $pos->{children}[1];
+            #push(@parents,$pos);
+         }
+         $node->{u_order} = $pos->{u_order} + 1;
+      } elsif($comp < 0) { # left insert 
+         if (! exists $pos->{children}[0]) {
+            # attach node to tree (left branch)
+            $pos->{children}[0] = $node; 
+            $spot = $pos;
+         } else { # no spot available at this level : go down the left branch
+            $pos = $pos->{children}[0];
+            #push(@parents,$pos);
+         }
+         $node->{d_order} = $pos->{d_order} +1;
+      } else { # comp = 0
+         if ($comp0 >= 0 && $comp1 <= 0) {
+            if (! exists $medianm->{children}[1]) {
+               $pos = $medianm;
+               $pos->{children}[1] = $node; 
+               $spot = $pos;
+            } elsif (! exists $medianp->{children}[0]) {
+               $pos = $medianp;
+               $pos->{children}[0] = $node; 
+               $spot = $pos;
+            } else {
+               #push(@parents,$pos);
+               die "error: median non consecutive ...";
+            }
+         } else {
+            if (! exists $pos->{children}[0]) {
+               # attach node to tree (left branch)
+               $pos->{children}[0] = $node; 
+               $spot = $pos;
+            } elsif (! exists $pos->{children}[1]) {
+               # attach node to tree (right branch)
+               $pos->{children}[1] = $node; 
+               $spot = $pos;
+            } else { # no spot available at this level : go down the any branch
+               $pos = $pos->{children}[0];
+               #push(@parents,$pos);
+            }
+         }
+      }
+      # update medians
+      if ($comp1 > 0) {
+         if ($medianm->{id} ne $medianp->{id}) { # odd
+            $root->{medians}[0] = $medianp; # insertion was on the right side !
+               $root->{median} = $medianp->{val};
+         } else { # even
+            $root->{medians}[0] = $medianp;
+            $root->{medians}[1] = &find_next($medianp,@parents);
+            $root->{median} = ($root->{medians}[1]->{val} + $root->{medians}[0]->{val})/2;
+         }
+         printf "update-medianm: %s:%d\n",$root->{medians}[0]->{id},$root->{medians}[0]->{val};
+         printf "update-medianp: %s:%d\n",$root->{medians}[1]->{id},$root->{medians}[1]->{val};
+         printf "update-median: %.2f\n",$root->{median};
+      } elsif ($comp0 < 0) {
+         if ($medianm->{id} ne $medianp->{id}) { # odd
+            $root->{medians}[1] = $medianm;
+            $root->{median} = $medianm->{val};
+         } else { # even
+            $root->{medians}[1] = $medianm;
+            $root->{medians}[0] = &find_prev($medianm,@parents);
+            $root->{median} = ($root->{medians}[1]->{val} + $root->{medians}[0]->{val})/2;
+         }
+         printf "update-medianm: %s:%d\n",$root->{medians}[0]->{id},$root->{medians}[0]->{val};
+         printf "update-medianp: %s:%d\n",$root->{medians}[1]->{id},$root->{medians}[1]->{val};
+         printf "update-median: %.2f\n",$root->{median};
+      } elsif ($comp0 > 0 && $comp1 <0) {
+         $root->{medians}[1] = $node;
+         $root->{medians}[0] = $node;
          $root->{median} = ($root->{medians}[1]->{val} + $root->{medians}[0]->{val})/2;
-       }
+         printf "update-medianm: %s:%d\n",$root->{medians}[0]->{id},$root->{medians}[0]->{val};
+         printf "update-medianp: %s:%d\n",$root->{medians}[1]->{id},$root->{medians}[1]->{val};
+         printf "update-median: %.2f\n",$root->{median};
 
-    } else { # no spot available at this level : go down the right branch
-       $pos = $pos->{children}[1];
-       push @parents, $pos;
+      }
 
-    }
-    $node->{u_order} = $pos->{u_order} + 1;
- } elsif($comp <= 0) { # left insert 
-    if (! exists $pos->{children}[0]) {
-       # computes node's metrics
-       $node->{sum} = $pos->{sum} + $node->{val};
-       $node->{n}++;
-       do { $_->{n} = $_->{n} + 1 } for @parents;
-       # attach node to tree (left branch)
-       $pos->{children}[0] = $node; 
-       $spot = $pos;
-       # update medians
-       if ($node->{n} % 2) { # odd
-         $root->{medians}[1] = $root->{medians}[0];
-         $root->{median} = $root->{medians}[0]->{val};
-       } else { # even
-         $root->{medians}[1] = $root->{medians}[0];
-         $root->{medians}[0] = &find_prev($root->{medians}[0],@parents);
-         $root->{median} = ($root->{medians}[1]->{val} + $root->{medians}[0]->{val})/2;
-       }
-
-    } else { # no spot available at this level : go down the left branch
-       $pos = $pos->{children}[0];
-       push @parents, $pos;
-    }
-    $node->{d_order} = $pos->{d_order} +1;
- } 
- }
- return $root;
+   }
+   $node->{n} = 1;
+   do { $_->{n} = $_->{n} + 1 } for @parents;
+   printf "root->{n}: %d\n",$root->{n};
+   # computes node's metrics
+   $node->{sum} = $spot->{sum} + $node->{val};
+   return $root;
 }
 # --------------------------------------------------------------
 sub find_next {
@@ -155,7 +210,8 @@ sub find_next {
   # all nodes in right subtree are bigger
   # next == smaller (redest) of bigger "right (blue)" branch ...
   # or first parent who has a "left (red) edge"
-
+  printf "next-to: %s\n",$pos->{id};
+  printf "parents: %s\n",join',',map { $_->{id}; } @parents;
   if (exists $pos->{children}[1]) { # next is in blue branch
     $pos = $pos->{children}[1];
     while (exists $pos->{children}[0]) { # if a red branch exists
@@ -164,18 +220,22 @@ sub find_next {
   } else { # next is in a parent subtree
     $parent = $pos;
     foreach $gdparent (reverse @parents) {
-       if ($gdparent->{children}[0]->{id} == $parent->{id}) {
-          $pos = $gdparent; last;
+       if (exists $gdparent->{children} && defined $gdparent->{children}[0]) {
+          if ($gdparent->{children}[0]->{id} eq $parent->{id}) {
+             $pos = $gdparent; last;
+          }
        }
        $parent = $gdparent;
     }
   }
+  printf "returned-next: %s\n",$pos->{id};
   return $pos;
 }
 # --------------------------------------------------------------
 sub find_prev {
   my $pos = shift;
   my @parents = @_;
+  printf "prev-to: %s\n",$pos->{id};
   if (exists $pos->{children}[0] && defined $pos->{children}[0]) { # prev is in red branch
      $pos = $pos->{children}[0];
      while (exists $pos->{children}[1]) { # if blue children then descend blue side;
@@ -191,12 +251,13 @@ sub find_prev {
      }
 
   }
+  printf "returned-prev: %s\n",$pos->{id};
   return $pos;
 }
 # --------------------------------------------------------------
 sub BFS_traversal { # breadth-first-search: using a queue
   my @queue = ();
-  my %discovered = {};
+  my %discovered = ();
   my $root = shift;
   push @queue,$root;
   while (@queue) {
@@ -210,7 +271,7 @@ sub BFS_traversal { # breadth-first-search: using a queue
 # --------------------------------------------------------------
 sub DFS_traversal { # depth-first-search: using a stack
   my @stack = ();
-  my %discovered = {};
+  my %discovered = ();
   my $root = shift;
   push @stack,$root;
   while (@stack) {
@@ -243,7 +304,7 @@ sub display {
   my @list = ($root);
   while (@list) {
     my $node = shift @list;
-    my $children = $node->{children};
+    my $children = $node->{children} || [];
     if (exists $node->{id}) {
       my $ismed = ($root->{medians}[0]->{id} eq $node->{id}) ? 'm-' :
                   ($root->{medians}[1]->{id} eq $node->{id}) ? 'm+' : '';
@@ -264,7 +325,11 @@ sub display {
          printf F qq' %s -> %s [ color="blue" ];\n',$node->{id}, $children->[1]{id};
       }
     }
-    printf "%s: val=%d\n",$node->{id},$node->{val};
+    if (exists $node->{id}) {
+       printf "%s: val=%d\n",$node->{id},$node->{val};
+    } else{
+       printf "node: undefined\n";
+    }
   }
 
   printf F "}\n";
