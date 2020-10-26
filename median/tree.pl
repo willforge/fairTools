@@ -4,11 +4,12 @@
 #  create a set of number (size = nl) and compute the median
 
 use YAML::Syck qw(Dump);
-my $seed = srand('4351');
+my $seed = srand('4451');
 
 
 my $arity = 2;
-my $nl = 15; # 
+my $nl = 15; #  size of random set
+my $nm = 15; # number of know
 
 
 my $u = 0;
@@ -20,13 +21,13 @@ for $i (0 .. $nl-1) {
   push @values,$val;
 }
 my @rank = ();
-my @sorted_idx = sort { $values[$a] <=> $values[$b] } (0 .. $nl-1);
+my @sorted_idx = sort { $values[$a] <=> $values[$b] } (0 .. $nm-1);
 foreach my $i (@sorted_idx) { 
   $rank[$sorted_idx[$i]] = $i;
 }
 # --------------------------------------------------------------
 # build tree ...
-for $i (0 .. $nl-1) {
+for $i (0 .. $nm-1) {
   my $id = 'n'.$i;
   my $val = $values[$i];
   my $node = {
@@ -38,6 +39,35 @@ for $i (0 .. $nl-1) {
   printf "parents-%s: [%s]\n",$node->{id},join',',map { $_->{id} } @{$node->{parents}};
   printf "list: %s\n",join',',sort { $a <=> $b } @values[0 .. $i];
 }
+
+# testing next
+my $prev = { id => 'x' };
+my $pos = $tree;
+while ($pos->{id} ne $prev->{id}) {
+  my $next = &find_next($pos);
+  $prev = $pos;
+  $pos = $next;
+}
+print ".\n";
+# testing prev;
+for $i (0 .. $nm-1) {
+  my $prev = &find_prev($pos);
+  $pos = $prev;
+}
+# travel the missing ones (smaller than root)
+while ($pos->{id} ne $tree->{id}) {
+  my $next = &find_next($pos);
+  $pos = $next;
+}
+
+print "display:\n";
+&display($tree);
+print "...\n";
+
+exit;
+
+
+if (0) {
 printf "tree: %s...\n",Dump($tree);
 # tree traversal
 print "DFS:\n";
@@ -45,9 +75,7 @@ print "DFS:\n";
 print "BFS:\n";
 &BFS_traversal($tree);
 
-print "display:\n";
-&display($tree);
-print "...\n";
+}
 
 print ".\n";
 exit $?;
@@ -159,12 +187,26 @@ sub insert {
       $node->{parents} = [@{$spot->{parents}},$spot];
       printf "%s's parents: %s\n",$node->{id},join',',map { $_->{id}; } @{$node->{parents}};
    }
+   # update n
+   $node->{n} = 1;
+   do { $_->{n} = $_->{n} + 1 } for @{$node->{parents}};
+
    ; # update medians
    if ($comp1 > 0) {
       if ($medianm->{id} ne $medianp->{id}) { # odd
+         if ($root->{n} % 2) {
+           print "error: n is even w/ one median /!\\\n",
+         } else {
+           print "odd : one medians because \n";
+         }
          $root->{medians}[0] = $medianp; # insertion was on the right side !
             $root->{median} = $medianp->{val};
       } else { # even
+         if ($root->{n} % 2) {
+           print "error: n is odd w/ two median /!\\\n",
+         } else {
+           print "even : two medians because \n";
+         }
          $root->{medians}[0] = $medianp;
          $root->{medians}[1] = &find_next($medianp);
          $root->{median} = ($root->{medians}[1]->{val} + $root->{medians}[0]->{val})/2;
@@ -174,9 +216,19 @@ sub insert {
       printf "update-median: %.2f\n",$root->{median};
    } elsif ($comp0 < 0) {
       if ($medianm->{id} ne $medianp->{id}) { # odd
+         if ($root->{n} % 2) {
+           print "error: n is even w/ one median /!\\\n",
+         } else {
+           print "odd : one medians because \n";
+         }
          $root->{medians}[1] = $medianm;
          $root->{median} = $medianm->{val};
       } else { # even
+         if ($root->{n} % 2) {
+           print "error: n is odd w/ two median /!\\\n",
+         } else {
+           print "even : two medians because \n";
+         }
          $root->{medians}[1] = $medianm;
          $root->{medians}[0] = &find_prev($medianm);
          $root->{median} = ($root->{medians}[1]->{val} + $root->{medians}[0]->{val})/2;
@@ -184,7 +236,10 @@ sub insert {
       printf "update-medianm: %s:%d\n",$root->{medians}[0]->{id},$root->{medians}[0]->{val};
       printf "update-medianp: %s:%d\n",$root->{medians}[1]->{id},$root->{medians}[1]->{val};
       printf "update-median: %.2f\n",$root->{median};
-   } elsif ($comp0 >= 0 && $comp1 <= 0) {
+   } elsif (0 < $comp0 && $comp1 < 0) {
+      if ($root->{n} % 2 == 0) {
+        die "error: n is even an val in between /!\\",
+      }     
       $root->{medians}[1] = $node;
       $root->{medians}[0] = $node;
       $root->{median} = ($root->{medians}[1]->{val} + $root->{medians}[0]->{val})/2;
@@ -192,10 +247,18 @@ sub insert {
       printf "update-medianp: %s:%d\n",$root->{medians}[1]->{id},$root->{medians}[1]->{val};
       printf "update-median: %.2f\n",$root->{median};
 
+   } elsif ($comp0 == 0) {
+      # TODO !
+      if ($medianp->{id} eq $medianm->{id}) { # is even now
+        $root->{medians}[1] = $node;
+      } else { # is odd now # next smallest, prev biggest
+      }
+      printf "update-medianp: %s:%d\n",$root->{medians}[1]->{id},$root->{medians}[1]->{val};
+   } elsif ($comp1 == 0) {
+      $root->{medians}[0] = $node;
+      printf "update-medianm: %s:%d\n",$root->{medians}[0]->{id},$root->{medians}[0]->{val};
    }
 
-   $node->{n} = 1;
-   do { $_->{n} = $_->{n} + 1 } for @{$node->{parents}};
    printf "root->{n}: %d\n",$root->{n};
    ; # computes node's metrics
    $node->{sum} = $spot->{sum} + $node->{val};
@@ -205,58 +268,61 @@ sub insert {
 sub find_next {
   my $pos = shift;
   my $parents = $pos->{parents};
-  printf "next-to: %s\n",$pos->{id};
   #printf "--- # %s: %s...\n",$pos->{id},Dump($parents);
   # all nodes in right subtree are bigger
   # next == smaller (redest) of bigger "right (blue)" branch ...
   # or first parent who has a "left (red) edge"
 
+  my $next = $pos;
   if (exists $pos->{children}[1]) { # next is in blue branch
-    $pos = $pos->{children}[1];
-    while (exists $pos->{children}[0]) { # if a red branch exists
-      $pos = $pos->{children}[0];
+    $next = $pos->{children}[1];
+    while (exists $next->{children}[0]) { # if a red branch exists
+      $next = $next->{children}[0];
     }
   } else { # next is in a parent subtree
-    $parent = $pos;
+    my $parent = $pos;
     foreach $gdparent (reverse @{$parents}) {
        if (exists $gdparent->{children} && defined $gdparent->{children}[0]) {
           if ($gdparent->{children}[0]->{id} eq $parent->{id}) {
-             $pos = $gdparent; last;
+             $next = $gdparent; last;
           }
        }
        $parent = $gdparent;
     }
   }
-  printf "returned-next: %s\n",$pos->{id};
-  return $pos;
+  printf "next-to: %s:%d is %s:%d\n",$pos->{id},$pos->{val},$next->{id},$next->{val};
+  return $next;
 }
 # --------------------------------------------------------------
 sub find_prev {
   my $pos = shift;
   my $parents = $pos->{parents};
-  printf "prev-to: %s\n",$pos->{id};
-  if (scalar(@{$parents})) {
-    printf "parents: [%s]\n",join',',map { $_->{id}; } @{$parents};
-  } else {
-    printf "parents: [] (%s no parents)\n",$pos->{id};
-  }
+  my $prev = $pos;
+  # lookup in the children tree
   if (exists $pos->{children}[0] && defined $pos->{children}[0]) { # prev is in red branch
-     $pos = $pos->{children}[0];
-     while (exists $pos->{children}[1]) { # if blue children then descend blue side;
-        $pos = $pos->{children}[1];
+     $prev = $pos->{children}[0];
+     while (exists $prev->{children}[1]) { # if blue children then descend blue side;
+        $prev = $prev->{children}[1];
      }
-  } else { # next is in parent subtree
+  } else { # prev is in parent subtree
+     if (scalar(@{$parents})) {
+        printf "parents: [%s]\n",join',',map { $_->{id}; } @{$parents};
+     } else {
+        printf "parents: [] (%s no parents)\n",$pos->{id};
+     }
      $parent = $pos;
      foreach $gdparent (reverse @{$parents}) {
-        if ($gdparent->{children}[1]->{id} == $parent->{id}) { # go up unil blue
-           $pos = $gdparent; last;
+        if (exists $gdparent->{children}[1] && $gdparent->{children}[1]->{id} eq $parent->{id}) { # go up until blue
+           printf "gdparent: %s:%d (is blue)\n",$gdparent->{id},$gdparent->{val};
+           $prev = $gdparent; last;
+        } else {
+           printf "gdparent: %s:%d (is red)\n",$gdparent->{id},$gdparent->{val};
         }
         $parent = $gdparent;
      }
-
   }
-  printf "returned-prev: %s\n",$pos->{id};
-  return $pos;
+  printf "prev-to: %s:%d is %s:%d\n",$pos->{id},$pos->{val},$prev->{id},$prev->{val};
+  return $prev;
 }
 # --------------------------------------------------------------
 sub BFS_traversal { # breadth-first-search: using a queue
@@ -296,15 +362,17 @@ sub display_node {
 sub display {
   my $root = shift;
   local *F; open F,'>','tree.dot';
-  printf F "# i: %s\n",join',', map { sprintf '%2d',$_ } (0 .. $nl-1);
+  printf F "# i: %s\n",join',', map { sprintf '%2d',$_ } (0 .. $nm-1);
   printf F "# s: %s\n",join',', map { sprintf '%2d',$_ } @values[@sorted_idx];
-  printf F "# v: %s\n",join',', map { sprintf '%2d',$_ } @values;
+  printf F "# v: %s\n",join',', map { sprintf '%2d',$_ } @values[0 .. $nm-1];
   printf F "#rk: %s\n",join',', map { sprintf '%2d',$_ } @rank;
-  printf F "# si: %s\n",join', ',@sorted_idx;
+  printf F "#si: %s\n",join',', map { sprintf '%2d',$_ } @sorted_idx;
   printf F "digraph tree {\n";
 
   printf F qq'"median-" -> %s\n',$root->{medians}[0]{id};
   printf F qq'"median+" -> %s\n',$root->{medians}[1]{id};
+  
+  printf "root: %s\n",$root->{id};
   my @list = ($root);
   while (@list) {
     my $node = shift @list;
@@ -318,14 +386,15 @@ sub display {
            $node->{val},$ismed, $node->{n};
     }
     if (scalar @{$children}) {
-      push @list, @{$children};
+      push @list, grep { defined $_ } @{$children};
+      #printf "list: [%s]\n",join',',map { $_->{id} } @list;
       $children->[0]{id} = 'u'.$u++ if (! defined $children->[0]);
  
       #printf F " %s -> { %s };\n",$node->{id},join',',map { $_->{id}; } (@{$children});
-      if (defined $children->[0]) { # red link
+      if (exists $children->[0]) { # red link
          printf F qq' %s -> %s [ color="red" ];\n',$node->{id}, $children->[0]{id};
       }
-      if (defined $children->[1]) { # blue link
+      if (exists $children->[1]) { # blue link
          printf F qq' %s -> %s [ color="blue" ];\n',$node->{id}, $children->[1]{id};
       }
     }
