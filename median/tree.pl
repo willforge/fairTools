@@ -37,7 +37,8 @@ for $i (0 .. $nm-1) {
   $tree = &insert($node,$tree);
   printf "node-%s: %d (n=%d, m=%.2f) inserted\n",$node->{id},$node->{val},$node->{n},$tree->{median};
   printf "parents-%s: [%s]\n",$node->{id},join',',map { $_->{id} } @{$node->{parents}};
-  printf "list: %s\n",join',',sort { $a <=> $b } @values[0 .. $i];
+  printf "list: %s\n",join',',map { sprintf '%2d',$_ } sort { $a <=> $b } @values[0 .. $i];
+  printf "      %s^\n",' 'x(3*int(($i+1)/2) + (($i+1)%2) - 1);
 }
 
 # testing next
@@ -155,27 +156,31 @@ sub insert {
          }
          $node->{d_order} = $pos->{d_order} +1;
       } else { # comp = 0
-         if ($comp0 >= 0 && $comp1 <= 0) {
+         if ($comp0 >= 0 && $comp1 <= 0) { # if 2 medians (even) -> pos will become new median (odd)
             if (! exists $medianm->{children}[1]) {
                $pos = $medianm;
-               $pos->{children}[1] = $node; 
+               $pos->{children}[1] = $node;
+               $comp0 = 1; # considering comp0 > 0
                $spot = $pos;
             } elsif (! exists $medianp->{children}[0]) {
                $pos = $medianp;
-               $pos->{children}[0] = $node; 
+               $pos->{children}[0] = $node;
+               $comp1 = -1; # considering comp1 < 0
                $spot = $pos;
             } else {
                ; #push(@parents,$pos);
                die "error: median non consecutive ...";
             }
          } else {
-            if (! exists $pos->{children}[0]) {
+            if (! exists $pos->{children}[0]) { # left branch prefered ...
                ; # attach node to tree (left branch)
                $pos->{children}[0] = $node; 
+               $comp = -1; # consideing new node smaller than pos
                $spot = $pos;
             } elsif (! exists $pos->{children}[1]) {
                ; # attach node to tree (right branch)
                $pos->{children}[1] = $node; 
+               $comp = 1; # consideing new node bigger than pos
                $spot = $pos;
             } else { # no spot available at this level : go down the any branch
                $pos = $pos->{children}[0];
@@ -193,11 +198,12 @@ sub insert {
 
    ; # update medians
    if ($comp1 > 0) {
+      printf "update(m+ < node) : %s:%d >= %s:%d\n",$spot->{id},$spot->{val},$medianp->{id},$medianp->{val};
       if ($medianm->{id} ne $medianp->{id}) { # odd
-         if ($root->{n} % 2) {
+         if ($root->{n} % 2 == 0) {
            print "error: n is even w/ one median /!\\\n",
          } else {
-           print "odd : one medians because \n";
+           print "odd : one median \n";
          }
          $root->{medians}[0] = $medianp; # insertion was on the right side !
             $root->{median} = $medianp->{val};
@@ -205,7 +211,7 @@ sub insert {
          if ($root->{n} % 2) {
            print "error: n is odd w/ two median /!\\\n",
          } else {
-           print "even : two medians because \n";
+           print "even : two medians \n";
          }
          $root->{medians}[0] = $medianp;
          $root->{medians}[1] = &find_next($medianp);
@@ -215,11 +221,12 @@ sub insert {
       printf "update-medianp: %s:%d\n",$root->{medians}[1]->{id},$root->{medians}[1]->{val};
       printf "update-median: %.2f\n",$root->{median};
    } elsif ($comp0 < 0) {
+      printf "update(node < m-) : %s:%d >= %s:%d\n",$spot->{id},$spot->{val},$medianm->{id},$medianm->{val};
       if ($medianm->{id} ne $medianp->{id}) { # odd
-         if ($root->{n} % 2) {
+         if ($root->{n} % 2 == 0) {
            print "error: n is even w/ one median /!\\\n",
          } else {
-           print "odd : one medians because \n";
+           print "odd : one median\n";
          }
          $root->{medians}[1] = $medianm;
          $root->{median} = $medianm->{val};
@@ -227,7 +234,7 @@ sub insert {
          if ($root->{n} % 2) {
            print "error: n is odd w/ two median /!\\\n",
          } else {
-           print "even : two medians because \n";
+           print "even : two medians\n";
          }
          $root->{medians}[1] = $medianm;
          $root->{medians}[0] = &find_prev($medianm);
@@ -237,9 +244,10 @@ sub insert {
       printf "update-medianp: %s:%d\n",$root->{medians}[1]->{id},$root->{medians}[1]->{val};
       printf "update-median: %.2f\n",$root->{median};
    } elsif (0 < $comp0 && $comp1 < 0) {
+     printf "update(m- < node < m+) : %s:%d < %s:%d < %s:%d \n",$medianm->{id}, $medianm->{val}, $spot->{id},$spot->{val},$medianp->{id},$medianp->{val};
       if ($root->{n} % 2 == 0) {
         die "error: n is even an val in between /!\\",
-      }     
+      }
       $root->{medians}[1] = $node;
       $root->{medians}[0] = $node;
       $root->{median} = ($root->{medians}[1]->{val} + $root->{medians}[0]->{val})/2;
@@ -247,16 +255,26 @@ sub insert {
       printf "update-medianp: %s:%d\n",$root->{medians}[1]->{id},$root->{medians}[1]->{val};
       printf "update-median: %.2f\n",$root->{median};
 
-   } elsif ($comp0 == 0) {
-      # TODO !
+   } elsif ($comp0 == 0) { # node was inserted in between
+     printf "update(m- == node) : %s:%d == %s:%d \n", $spot->{id},$spot->{val},$medianm->{id},$medianm->{val};
       if ($medianp->{id} eq $medianm->{id}) { # is even now
         $root->{medians}[1] = $node;
-      } else { # is odd now # next smallest, prev biggest
-      }
+      } else {
+         printf "update-medianm: %s:%d\n",$root->{medians}[0]->{id},$root->{medians}[0]->{val};
+         $root->{medians}[1] = $node;
+         $root->{medians}[0] = $node;
+      } 
       printf "update-medianp: %s:%d\n",$root->{medians}[1]->{id},$root->{medians}[1]->{val};
-   } elsif ($comp1 == 0) {
-      $root->{medians}[0] = $node;
-      printf "update-medianm: %s:%d\n",$root->{medians}[0]->{id},$root->{medians}[0]->{val};
+   } elsif ($comp1 == 0) { # node was insered in between
+     printf "update(node == m+) : %s:%d == %s:%d \n", $spot->{id},$spot->{val},$medianp->{id},$medianp->{val};
+      if ($medianp->{id} eq $medianm->{id}) { # is even now : need 2 medians
+        $root->{medians}[1] = $node;
+      } else { # is odd now : need one medians
+        $root->{medians}[0] = $node;
+        $root->{medians}[1] = $node;
+        printf "update-medianm: %s:%d\n",$root->{medians}[0]->{id},$root->{medians}[0]->{val};
+      }
+      printf "update-medianmp %s:%d\n",$root->{medians}[1]->{id},$root->{medians}[1]->{val};
    }
 
    printf "root->{n}: %d\n",$root->{n};
@@ -362,7 +380,10 @@ sub display_node {
 sub display {
   my $root = shift;
   local *F; open F,'>','tree.dot';
+
   printf F "# i: %s\n",join',', map { sprintf '%2d',$_ } (0 .. $nm-1);
+  my $s = 3 * int(($nm)/2) + 1 * ($nm%2) - 1;
+  printf F "#    %sV\n",' 'x($s);
   printf F "# s: %s\n",join',', map { sprintf '%2d',$_ } @values[@sorted_idx];
   printf F "# v: %s\n",join',', map { sprintf '%2d',$_ } @values[0 .. $nm-1];
   printf F "#rk: %s\n",join',', map { sprintf '%2d',$_ } @rank;
