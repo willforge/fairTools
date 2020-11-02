@@ -50,12 +50,12 @@ while (1) {
       my $id = 'n'.$i;
       my $val = $values[$i];
       my $node = {
-         val => $val, id => $id, n => 0, median => 0,
+         val => $val, id => $id, n => 0, median => 0, addr => 0, level => 0,
          sum => 0, d_order => 0, u_order => 0, r_order => $rank[$i],
          children => [], medians => [], parents => []};
       $tree = &insert($node,$tree);
 # ----------------------------
-      printf "-> node-%s: %d (m=%.2f n=%d) inserted\n",$node->{id},$node->{val},$tree->{median},$tree->{n};
+      printf "-> node-%s: %d (m=%.2f n=%d @%f) inserted\n",$node->{id},$node->{val},$tree->{median},$tree->{n},&frac_addr($node->{addr},$node->{level});
       printf "parents-%s: [%s]\n",$node->{id},join',',map { $_->{id} } @{$node->{parents}};
       my $median = &verif($tree);
       printf "tree median: %.2f <----- \n",$tree->{median};
@@ -194,6 +194,7 @@ sub insert {
    printf "median-comp0: %s <=> %s:%d = %s\n",$node->{id},$medianm->{id},$medianm->{val},$comp0;
    printf "median-comp1: %s <=> %s:%d = %s\n",$node->{id},$medianp->{id},$medianp->{val},$comp1;
 
+   if (0) {
    if ($comp0 < 0) {  # smaller than smallest median
       if (exists $medianm->{children}[0] && defined $medianm->{children}[0]) {
          $pos = $medianm->{children}[0];
@@ -223,6 +224,9 @@ sub insert {
       }
       printf "between-median: %s:%d, %s:%d\n",$medianm->{id},$medianm->{val},$medianp->{id},$medianp->{val};
    }
+   }
+
+   # start search at root :
    $pos = $root;
    printf "start-at-root: %s:%d (reset)\n",$pos->{id},$pos->{val};
 
@@ -233,6 +237,8 @@ sub insert {
          if (! exists $pos->{children}[1]) {
             ; # attach node to tree (right branch);
             $pos->{children}[1] = $node;
+            $node->{level} = $pos->{level}+1;
+            $node->{addr} = &get_addr($pos->{addr},1);
             $spot = $pos;
          } else { # no spot available at this level : go down the right branch
             $pos = $pos->{children}[1];
@@ -242,6 +248,8 @@ sub insert {
          if (! (exists $pos->{children}[0] && defined $pos->{children}[0]) ) {
             ; # attach node to tree (left branch)
             $pos->{children}[0] = $node; 
+            $node->{level} = $pos->{level}+1;
+            $node->{addr} = &get_addr($pos->{addr},0);
             $spot = $pos;
          } else { # no spot available at this level : go down the left branch
             $pos = $pos->{children}[0];
@@ -251,36 +259,62 @@ sub insert {
           if ($pos->{id} eq $medianm->{id}) {
             if (! exists $pos->{children}[1]) { # right branch prefered ...
                $pos->{children}[1] = $node;
+               $node->{level} = $pos->{level}+1;
+               $node->{addr} = &get_addr($pos->{addr},1);
                $comp0 = $comp = 1; # considering comp > 0
                printf "node inserted on the right side of m-:%s comp=%d\n",$pos->{id},$comp;
                $spot = $pos;
             } elsif (! ( exists $pos->{children}[0] && defined $pos->{children}[0]) ) {
                $pos->{children}[0] = $node;
+               $node->{level} = $pos->{level}+1;
+               $node->{addr} = &get_addr($pos->{addr},0);
                $comp0 = $comp = -1; # considering comp < 0
                printf "node inserted on the left side of m-:%s comp=%d\n",$pos->{id},$comp;
                $spot = $pos;
+            } else {
+               my $dir = rand(1.0) > 0.5 ? 1 : 0;
+               printf "RANDOM bifurcation: %s !\n",($dir)?'right':'left';
+               printf "continue down the %s branch of %s\n",(($dir)?'right':'left'),$pos->{id};
+               $comp = ($dir)?1:-1;
+               printf "set: comp = %d\n",$comp;
+               $pos = $pos->{children}[$dir];
             }
           } elsif ($pos->{id} eq $medianp->{id}) {
             if (! ( exists $pos->{children}[0] && defined $pos->{children}[0]) ) { # left branch prefered ...
                $pos->{children}[0] = $node;
+               $node->{level} = $pos->{level}+1;
+               $node->{addr} = &get_addr($pos->{addr},0);
                $comp1 = $comp = -1; # considering comp < 0
                printf "node inserted on the left side of m+:%s comp=%d\n",$pos->{id},$comp;
                $spot = $pos;
             } elsif (! exists $pos->{children}[1]) {
                $pos->{children}[1] = $node;
+               $node->{level} = $pos->{level}+1;
+               $node->{addr} = &get_addr($pos->{addr},1);
                $comp1 = $comp = 1; # considering comp > 0
                printf "node inserted on the right side of m+:%s comp=%d\n",$pos->{id},$comp;
                $spot = $pos;
+            } else {
+               my $dir = rand(1.0) > 0.5 ? 1 : 0;
+               printf "RANDOM bifurcation: %s !\n",($dir)?'right':'left';
+               printf "continue down the %s branch of %s\n",(($dir)?'right':'left'),$pos->{id};
+               $comp = ($dir)?1:-1;
+               printf "set: comp = %d\n",$comp;
+               $pos = $pos->{children}[$dir];
             }
           } elsif (rand(1.0) > 0.5) {
             if (! exists $pos->{children}[1]) { # right branch prefered ...
                $pos->{children}[1] = $node;
+               $node->{level} = $pos->{level}+1;
+               $node->{addr} = &get_addr($pos->{addr},1);
                $comp = 1; # considering comp > 0
                printf "node inserted on the right side of %s comp=%d\n",$pos->{id},$comp;
                $spot = $pos;
             } elsif (! (exists $pos->{children}[0] && defined $pos->{children}[0]) ) {
-               $comp = -1; # considering comp < 0
                $pos->{children}[0] = $node;
+               $comp = -1; # considering comp < 0
+               $node->{level} = $pos->{level}+1;
+               $node->{addr} = &get_addr($pos->{addr},0);
                printf "node inserted on the left side of %s comp=%d\n",$pos->{id},$comp;
                $spot = $pos;
             } else {
@@ -295,12 +329,16 @@ sub insert {
             if (! (exists $pos->{children}[0] && defined $pos->{children}[0]) ) { # left branch prefered ...
                ; # attach node to tree (left branch)
                $pos->{children}[0] = $node; 
+               $node->{level} = $pos->{level}+1;
+               $node->{addr} = &get_addr($pos->{addr},0);
                $comp = -1; # considering new node smaller than pos
                $spot = $pos;
                printf "node inserted on the left side of %s:%d comp=%d\n",$spot->{id},$spot->{val},$comp;
             } elsif (! exists $pos->{children}[1]) {
                ; # attach node to tree (right branch)
                $pos->{children}[1] = $node; 
+               $node->{level} = $pos->{level}+1;
+               $node->{addr} = &get_addr($pos->{addr},1);
                $comp = 1; # considering new node bigger than pos
                $spot = $pos;
                printf "node inserted on the right side of %s:%d comp=%d\n",$spot->{id},$spot->{val}, $comp;
@@ -321,6 +359,16 @@ sub insert {
    # update n
    $node->{n} = 1;
    do { $_->{n} = $_->{n} + 1 } for @{$node->{parents}};
+
+   # check w/ spot 
+   if ($comp0 == 0) {
+      my $comps = &compare($spot,$medianm);
+      $comp0 = ($comps < 0) ? -1 : ($comps > 0) ? +1 : 0;
+   }
+   if ($comp1 == 0) {
+      my $comps = &compare($spot,$medianp);
+      $comp1 = ($comps < 0) ? -1 : ($comps > 0) ? +1 : 0;
+   }
 
    ; # update medians
    if ($comp1 > 0) {
@@ -379,6 +427,7 @@ sub insert {
       printf "update-medianp: %s:%d\n",$root->{medians}[1]->{id},$root->{medians}[1]->{val};
 
    } elsif ($comp0 == 0) {
+
      printf "update(m- == node) : %s:%d == %s:%d \n", $node->{id},$node->{val},$medianm->{id},$medianm->{val};
       if ($medianp->{id} eq $medianm->{id}) { # is even now : need 2 medians
         # node was inserted in below m+ which is also below m-
@@ -412,6 +461,18 @@ sub insert {
    ; # computes node's metrics
    $node->{sum} = $spot->{sum} + $node->{val};
    return $root;
+}
+
+sub get_addr {
+  my $padd = shift;
+  my $dir = shift;
+  my $addr = $padd << 1 | $dir;
+  return $addr;
+}
+sub frac_addr {
+  my $addr = shift;
+  my $level = shift;
+  return ($addr + 0.5) / (2.0**$level);
 }
 # --------------------------------------------------------------
 sub climb_up {
@@ -556,7 +617,7 @@ sub DFS_traversal { # depth-first-search: using a stack
 sub display_node {
  my $label = shift;
  my $node = shift;
- printf "%s: %s val=%s\n",$label, $node->{id},$node->{val};
+ printf "%s: %s @%.f val=%s\n",$label, $node->{id},&frac_addr($node->{addr},$node->{level}),$node->{val};
 }
 # --------------------------------------------------------------
 sub display {
@@ -584,10 +645,11 @@ sub display {
     if (exists $node->{id}) {
       my $ismed = ($root->{medians}[0]->{id} eq $node->{id}) ? 'm-' :
                   ($root->{medians}[1]->{id} eq $node->{id}) ? 'm+' : '';
-
-      printf F qq' %s [shape="record" label="%s|{{%d|%d|%d|s=%d}|{val=%s|%s|n=%d}}" ];\n',$node->{id},
-           $node->{id}, $node->{d_order},$node->{r_order},$node->{u_order},$node->{sum},
-           $node->{val},$ismed, $node->{n};
+      my $faddr = &frac_addr($node->{addr},$node->{level});
+      printf F qq' %s [shape="record" label="%s|{{%d|%d|%d|s=%d}|{%s|val=%s|%s|n=%d}}" ];\n',
+           $node->{id},$node->{id},
+           $node->{d_order},$node->{r_order},$node->{u_order},$node->{sum},
+           $faddr,$node->{val},$ismed, $node->{n};
     }
     if (scalar @{$children}) {
       push @list, grep { defined $_ } @{$children};
@@ -603,7 +665,7 @@ sub display {
       }
     }
     if (exists $node->{id}) {
-       printf "%s: val=%d\n",$node->{id},$node->{val};
+       printf "%s: \@%s val=%d\n",$node->{id},&frac_addr($node->{addr},$node->{level}),$node->{val};
     } else{
        printf "node: undefined\n";
     }
@@ -617,7 +679,14 @@ sub display {
 
 sub compare {
   my ($a,$b) = @_;
-  my $comp = $a->{val} <=> $b->{val};
+  my $comp = $a->{val} <=> $b->{val} || &addr_compare($a,$b);
   return  $comp;
+}
+
+sub addr_compare {
+  my ($a,$b) = @_;
+  my $fa = &frac_addr($a->{addr},$a->{level});
+  my $fb = &frac_addr($b->{addr},$b->{level});
+  return $fa <=> $fb;
 }
 
