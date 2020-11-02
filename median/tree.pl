@@ -12,8 +12,13 @@ if (@ARGV) {
  $seed=shift;
 }
 
-while (1) {
+my $tree;
+my $count = 30; # count down to 0
+
+while ($count--) {
    print '-'x76,"\n";
+   printf " RUN: $count <--- \n";
+   print '-'x36,"\n";
 
    my $iv;
    if ($seed) {
@@ -24,18 +29,18 @@ while (1) {
    printf "iv: %s\n",$iv;
 
    my $arity = 2;
-   our $nl = 36 + (rand(1.0)>0.5? 0 : 1); #  size of random set
+   our $nl = 3 + int (rand(33)) + (rand(1.0)>0.5? 0 : 1); #  size of random set
    our $nm = $nl; # number of node considered (sampled set)
    printf "nm: %s\n",$nm;
 
 
    my $u = 0;
    my $id = 0;
-   my $tree = { id => 'god' };
+   $tree = { id => 'god' };
    our @values = ();
    # create set :
    for $i (0 .. $nl-1) {
-      my $val = int (rand($nl)) + 1; # 1 .. nl
+      my $val = int (rand($nl/2)) + 1; # 1 .. nl
          push @values,$val;
    }
    printf "main.values: %s\n",join',',map { sprintf '%2d',$_; } @values;
@@ -68,10 +73,13 @@ while (1) {
 # -------------------------------------
      print ".\n";
    }
-
+   # display tree every 5 sec.
+   if (time() % 5 == 0) {
+   print "display:\n";
+   &display($tree);
+   sleep (1);
+   }
    if (0) {
-      print "display:\n";
-      &display($tree);
 
 # testing next
       my $pos = $tree;
@@ -116,8 +124,10 @@ while (1) {
    print "...\n";
    }
 
-}
+} # while count--
 
+   print "display last tree:\n";
+   &display($tree);
 
 if (0) {
 printf "tree: %s...\n",Dump($tree);
@@ -351,7 +361,7 @@ sub insert {
             }
          }
       }
-   }
+   } # while
    if ($spot) {
       $node->{parents} = [@{$spot->{parents}},$spot]; # update parents list ...
       printf "%s's parents: %s\n",$node->{id},join',',map { $_->{id}; } @{$node->{parents}};
@@ -464,9 +474,9 @@ sub insert {
 }
 
 sub get_addr {
-  my $padd = shift;
+  my $parent_addr = shift;
   my $dir = shift;
-  my $addr = $padd << 1 | $dir;
+  my $addr = $parent_addr << 1 | $dir;
   return $addr;
 }
 sub frac_addr {
@@ -495,7 +505,7 @@ sub find_min {
      $pos = &find_prev($pos);
      last unless defined $pos->{id};
      $min = $pos;
-     printf "find_min: min: %s:%s (updated)\n",$min->{id},$min->{val};
+     #printf "find_min: min: %s:%s (updated)\n",$min->{id},$min->{val};
   }
   return $min;
 }
@@ -517,7 +527,7 @@ sub find_next {
         return $next;
      } 
      my $parents = $pos->{parents};
-     if (1 || $dbug) {
+     if ($dbug) {
         printf "find_next.pos: %s\n",$pos->{id};
         printf "find_next.parents: [%s]\n",join',',map { $_->{id} } @{$parents};
      }
@@ -544,7 +554,7 @@ sub find_next {
 # --------------------------------------------------------------
 sub find_prev {
   my $pos = shift;
-  printf "find_prev.pos: %s\n",$pos->{id};
+  #printf "find_prev.pos: %s\n",$pos->{id};
 
   my $prev = { id => undef };
   # lookup in the children tree
@@ -558,7 +568,7 @@ sub find_prev {
         return $prev;
      }
      my $parents = $pos->{parents};
-     if (1 || $dbug) {
+     if ($dbug) {
         if (scalar(@{$parents})) {
            printf "find_prev.parents: [%s]\n",join',',map { $_->{id}; } @{$parents};
         } else {
@@ -568,15 +578,15 @@ sub find_prev {
      $parent = $pos;
      foreach $gdparent (reverse @{$parents}) {
         if (exists $gdparent->{children}[1] && $gdparent->{children}[1]->{id} eq $parent->{id}) { # go up until blue
-           printf "gdparent: %s:%d (is blue)\n",$gdparent->{id},$gdparent->{val};
+           #printf "gdparent: %s:%d (is blue)\n",$gdparent->{id},$gdparent->{val};
            $prev = $gdparent; last;
         } else {
-           printf "gdparent: %s:%d (is red)\n",$gdparent->{id},$gdparent->{val};
+           #printf "gdparent: %s:%d (is red)\n",$gdparent->{id},$gdparent->{val};
         }
         $parent = $gdparent;
      }
   }
-  if (1 || $dbug) {
+  if ($dbug) {
      if (defined $prev->{id}) {
         printf "prev-to: %s:%d is %s:%d\n",$pos->{id},$pos->{val},$prev->{id},$prev->{val};
      } else {
@@ -674,6 +684,7 @@ sub display {
   printf F "}\n";
 
   close(F);
+  system "dot -T png -o tree.png tree.dot"; 
   
 }
 
