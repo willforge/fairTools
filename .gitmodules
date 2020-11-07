@@ -4,3 +4,6 @@
 [submodule "js"]
 	path = js
 	url = keybase://team/distributedbrain/fairjs
+[submodule "legislation/js"]
+	path = legislation/js
+	url = keybase://team/distributedbrain/fairjs

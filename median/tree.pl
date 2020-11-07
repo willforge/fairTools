@@ -1,36 +1,57 @@
 #!/usr/bin/perl -w
 
 # intent:
-#  create a set of number (size = nl) and compute the median
+#  create a set of number (size <= zmax) and compute the median
 
 use YAML::Syck qw(Dump);
 
-our $dbug = 0;
-
 my $seed;
-if (@ARGV) {
- $seed=shift;
-}
+our $dbug = 0;
+my $count = 30; # iterations: count down to 0
+my $zmax = 36; # set max size
+while (@ARGV && $ARGV[0] =~ m/^-/)
+{
+  $_ = shift;
+  #/^-(l|r|i|s)(\d+)/ && (eval "\$$1 = \$2", next);
+  if (/^-v(?:erbose)?/) { $verbose= 1; }
+  elsif (/^--?d(?:e?bug)?/) { $dbug= 1; }
+  elsif (/^--?c(?:o?u?nt)?=?([\w]*)/) { $count= $1 ? $1 : shift; }
+  elsif (/^--?s(?:eed)?=?([\w]*)/) { $seed= $1 ? $1 : shift; }
+  elsif (/^--?zm(?:ax)?=?([\w]*)/) { $zmax= $1 ? $1 : shift; }
+  elsif (/^-y(?:ml)?/) { $yml= 1; }
+  elsif (/^--?h(?:elp)?/) { $help= 1; }
+  else                  { die "Unrecognized switch: $_\n"; }
 
+}
+#understand variable=value on the command line...
+eval "\$$1='$2'"while exists$ARGV[0] && $ARGV[0] =~ /^(\w+)=(.*)/ && shift;
+
+if ($help) {
+ printf "usage:\n perl $0 --dbug --cnt=30 --zm 36 --seed=54321\n";
+ exit $?;
+}
 my $tree;
-my $count = 30; # count down to 0
+
+my $iv;
+if ($seed) {
+   $iv = srand($seed);
+} else {
+   $iv = srand();
+}
+printf "iv: %s\n",$iv;
 
 while ($count--) {
    print '-'x76,"\n";
    printf " RUN: $count <--- \n";
    print '-'x36,"\n";
 
-   my $iv;
-   if ($seed) {
-      $iv = srand($seed);
-   } else {
-      $iv = srand();
-   }
-   printf "iv: %s\n",$iv;
 
    my $arity = 2;
-   our $nl = 3 + int (rand(33)) + (rand(1.0)>0.5? 0 : 1); #  size of random set
-   our $nm = $nl; # number of node considered (sampled set)
+   our $zrs = 3 + int (rand($zmax - 3)) + (rand(1.0)>0.5? 0 : 1); #  size of random set 
+   our $nm = $zrs; # number of node considered (sampled set)
+   
+   printf "zmax: %s\n",$zmax;
+   printf "zrs: %s\n",$zrs;
    printf "nm: %s\n",$nm;
 
 
@@ -39,8 +60,8 @@ while ($count--) {
    $tree = { id => 'god' };
    our @values = ();
    # create set :
-   for $i (0 .. $nl-1) {
-      my $val = int (rand($nl/2)) + 1; # 1 .. nl
+   for $i (0 .. $zrs-1) {
+      my $val = int (rand($zrs/2)) + 1; # 1 .. zrs
          push @values,$val;
    }
    printf "main.values: %s\n",join',',map { sprintf '%2d',$_; } @values;
@@ -152,6 +173,7 @@ sub verif {
   my @sorted_idx = sort { $values[$a] <=> $values[$b] } (0 .. $n-1);
   # printf "values: %s\n",join',',map { sprintf '%s',$_; } @values;
   printf "       %s\n",join',',map { sprintf '%2d',$_; } (0 .. $n-1);
+  printf "set:   %s\n",join',',map { sprintf '%2s',$_; } @values[0 .. $n-1];
   printf "soidx: %s\n",join',',map { sprintf '%2d',$_; } @sorted_idx;
   printf "nodes: %s\n",join',',map { sprintf '%2s',substr($_->{id},1) } @sorted_nodes;
   printf "values:%s\n",join',',map { sprintf '%2s',$_->{val} } @sorted_nodes;
