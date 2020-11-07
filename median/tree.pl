@@ -207,99 +207,28 @@ sub insert {
          }
          $node->{d_order} = $pos->{d_order} +1;
       } else { # comp = 0
-          if (0 && $pos->{id} eq $medianm->{id}) {
-            if (! exists $pos->{children}[1]) { # right branch prefered ...
-               $pos->{children}[1] = $node;
-               $node->{level} = $pos->{level}+1;
-               $node->{addr} = &get_addr($pos->{addr},1);
-               $comp0 = $comp = 1; # considering comp > 0
-               printf "node inserted on the right side of m-:%s comp=%d\n",$pos->{id},$comp;
+         if (! (exists $pos->{children}[0] && defined $pos->{children}[0]) ) { # left branch prefered ...
+            ; # attach node to tree (left branch);
+            $pos->{children}[0] = $node; 
+            $node->{level} = $pos->{level}+1;
+            $node->{addr} = &get_addr($pos->{addr},0);
+            $comp = -1; # considering new node smaller than pos;
                $spot = $pos;
-            } elsif (! ( exists $pos->{children}[0] && defined $pos->{children}[0]) ) {
-               $pos->{children}[0] = $node;
-               $node->{level} = $pos->{level}+1;
-               $node->{addr} = &get_addr($pos->{addr},0);
-               $comp0 = $comp = -1; # considering comp < 0
-               printf "node inserted on the left side of m-:%s comp=%d\n",$pos->{id},$comp;
-               $spot = $pos;
-            } else {
-               my $dir = rand(1.0) > 0.5 ? 1 : 0;
-               printf "RANDOM bifurcation: %s !\n",($dir)?'right':'left';
-               printf "continue down the %s branch of %s\n",(($dir)?'right':'left'),$pos->{id};
-               $comp = ($dir)?1:-1;
-               printf "set: comp = %d\n",$comp;
-               $pos = $pos->{children}[$dir];
-            }
-          } elsif (0 && $pos->{id} eq $medianp->{id}) {
-            if (! ( exists $pos->{children}[0] && defined $pos->{children}[0]) ) { # left branch prefered ...
-               $pos->{children}[0] = $node;
-               $node->{level} = $pos->{level}+1;
-               $node->{addr} = &get_addr($pos->{addr},0);
-               $comp1 = $comp = -1; # considering comp < 0
-               printf "node inserted on the left side of m+:%s comp=%d\n",$pos->{id},$comp;
-               $spot = $pos;
-            } elsif (! exists $pos->{children}[1]) {
-               $pos->{children}[1] = $node;
-               $node->{level} = $pos->{level}+1;
-               $node->{addr} = &get_addr($pos->{addr},1);
-               $comp1 = $comp = 1; # considering comp > 0
-               printf "node inserted on the right side of m+:%s comp=%d\n",$pos->{id},$comp;
-               $spot = $pos;
-            } else {
-               my $dir = rand(1.0) > 0.5 ? 1 : 0;
-               printf "RANDOM bifurcation: %s !\n",($dir)?'right':'left';
-               printf "continue down the %s branch of %s\n",(($dir)?'right':'left'),$pos->{id};
-               $comp = ($dir)?1:-1;
-               printf "set: comp = %d\n",$comp;
-               $pos = $pos->{children}[$dir];
-            }
-          } elsif (0 && rand(1.0) > 0.5) {
-            if (! exists $pos->{children}[1]) { # right branch prefered ...
-               $pos->{children}[1] = $node;
-               $node->{level} = $pos->{level}+1;
-               $node->{addr} = &get_addr($pos->{addr},1);
-               $comp = 1; # considering comp > 0
-               printf "node inserted on the right side of %s comp=%d\n",$pos->{id},$comp;
-               $spot = $pos;
-            } elsif (! (exists $pos->{children}[0] && defined $pos->{children}[0]) ) {
-               $pos->{children}[0] = $node;
-               $comp = -1; # considering comp < 0
-               $node->{level} = $pos->{level}+1;
-               $node->{addr} = &get_addr($pos->{addr},0);
-               printf "node inserted on the left side of %s comp=%d\n",$pos->{id},$comp;
-               $spot = $pos;
-            } else {
-               my $dir = rand(1.0) > 0.5 ? 1 : 0; # /!\ hack for test
-               printf "RANDOM bifurcation: %s !\n",($dir)?'right':'left';
-               printf "continue down the %s branch of %s\n",(($dir)?'right':'left'),$pos->{id};
-               $comp = ($dir)?1:-1;
-               printf "set: comp = %d\n",$comp;
-               $pos = $pos->{children}[$dir];
-            }
-         } else {
-            if (! (exists $pos->{children}[0] && defined $pos->{children}[0]) ) { # left branch prefered ...
-               ; # attach node to tree (left branch)
-               $pos->{children}[0] = $node; 
-               $node->{level} = $pos->{level}+1;
-               $node->{addr} = &get_addr($pos->{addr},0);
-               $comp = -1; # considering new node smaller than pos
-               $spot = $pos;
-               printf "node inserted on the left side of %s:%d comp=%d\n",$spot->{id},$spot->{val},$comp;
-            } elsif (! exists $pos->{children}[1]) {
-               ; # attach node to tree (right branch)
-               $pos->{children}[1] = $node; 
-               $node->{level} = $pos->{level}+1;
-               $node->{addr} = &get_addr($pos->{addr},1);
-               $comp = 1; # considering new node bigger than pos
-               $spot = $pos;
-               printf "node inserted on the right side of %s:%d comp=%d\n",$spot->{id},$spot->{val}, $comp;
-            } else { # no spot available at this level : go down the any branch
-               my $dir = rand(1.0) > 0.5 ? 1 : 0; # /!\ hack for test
-               printf "RANDOM bifurcation: %s !\n",($dir)?'right':'left';
-               printf "continue down the %s branch of %s\n",(($dir)?'right':'left'),$pos->{id};
-               $comp = ($dir)?1:-1;
-               $pos = $pos->{children}[$dir];
-            }
+            printf "node inserted on the left side of %s:%d comp=%d\n",$spot->{id},$spot->{val},$comp;
+         } elsif (! exists $pos->{children}[1]) {
+            ; # attach node to tree (right branch);
+            $pos->{children}[1] = $node; 
+            $node->{level} = $pos->{level}+1;
+            $node->{addr} = &get_addr($pos->{addr},1);
+            $comp = 1; # considering new node bigger than pos;
+            $spot = $pos;
+            printf "node inserted on the right side of %s:%d comp=%d\n",$spot->{id},$spot->{val}, $comp;
+         } else { # no spot available at this level : go down the any branch
+            my $dir = rand(1.0) > 0.5 ? 1 : 0; # /!\ hack for test;
+            printf "RANDOM bifurcation: %s !\n",($dir)?'right':'left';
+            printf "continue down the %s branch of %s\n",(($dir)?'right':'left'),$pos->{id};
+            $comp = ($dir)?1:-1;
+            $pos = $pos->{children}[$dir];
          }
       }
    } # while
@@ -316,20 +245,6 @@ sub insert {
    my $comp1 = &compare($node,$medianp);
    printf "median-comp0: %s <=> %s:%d = %s\n",$node->{id},$medianm->{id},$medianm->{val},$comp0;
    printf "median-comp1: %s <=> %s:%d = %s\n",$node->{id},$medianp->{id},$medianp->{val},$comp1;
-   if (0) {
-      # check w/ spot 
-      if ($comp0 == 0) {
-         my $comps = &compare($spot,$medianm);
-         print "comps: $comps\n";
-         $comp0 = ($comps < 0) ? -1 : ($comps > 0) ? +1 : 0;
-      }
-      if ($comp1 == 0) {
-         my $comps = &compare($spot,$medianp);
-         print "comps: $comps\n";
-         $comp1 = ($comps < 0) ? -1 : ($comps > 0) ? +1 : 0;
-      }
-   }
-
    ; # update medians
    if ($comp1 > 0) {
       printf "update(m+ < node) : %s:%d >= %s:%d\n",$node->{id},$node->{val},$medianp->{id},$medianp->{val};
@@ -339,7 +254,6 @@ sub insert {
          } else {
            print "odd : one median \n";
          }
-         # ??
          $root->{medians}[0] = $medianp; # insertion was on the right side !
          printf "update-medianm: %s:%d\n",$root->{medians}[0]->{id},$root->{medians}[0]->{val};
       } else { # even
@@ -388,32 +302,8 @@ sub insert {
 
    } elsif ($comp0 == 0) {
      die "ERROR: comp0 == 0";
-     printf "update(m- == node) : %s:%d == %s:%d \n", $node->{id},$node->{val},$medianm->{id},$medianm->{val};
-      if ($medianp->{id} eq $medianm->{id}) { # is even now : need 2 medians
-        # node was inserted in below m+ which is also below m-
-        $root->{medians}[1] = $medianm;
-        $root->{medians}[0] = $node;
-      } else {
-        # node was insered in between
-         $root->{medians}[1] = $node;
-         $root->{medians}[0] = $node;
-      } 
-      printf "update-medianm: %s:%d\n",$root->{medians}[0]->{id},$root->{medians}[0]->{val};
-      printf "update-medianp: %s:%d\n",$root->{medians}[1]->{id},$root->{medians}[1]->{val};
    } elsif ($comp1 == 0) {
      die "ERROR: comp1 == 0";
-     printf "update(node == m+) : %s:%d == %s:%d \n", $node->{id},$node->{val},$medianp->{id},$medianp->{val};
-      if ($medianp->{id} eq $medianm->{id}) { # is even now : need 2 medians
-        # node was inserted in above m- which is also above m+
-        $root->{medians}[0] = $medianp;
-        $root->{medians}[1] = $node;
-      } else { # is odd now : need one medians
-        # node was insered in between
-        $root->{medians}[0] = $node;
-        $root->{medians}[1] = $node;
-      }
-      printf "update-medianm: %s:%d\n",$root->{medians}[0]->{id},$root->{medians}[0]->{val};
-      printf "update-medianp: %s:%d\n",$root->{medians}[1]->{id},$root->{medians}[1]->{val};
    } else {
      die "ERROR !";
    }
