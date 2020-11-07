@@ -1,0 +1,13 @@
+#
+
+pgm=${0##*/}
+image=jekyll/minimal
+
+# user root:root instead of 1000:1000 !
+# see also:
+#  - [1](https://ipfs.2read.net/ipfs/QmZk7JzUMrsPGeptg9nz4UtcdTeRi2qmnBaq4dgDLfCT6F/)
+#  - [2](https://ipfs.2read.net/ipfs/QmbjehAYtb8mH2xLwis2mL6mgQnnNjXrR8D8tn5aYpvzMr/)
+docker run --rm --volume="$PWD:/srv/$pgm" --volume="$PWD/vendor/bundle:/usr/local/bundle" -u root:root -it ${image} $pgm $*
+
+true; # $Source: /my/shell/scripts/jekyll $
+
