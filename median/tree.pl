@@ -9,15 +9,17 @@ my $seed;
 our $dbug = 0;
 my $count = 30; # iterations: count down to 0
 my $zmax = 36; # set max size
+my $period = 59; # save tree every {period}sec.
 while (@ARGV && $ARGV[0] =~ m/^-/)
 {
   $_ = shift;
   #/^-(l|r|i|s)(\d+)/ && (eval "\$$1 = \$2", next);
   if (/^-v(?:erbose)?/) { $verbose= 1; }
   elsif (/^--?d(?:e?bug)?/) { $dbug= 1; }
-  elsif (/^--?c(?:o?u?nt)?=?([\w]*)/) { $count= $1 ? $1 : shift; }
+  elsif (/^--?c(?:o?u?nt)?=?([\-\w]*)/) { $count= $1 ? $1 : shift; }
   elsif (/^--?s(?:eed)?=?([\w]*)/) { $seed= $1 ? $1 : shift; }
   elsif (/^--?zm(?:ax)?=?([\w]*)/) { $zmax= $1 ? $1 : shift; }
+  elsif (/^--?per(?:iod)?=?([\w]*)/) { $period= $1 ? $1 : shift; }
   elsif (/^-y(?:ml)?/) { $yml= 1; }
   elsif (/^--?h(?:elp)?/) { $help= 1; }
   else                  { die "Unrecognized switch: $_\n"; }
@@ -32,7 +34,7 @@ if ($help) {
 }
 my $tree;
 
-my $iv;
+my $iv; # Initialization Vector
 if ($seed) {
    $iv = srand($seed);
 } else {
@@ -40,6 +42,7 @@ if ($seed) {
 }
 printf "iv: %s\n",$iv;
 
+printf "count: %s\n",$count;
 while ($count--) {
    print '-'x76,"\n";
    printf " RUN: $count <--- \n";
@@ -59,7 +62,7 @@ while ($count--) {
    my $id = 0;
    $tree = { id => 'god' };
    our @values = ();
-   # create set :
+   # create (value) set :
    for $i (0 .. $zrs-1) {
       my $val = int (rand($zrs/2)) + 1; # 1 .. zrs
          push @values,$val;
@@ -75,12 +78,12 @@ while ($count--) {
    for $i (0 .. $nm-1) {
       my $id = 'n'.$i;
       my $val = $values[$i];
-      my $node = {
+      my $node = { # new node ...
          val => $val, id => $id, n => 0, median => 0, addr => 0, level => 0,
          sum => 0, d_order => 0, u_order => 0, r_order => $rank[$i],
          children => [], medians => [], parents => []};
       $tree = &insert($node,$tree);
-# ----------------------------
+      # ----------------------------
       printf "-> node-%s: %d (m=%.2f n=%d @%f) inserted\n",$node->{id},$node->{val},$tree->{median},$tree->{n},&frac_addr($node->{addr},$node->{level});
       printf "parents-%s: [%s]\n",$node->{id},join',',map { $_->{id} } @{$node->{parents}};
       my $median = &verif($tree);
@@ -91,76 +94,31 @@ while ($count--) {
          printf "ERROR: computed median: %.2f\n",$median;
          die "error: wrong median";
       }
-# -------------------------------------
+      # -------------------------------------
      print ".\n";
    }
-   # display tree every 5 sec.
-   if (time() % 5 == 0) {
-   print "display:\n";
-   &display($tree);
-   sleep (1);
-   }
-   if (0) {
-
-# testing next
-      my $pos = $tree;
-      while (1) {
-         my $next = &find_next($pos);
-         last unless $next->{id};
-         $pos = $next;
-      }
-      print ".\n";
-      my @revnodes = ();
-      my @revvalues = ();
-# testing prev;
-      for $i (0 .. $nm-1) {
-         my $prev = &find_prev($pos);
-         if (defined $pos->{id}) {
-            push @revvalues, $pos->{val};
-            push @revnodes, $pos->{id};
-         }
-         $pos = $prev;
-      }
-# travel the missing ones (smaller than root)
-      while (defined $pos->{id}) {
-         my $next = &find_next($pos);
-         $pos = $next;
-      }
-   }
-
-   print ".\n";
-   if (0) {
-   printf "       %sV\n",' 'x(3*int(($nm)/2) + (($nm)%2) - 1);
-   printf "list:  %s\n",join',',map { sprintf '%2d',$_ } sort { $a <=> $b } @values[0 .. $nm-1];
-   printf "values:%s\n",join',',map { sprintf '%2d',$_ } reverse @revvalues;
-   printf "nodes: %s\n",join',',map { sprintf '%2s',substr($_,1) } reverse @revnodes;
-   printf "sidxs: %s\n",join',',map { sprintf '%2d',$_ } @sorted_idx;
-   printf "rank:  %s\n",join',',map { sprintf '%2d',$_ } @rank[0 .. $nm-1];
-
-   my $median = ( $values[@sorted_idx[int(($nm-1)/2)]] + $values[@sorted_idx[int(($nm)/2)]] ) / 2;
-   printf "computed median: %.2f\n",$median;
-   printf "tree median: %.2f\n",$tree->{median};
-   printf "iv: %s\n",$iv;
-   die "error: wrong median" if ($median != $tree->{median});
-   print "...\n";
+   # display tree every {period} sec.
+   if (time() % $period == 0) {
+      print "display:\n";
+      &display($tree);
+      sleep (1);
    }
 
 } # while count--
 
-   print "display last tree:\n";
-   &display($tree);
+print "display last tree:\n";
+&display($tree);
 
 if (0) {
-printf "tree: %s...\n",Dump($tree);
-# tree traversal
-print "DFS:\n";
-&DFS_traversal($tree);
-print "BFS:\n";
-&BFS_traversal($tree);
+   printf "tree: %s...\n",Dump($tree);
+   # tree traversal
+   print "DFS:\n";
+   &DFS_traversal($tree);
+   print "BFS:\n";
+   &BFS_traversal($tree);
 
 }
 
-print ".\n";
 exit $?;
 # --------------------------------------------------------------
 # verif...
@@ -217,50 +175,11 @@ sub insert {
       $node->{parents} = [];
       return $node;
    }
-   my $pos = undef;
+   # start search at root :
+   my $pos = $root;
    my $spot = undef; # place where node is to be inserted;
    my $medianm = $root->{medians}[0];
    my $medianp = $root->{medians}[1];
-   my $comp0 = &compare($node,$medianm);
-   my $comp1 = &compare($node,$medianp);
-   printf "median-comp0: %s <=> %s:%d = %s\n",$node->{id},$medianm->{id},$medianm->{val},$comp0;
-   printf "median-comp1: %s <=> %s:%d = %s\n",$node->{id},$medianp->{id},$medianp->{val},$comp1;
-
-   if (0) {
-   if ($comp0 < 0) {  # smaller than smallest median
-      if (exists $medianm->{children}[0] && defined $medianm->{children}[0]) {
-         $pos = $medianm->{children}[0];
-         printf "start-at-medianm: %s:%d (left red branch)\n",$pos->{id},$pos->{val};
-      } else {
-         $pos = $medianm;
-         ; #$spot = $medianm;
-      }
-   } elsif ($comp1 > 0) { # bigger than biggest median
-      if (exists $medianp->{children}[1]) {
-         $pos = $medianp->{children}[1];
-         printf "start-at-medianp: %s:%d (right blue branch)\n",$pos->{id},$pos->{val};
-      } else {
-         $pos = $medianp;
-         ; #$spot = $medianp;
-      }
-   } else { # in between
-      if (! (exists $medianp->{children}[0] && defined $medianp->{children}[0]) ) {
-         $pos = $medianp;
-         ; #$spot = $medianp;
-      } elsif (! exists $medianm->{children}[1]) {
-         $pos = $medianm;
-         ; #$spot = $medianm;
-      } else {
-         warn "m- red branch and m+ blue branch exist)";
-         $pos = $medianm;
-      }
-      printf "between-median: %s:%d, %s:%d\n",$medianm->{id},$medianm->{val},$medianp->{id},$medianp->{val};
-   }
-   }
-
-   # start search at root :
-   $pos = $root;
-   printf "start-at-root: %s:%d (reset)\n",$pos->{id},$pos->{val};
 
    while (! $spot) {
       my $comp = &compare($node,$pos);
@@ -288,7 +207,7 @@ sub insert {
          }
          $node->{d_order} = $pos->{d_order} +1;
       } else { # comp = 0
-          if ($pos->{id} eq $medianm->{id}) {
+          if (0 && $pos->{id} eq $medianm->{id}) {
             if (! exists $pos->{children}[1]) { # right branch prefered ...
                $pos->{children}[1] = $node;
                $node->{level} = $pos->{level}+1;
@@ -311,7 +230,7 @@ sub insert {
                printf "set: comp = %d\n",$comp;
                $pos = $pos->{children}[$dir];
             }
-          } elsif ($pos->{id} eq $medianp->{id}) {
+          } elsif (0 && $pos->{id} eq $medianp->{id}) {
             if (! ( exists $pos->{children}[0] && defined $pos->{children}[0]) ) { # left branch prefered ...
                $pos->{children}[0] = $node;
                $node->{level} = $pos->{level}+1;
@@ -334,7 +253,7 @@ sub insert {
                printf "set: comp = %d\n",$comp;
                $pos = $pos->{children}[$dir];
             }
-          } elsif (rand(1.0) > 0.5) {
+          } elsif (0 && rand(1.0) > 0.5) {
             if (! exists $pos->{children}[1]) { # right branch prefered ...
                $pos->{children}[1] = $node;
                $node->{level} = $pos->{level}+1;
@@ -392,14 +311,23 @@ sub insert {
    $node->{n} = 1;
    do { $_->{n} = $_->{n} + 1 } for @{$node->{parents}};
 
-   # check w/ spot 
-   if ($comp0 == 0) {
-      my $comps = &compare($spot,$medianm);
-      $comp0 = ($comps < 0) ? -1 : ($comps > 0) ? +1 : 0;
-   }
-   if ($comp1 == 0) {
-      my $comps = &compare($spot,$medianp);
-      $comp1 = ($comps < 0) ? -1 : ($comps > 0) ? +1 : 0;
+   # compate node w/ medians
+   my $comp0 = &compare($node,$medianm);
+   my $comp1 = &compare($node,$medianp);
+   printf "median-comp0: %s <=> %s:%d = %s\n",$node->{id},$medianm->{id},$medianm->{val},$comp0;
+   printf "median-comp1: %s <=> %s:%d = %s\n",$node->{id},$medianp->{id},$medianp->{val},$comp1;
+   if (0) {
+      # check w/ spot 
+      if ($comp0 == 0) {
+         my $comps = &compare($spot,$medianm);
+         print "comps: $comps\n";
+         $comp0 = ($comps < 0) ? -1 : ($comps > 0) ? +1 : 0;
+      }
+      if ($comp1 == 0) {
+         my $comps = &compare($spot,$medianp);
+         print "comps: $comps\n";
+         $comp1 = ($comps < 0) ? -1 : ($comps > 0) ? +1 : 0;
+      }
    }
 
    ; # update medians
@@ -459,7 +387,7 @@ sub insert {
       printf "update-medianp: %s:%d\n",$root->{medians}[1]->{id},$root->{medians}[1]->{val};
 
    } elsif ($comp0 == 0) {
-
+     die "ERROR: comp0 == 0";
      printf "update(m- == node) : %s:%d == %s:%d \n", $node->{id},$node->{val},$medianm->{id},$medianm->{val};
       if ($medianp->{id} eq $medianm->{id}) { # is even now : need 2 medians
         # node was inserted in below m+ which is also below m-
@@ -473,6 +401,7 @@ sub insert {
       printf "update-medianm: %s:%d\n",$root->{medians}[0]->{id},$root->{medians}[0]->{val};
       printf "update-medianp: %s:%d\n",$root->{medians}[1]->{id},$root->{medians}[1]->{val};
    } elsif ($comp1 == 0) {
+     die "ERROR: comp1 == 0";
      printf "update(node == m+) : %s:%d == %s:%d \n", $node->{id},$node->{val},$medianp->{id},$medianp->{val};
       if ($medianp->{id} eq $medianm->{id}) { # is even now : need 2 medians
         # node was inserted in above m- which is also above m+
@@ -485,6 +414,8 @@ sub insert {
       }
       printf "update-medianm: %s:%d\n",$root->{medians}[0]->{id},$root->{medians}[0]->{val};
       printf "update-medianp: %s:%d\n",$root->{medians}[1]->{id},$root->{medians}[1]->{val};
+   } else {
+     die "ERROR !";
    }
    $root->{median} = ($root->{medians}[1]->{val} + $root->{medians}[0]->{val})/2;
    printf "update-median: %.2f\n",$root->{median};
