@@ -44,7 +44,7 @@ async function main() {
    console.debug(callee+'.selected:',selected)
    for (peerkey of selected) {
       let mboxid = getNid('urn:message:to:'+PUBLICID+':from:'+peerkey);
-      let mbox_path = '/my/outbox/'+mboxid+'.json';
+      let mbox_path = '/public/outbox/'+mboxid+'.json';
       let ipfs_path = await getMutableHead(peerkey,mbox_path);
       console.debug(callee+'.ipfs_path',ipfs_path);
       let mbox = await ipfsGetContentByPath(ipfs_path);

@@ -1,3 +1,6 @@
 [submodule "TNet/js"]
 	path = TNet/js
 	url = keybase://team/distributedbrain/fairjs
+[submodule "js"]
+	path = js
+	url = keybase://team/distributedbrain/fairjs
