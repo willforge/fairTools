@@ -4,21 +4,34 @@ fr:
   submit_verb: envoyer
   pick_something: Veuillez choisir une catégorie
   pick_a_path: Veuillez choisir un chemin d'accés
-  doleances: doléances
+  complaints: doléances
   preamble: pr&eacute;ambule
   notify: annonce
   title: catégorie
   laws: législation
+  draft: brouillon
+  topic: sujet
+  peerid: identifiant
+  date: date
+  author: auteur
+  proposals: propositions
+  submissions: soumissions
 en:
   submit: submit
   submit_verb: "to submit"
   pick_something: please choose a category
   pick_a_path: please choose a path
-  doleances: complaints
+  complaints: complaints
   preamble: preamble
   notify: notify
   title: title
   laws: code
+  draft: draft
+  topic: topic
+  peerid: peerid
+  date: date
+  author: author
+  submissions: soumissions
 ru:
   submit:
 de:
