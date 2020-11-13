@@ -1,7 +1,11 @@
 ---
 layout: page
 ---
-# testing git page !
+#  fair Tools development projects
 
 
-git page in docs
+# we are looking for coders to acceletate the project
+
+- [annonce_fr](annonce-fr.html) 
+- [annonce_en](annonce-en.html) 
+
