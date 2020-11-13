@@ -1,3 +1,6 @@
+---
+layout: page
+---
 # testing git page !
 
 

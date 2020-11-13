@@ -1,0 +1,16 @@
+body {
+ background-color: #150c3b;
+ background-image: URL("img/bg.jpg");
+ background-repeat: no-repeat;
+ background-size: 100%;
+ background-position: center;
+}
+
+div.content {
+ background-color: rgba(230,234,240,0.90);
+ color: black;
+ padding: 1rem;
+ max-width: 720px;
+ margin: auto;
+ margin-top: 10vh;
+}
