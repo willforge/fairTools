@@ -3,9 +3,8 @@ layout: page
 ---
 #  fair Tools development projects
 
+We are looking for coders to acceletate the project
 
-# we are looking for coders to acceletate the project
-
-- [annonce_fr](annonce-fr.html) 
-- [annonce_en](annonce-en.html) 
+- [annonce](annonce-fr.html)  (FR)
+- [ad](annonce-en.html) (EN)
 
