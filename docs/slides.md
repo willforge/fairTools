@@ -1,7 +1,7 @@
-# Fairtools (technical overview)
+# fairTools (technical overview)
 
 
-## Fairtools 
+## fairTools 
  
    - is a set of tools to make collaborative technologies accessible to anyone
    - it consists of 
@@ -54,7 +54,7 @@
 ## How a post is conducted 
 
   process:
-   - add document to <span abrev="Content Addressed Storage">CAS</span> network. 
+   - add document to <abbr title="Content Addressed Storage">CAS</abbr> network. 
    - optionally upload document to an anonymous *CAS* server via a (secure) OOB channel
    - be silent for a while ( the time it percolates to anonymous places via gossip)
    - ask some peers to peek at your document and sync'up theirs (using TLS)
@@ -62,7 +62,7 @@
    - and pin via an "anonymous" pinata (over fairToken, which is equivalent to an "internal" TOR)
 
 
-## asynchronous collaboration
+## Asynchronous collaboration
 
 - requires merge of substantial differences in versions (diff3)
 - allow network resilience
@@ -88,15 +88,23 @@
 
 
 
-## Technologies uses
+## Used technologies
 
 
-- GIT  : versioning of mutable
-- IPFS : CAS Network (immutable)
-- fairName : mutable broadcast
-- fairRing : ledger / blockring
-- keys: GnuPG (+keybase)
-- 
+- [GIT]  : versioning of mutable
+- [IPFS] : CAS Network (immutable)
+- [fairName] : mutable broadcast
+- [fairRing] : ledger / blockring
+- [fairToken] : privacy layer
+- [fairkeys]: GnuPG (+keybase)
+
+
+[4]: https://willforge.github.io/fairTools/
+[5]: https://www.ipfs.io
+[6]: https://duckduckgo.com/?q=fairName+!g
+[7]: https://duckduckgo.com/?q=fairRing+!g
+[8]: https://duckduckgo.com/?q=fairToken+!g
+[9]: https://duckduckgo.com/?q=fairKeys+!g
 
 ## fairToken
 
@@ -104,7 +112,7 @@
 - peerkeys are managed via power-of-attorney attached to each keys.
 - (non-duplication of token, double-spending etc.)
  
-## glossary 
+## Glossary 
 
   OOB = Out of band
   CAS = content addressable store
