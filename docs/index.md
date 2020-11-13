@@ -5,6 +5,11 @@ layout: page
 
 We are looking for coders to acceletate the project
 
-- [annonce](annonce-fr.html)  (FR)
-- [ad](annonce-en.html) (EN)
+- [annonce](annonce_fr.html)  (FR)
+- [ad](annonce_en.html) (EN)
+
+
+## Technical Details
+
+- [slides](slides.html)
 
