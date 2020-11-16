@@ -2,6 +2,7 @@
 key: annonce
 title: Nous recherchons...
 layout: page
+url: https://willforge.github.io/fairTools/annonce.html
 ---
 
 ## Annonce:
@@ -21,7 +22,7 @@ layout: page
       [email](mailto:fairfriends@protonmail.com), [telegram](https://t.me/distributedbrain)
       ou personellement sur [keybase](https://keybase.io/michel47).
 
-<!--
+
       [keybase](https://keybase.io/team/distributedbrain)
       [git](https://github.com/willforge/fairTools).
 -->
