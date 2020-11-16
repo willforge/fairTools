@@ -1,9 +1,13 @@
-https://translate.google.com/translate?sl=auto&tl=fr&u=https%3A%2F%2Fwillforge.github.io%2FfairTools%2Freveal-slides.html---
+---
 key: annonce
 title: Nous recherchons...
 layout: page
 url: https://willforge.github.io/fairTools/annonce.html
 ---
+[![en](https://gateway.ipfs.io/ipfs/QmSP7BWXz5un8bLyp57TeMiAA1foKNTJXenRP6BSLAtX77)](https://translate.google.com/translate?sl=auto&tl=en&u=https%3A%2F%2Fwillforge.github.io%2FfairTools%2Fannonce.html)
+[![fr](https://gateway.ipfs.io/ipfs/QmSrXHypiEB4xfyFTnKoVfCMD6B6GLnFRQt7EKaYEhXXYQ)](https://translate.google.com/translate?sl=auto&tl=fr&u=https%3A%2F%2Fwillforge.github.io%2FfairTools%2Fannonce.html)
+<style>img[alt=en] { max-height: 32px; float: right; }</style>
+<style>img[alt=fr] { max-height: 32px; float: right; }</style>
 
 ## Annonce:
 
@@ -23,6 +27,7 @@ url: https://willforge.github.io/fairTools/annonce.html
       ou personellement sur [keybase](https://keybase.io/michel47).
 
   plus de detail : voir notre [cahier des charges][1] ([FR][2])
+
 
 [1]: https://willforge.github.io/fairTools/reveal-slides.html
 [2]: https://translate.google.com/translate?sl=auto&tl=fr&u=https%3A%2F%2Fwillforge.github.io%2FfairTools%2Freveal-slides.html
