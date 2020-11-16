@@ -14,3 +14,8 @@ div.content {
  margin: auto;
  margin-top: 10vh;
 }
+
+img[alt=fr], img[alt=en] {
+  max-height: 32px;
+  float: right;
+}
