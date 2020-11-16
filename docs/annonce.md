@@ -6,7 +6,7 @@ layout: page
 
 ## Annonce:
 
- Recherchons informatien(ne)s pour aider
+ Recherchons informaticien(ne)s pour aider
  au développement d'un réseau P2P (sans serveurs) avec les propriétés suivantes:
 
  - respect de l'anonymat
@@ -18,7 +18,7 @@ layout: page
 
 ---<br>
   contact: équipe "fairTools"
-      [email](mailto:fairTools@protonmail.com), [telegram](https://t.me/distributedbrain)
+      [email](mailto:fairfriends@protonmail.com), [telegram](https://t.me/distributedbrain)
       ou personellement sur [keybase](https://keybase.io/michel47).
 
 <!--
