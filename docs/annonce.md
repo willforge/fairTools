@@ -1,4 +1,4 @@
----
+https://translate.google.com/translate?sl=auto&tl=fr&u=https%3A%2F%2Fwillforge.github.io%2FfairTools%2Freveal-slides.html---
 key: annonce
 title: Nous recherchons...
 layout: page
@@ -22,7 +22,12 @@ url: https://willforge.github.io/fairTools/annonce.html
       [email](mailto:fairfriends@protonmail.com), [telegram](https://t.me/distributedbrain)
       ou personellement sur [keybase](https://keybase.io/michel47).
 
+  plus de detail : voir notre [cahier des charges][1] ([FR][2])
 
+[1]: https://willforge.github.io/fairTools/reveal-slides.html
+[2]: https://translate.google.com/translate?sl=auto&tl=fr&u=https%3A%2F%2Fwillforge.github.io%2FfairTools%2Freveal-slides.html
+
+<!--
       [keybase](https://keybase.io/team/distributedbrain)
       [git](https://github.com/willforge/fairTools).
 -->
