@@ -4,7 +4,7 @@ title: Nous recherchons...
 layout: page
 url: https://willforge.github.io/fairTools/annonce.html
 ---
-version anglaise ici : [en](https://translate.google.com/translate?sl=auto&tl=en&u=https%3A%2F%2Fwillforge.github.io%2FfairTools%2Fannonce.html) /
+version anglaise ici : [en](https://translate.google.com/translate?sl=auto&tl=en&u=https%3A%2F%2Fwillforge.github.io%2FfairTools%2Fannonce.html)
 <!-- [fr](https://willforge.github.io/fairTools/annonce.html) -->
 
 ## Annonce:
