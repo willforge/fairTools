@@ -11,5 +11,6 @@ We are looking for coders to acceletate the project
 
 ## Technical Details
 
-- [slides](slides.html)
+- [reveal-slides](reveal-slides.html)
+- [slides.md](slides.html)
 

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<meta charset="utf8"/>
+<link rel="stylesheet" href="../reveal/reveal.css">
+<link rel="stylesheet" href="../reveal/theme/black.css" id=theme>
+<link rel="stylesheet" href="../reveal/plugin/highlight/monokai.css">
+
+<body>
+<div class="reveal">
+<div class="slides">
+
+<section data-markdown>
+<textarea data-template>
+# fairTools (technical overview)
+
+by [fairfriends@protonmail.com](mailto:fairfriends@protonmail.com)
+
+</textarea></section><section data-markdown><textarea data-template>
+## fairTools 
+ 
+   - is a set of tools to make collaborative technologies accessible to anyone
+   - it consists of 
+      - a text editor ( [fairPad][1] )
+      - a immutable repository (fairStore)
+      - a document broadcast network (fairNet)
+      - a network registration tool (fairFriends)
+
+[1]: https://duckduckgo.com/?q=fairPad+!g
+
+</textarea></section><section data-markdown><textarea data-template>
+## fairTools (Cont.)
+
+   - a decision making tools (fairVote)
+   - a mutable naming system (fairName)
+   - a ledger to seal decisions (fairRing)
+   - a privacy layer (sealed envelops) (fairToken)
+   - keys and identities managment tool ( [fairKey][1] & [fairID][2] )
+
+[1]: https://duckduckgo.com/?q=fairKey+!g
+[2]: https://duckduckgo.com/?q=fairID+!g
+
+</textarea></section><section data-markdown><textarea data-template>
+## Problem to be solved : 
+
+   - reach agreement on an area of improvement and propose solutions
+   - gather and consolidate will on the chosen area of improvement
+   - distribute drafts to the complete network
+   - globally rank documents 
+   - reach a consensus within the network
+   - publish official winning document
+  
+</textarea></section><section data-markdown><textarea data-template>
+## Artificial Legislator
+
+- required properties :
+  1. objectivity (no emotions)
+  2. common will awareness
+  3. spatio-temporal invariance / ubiquity (immutability ?)
+
+- AI based
+
+</textarea></section><section data-markdown><textarea data-template>
+## Our approach
+
+  - P2P network for collaborative writing
+  - use of asynchronous collaborative pad ([fairPad](https://duckduckgo.com/?q=fairPad+!g))
+  - all submissions are kept anonymous (guarantee of freedom w/o consequence)
+
+</textarea></section><section data-markdown><textarea data-template>
+## Anonymity
+
+  - communication on a pull-only architecture
+  - posts are made to a public address via the network itself,
+    without ability to trace back original submitter.
+  - never publish under your own identity,  one needs to obtain a sealed envelop prior publication
+
+</textarea></section><section data-markdown><textarea data-template>
+## How a post is conducted 
+
+  process:
+   - add document to <abbr title="Content Addressed Storage">CAS</abbr> network. 
+   - optionally upload document to an anonymous *CAS* server via a (secure) OOB channel
+   - be silent for a while ( the time it percolates to anonymous places via gossip)
+   - ask some peers to peek at your document and sync'up theirs (using TLS)
+
+   - and pin via an "anonymous" pinata (over fairToken, which is equivalent to an "internal" TOR)
+
+
+</textarea></section><section data-markdown><textarea data-template>
+## Asynchronous collaboration
+
+- requires merge of substantial differences in versions (diff3)
+- allow network resilience
+- gives time to revise documents
+
+
+</textarea></section><section data-markdown><textarea data-template>
+## Document Flow 
+
+ - documents are locally added to a "tree" of documents.
+ - documents are locally ordered by personal preference (according to a common will criteria)
+ - documents are submitted to the network by insertion to a global DAG
+
+</textarea></section><section data-markdown><textarea data-template>
+## Document Flow (cont.)
+
+ - any member is randomly checking for new document upon connection
+   and synchronized with their local version of the dag
+
+ - the global DAG is obtain by running a "tree-median" algorithm on the ranking of each local DAGs
+
+
+</textarea></section><section data-markdown><textarea data-template>
+## Median Algorithm
+
+- median allow to guarantee parametric threshold of member agreed on the outcome.
+- ex: more than 60% of the group agree to the document xyz
+
+
+
+</textarea></section><section data-markdown><textarea data-template>
+## Used technologies
+
+
+- [GIT][4]  : versioning of mutable
+- [IPFS][5] : CAS Network (immutable)
+- [fairName][6] : mutable broadcast
+- [fairRing][7] : ledger / blockring
+- [fairToken][8] : privacy layer
+- [fairkeys][9] : GnuPG (+keybase)
+
+
+[4]: https://willforge.github.io/fairTools/
+[5]: https://www.ipfs.io
+[6]: https://duckduckgo.com/?q=fairName+!g
+[7]: https://duckduckgo.com/?q=fairRing+!g
+[8]: https://duckduckgo.com/?q=fairToken+!g
+[9]: https://duckduckgo.com/?q=fairKeys+!g
+
+</textarea></section><section data-markdown><textarea data-template>
+## fairToken
+
+- a set of unique peerkeys are exchanged among member before any publications
+- peerkeys are managed via power-of-attorney attached to each keys.
+- (non-duplication of token, double-spending etc.)
+ 
+</textarea></section><section data-markdown><textarea data-template>
+## Glossary 
+
+- OOB = Out of band
+- CAS = content addressable store
+- CAS = content addressed storage
+- CID = content identify
+- DAG = direct acyclic graph
+
+</textarea></section>
+
+</div>
+</div>
+
+<!-- ---------------------------------------- -->
+<script src="../reveal/reveal.js"></script>
+<script src="../reveal/plugin/markdown/markdown.js"></script>
+<script src="../reveal/plugin/highlight/highlight.js"></script>
+<script>
+  Reveal.initialize({ transition: 'none' });
+</script>
+<script>
+  window.Reveal.initialize({
+    plugins: [ RevealMarkdown ]
+  });
+</script>
+<!-- see also : https://revealjs.com/markdown/ -->
+<!-- ----------------------------------------- -->
+
+</body>
+
