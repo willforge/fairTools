@@ -9,12 +9,14 @@
 <div class="slides">
 
 <section data-markdown>
-<textarea data-template>
+<script type="text/template">
 # fairTools (technical overview)
 
 by [fairfriends@protonmail.com](mailto:fairfriends@protonmail.com)
 
-</textarea></section><section data-markdown><textarea data-template>
+</script></section>
+<section><section data-markdown data-separator="^---\n">
+<script type="text/template">
 ## what is fairTools ?
  
    - it is a set of tools to make collaborative technologies accessible to anyone
@@ -25,8 +27,8 @@ by [fairfriends@protonmail.com](mailto:fairfriends@protonmail.com)
       - a network registration tool (fairFriends)
 
 [1]: https://duckduckgo.com/?q=fairPad+!g
+---
 
-</textarea></section><section data-markdown><textarea data-template>
 ## fairTools (Cont.)
 
    - a decision making tools (fairVote)
@@ -38,17 +40,19 @@ by [fairfriends@protonmail.com](mailto:fairfriends@protonmail.com)
 [1]: https://duckduckgo.com/?q=fairKey+!g
 [2]: https://duckduckgo.com/?q=fairID+!g
 
-</textarea></section><section data-markdown><textarea data-template>
+</script></section><section data-markdown><script type="text/template">
+<!-- .slide: class="two-floating-elements" -->
 ## Problem to be solved : 
 
    - reach agreement on an area of improvement and propose solutions
-   - aggregate and consolidate common will on a specific topic
+   - aggregate and consolidate general will on a specific topic
    - distribute drafts to the complete network
    - globally rank documents 
    - reach a consensus within the network
    - publish official winning document
   
-</textarea></section><section data-markdown><textarea data-template>
+</script></section><section data-markdown><script type="text/template">
+<!-- .slide: class="two-floating-elements" -->
 ## Artificial Legislator
 
 - required properties :
@@ -56,16 +60,38 @@ by [fairfriends@protonmail.com](mailto:fairfriends@protonmail.com)
   2. common will awareness
   3. spatio-temporal invariance / ubiquity (immutability ?)
 
-- AI based
+- AI based (see also [GPT-3][GPT3], GAN models)
 
-</textarea></section><section data-markdown><textarea data-template>
+![AIlaw](https://gateway.ipfs.io/ipfs/QmWfhVaz4StLWqgZ4XkfViW3uzZmwTsATYTWEX8ewurr9u)
+
+[GPT3]: https://daleonai.com/gpt3-explained-fast
+[GAN]: https://en.wikipedia.org/wiki/Generative_adversarial_network
+[BERT]: https://towardsdatascience.com/bert-explained-state-of-the-art-language-model-for-nlp-f8b21a9b6270
+
+</script></section><section data-markdown><script type="text/template">
+## Rousseau, Chap. VII du Législateur.
+
+Pour découvrir les meilleures regles de société qui conviennent aux Nations,
+il faudrait une intelligence supérieure, qui vit toutes les passions des hommes &
+qui n’en éprouvât aucune, qui n’eut aucun rapport avec notre nature &
+qui la connût à fond, dont le bonheur fût indépendant de nous &
+qui pourtant voulut bien s’occuper du nôtre ;
+enfin qui, dans le progrès des temps se ménageant une gloire éloignée,
+put travailler dans un siecle & jouir dans un autre[*]. Il faudrait des
+Dieux pour donner des loix aux hommes.
+
+[*]: https://fr.wikisource.org/wiki/Du_contrat_social/%C3%89dition_1762/Livre_II/Chapitre_7#cite_note-1
+
+
+</script></section></section>
+<section><section data-markdown><script type="text/template">
 ## Our approach
 
   - P2P network for collaborative writing
   - use of asynchronous collaborative pad ([fairPad](https://duckduckgo.com/?q=fairPad+!g))
   - all submissions are kept anonymous (guarantee of freedom w/o consequence)
 
-</textarea></section><section data-markdown><textarea data-template>
+</script></section><section data-markdown><script type="text/template">
 ## Anonymity
 
   - communication on a pull-only architecture
@@ -73,7 +99,7 @@ by [fairfriends@protonmail.com](mailto:fairfriends@protonmail.com)
     without ability to trace back original submitter.
   - never publish under your own identity,  one needs to obtain a sealed envelop prior publication
 
-</textarea></section><section data-markdown><textarea data-template>
+</script></section><section data-markdown><script type="text/template">
 ## POST process
 
    - add document to <abbr title="Content Addressed Storage">CAS</abbr> network. 
@@ -82,7 +108,7 @@ by [fairfriends@protonmail.com](mailto:fairfriends@protonmail.com)
    - ask some peers to peek at your document and sync'up theirs (using TLS)
    - and pin via an "anonymous" pinata (over fairToken, which is equivalent to an "internal" TOR)
 
-</textarea></section><section data-markdown><textarea data-template>
+</script></section><section data-markdown><script type="text/template">
 ## Asynchronous collaboration
 
 - requires merge of substantial differences in versions (diff3)
@@ -90,31 +116,77 @@ by [fairfriends@protonmail.com](mailto:fairfriends@protonmail.com)
 - gives time to revise documents
 
 
-</textarea></section><section data-markdown><textarea data-template>
+</script></section></section>
+<section><section data-markdown><script type="text/template">
 ## Document Flow 
 
- - documents are locally added to a "tree" of documents.
- - documents are locally ordered by personal preference (according to a common will criteria)
- - documents are submitted to the network by insertion to a global DAG
+ - locally added to a "tree" of documents.
+ - locally ordered by personal preference<br>(according to a general will criteria)
+ - submitted to the network by insertion to a global DAG
 
-</textarea></section><section data-markdown><textarea data-template>
+</script></section><section data-markdown><script type="text/template">
 ## Document Flow (cont.)
 
  - any member is randomly checking for new document upon connection
    and synchronized with their local version of the dag
 
- - the global DAG is obtain by running a "tree-median" algorithm on the ranking of each local DAGs
+ - the global DAG is obtained by running a "tree-median" algorithm on the ranking of each local DAGs
 
-
-</textarea></section><section data-markdown><textarea data-template>
+</script></section>
+<section data-markdown><script type="text/template">
 ## Median Algorithm
 
 - median allow to guarantee parametric threshold of member agreed on the outcome.
 - ex: more than 60% of the group agree to the document xyz
 
+</script></section>
+<section data-markdown><script type="text/template">
+## text publication
 
+### writers
+1. pin the charter file (join)
+2. send text to "public-peerid" inbox
 
-</textarea></section><section data-markdown><textarea data-template>
+### readers
+
+1. get "global merkle dag" for text
+2. order texts by own preferences
+3. re-publish order
+
+</script></section><section data-markdown><script type="text/template">
+## Example
+
+```
+A : ordered list of 10 texts
+B : ordered list of 10 texts
+C : majority merge (result)
+
+{A:10} ∩ {B:10} = {:5}
+
+{A:10} + {B:10} = {A':15}
+{C:10} = maj({A':15},{B:10})
+
+A is publishing A' and C
+where C is the result of the majority judgement for A,B
+i.e. B elements majority-ordered
+```
+
+</script></section><section data-markdown><script type="text/template">
+## Question: can we trust C ?
+
+* given an other node D,
+  <br>D can verify independently C
+* by redoing the math with published A'
+
+```
+{C':10} = maj({A':15},{B:10})
+
+if C' == C then A' is honest !
+
+```
+</script></section>
+</section><section>
+<section data-markdown><script type="text/template">
 ## Used technologies
 
 
@@ -123,7 +195,7 @@ by [fairfriends@protonmail.com](mailto:fairfriends@protonmail.com)
 - [fairName][6] : mutable broadcast
 - [fairRing][7] : ledger / blockring
 - [fairToken][8] : privacy layer
-- [fairkeys][9] : GnuPG (+keybase)
+- [fairKeys][9] : GnuPG (+keybase)
 
 
 [4]: https://willforge.github.io/fairTools/
@@ -133,23 +205,71 @@ by [fairfriends@protonmail.com](mailto:fairfriends@protonmail.com)
 [8]: https://duckduckgo.com/?q=fairToken+!g
 [9]: https://duckduckgo.com/?q=fairKeys+!g
 
-</textarea></section><section data-markdown><textarea data-template>
+</script></section>
+</section><section>
+<section data-markdown><script type="text/template">
+## Modules
+
+- [fairToken](#/5/1)
+- [fairPad](#/5/2)
+- [fairStore](#/5/3)
+- [fairFriends](#/5/4)
+- [fairNet](#/5/5)
+- [fairVote](#/5/6)
+
+</script></section>
+<section data-markdown><script type="text/template">
 ## fairToken
 
 - a set of unique peerkeys are exchanged among member before any publications
 - peerkeys are managed via power-of-attorney attached to each keys.
 - (non-duplication of token, double-spending etc.)
- 
-</textarea></section><section data-markdown><textarea data-template>
+
+
+</script></section><section data-markdown><script type="text/template">
+## fairPad
+
+![fairpad](img/fairpad.png) 
+
+</script></section><section data-markdown><script type="text/template">
+## fairStore
+* IPFS (content-addessable store)
+* version available via "overlayed" tree (git-like-fs)
+![staged-idx](img/staged-idx.png)
+
+</script></section><section data-markdown><script type="text/template">
+## fairFriends
+
+![fairFriends](img/fairfriends.png)
+
+</script></section><section data-markdown><script type="text/template">
+## fairNet
+* self-discovery via dht (findprovs)
+![fairnet](img/fairnet.png) 
+
+</script></section><section data-markdown><script type="text/template">
+## fairVote
+- median at scale
+
+![median-tree](img/tree.png)
+
+
+</script></section>
+</section>
+
+<section data-markdown><script type="text/template">
+# Questions ?
+
+</script></section><section data-markdown><script type="text/template">
 ## Glossary 
 
 - OOB = Out of band
 - CAS = content addressable store
 - CAS = content addressed storage
-- CID = content identify
+- CID = content identifier
 - DAG = direct acyclic graph
 
-</textarea></section>
+</script></section>
 
 </div>
 </div>
@@ -163,7 +283,9 @@ by [fairfriends@protonmail.com](mailto:fairfriends@protonmail.com)
 </script>
 <script>
   window.Reveal.initialize({
-    plugins: [ RevealMarkdown ]
+    hash: true,
+    slideNumber: true,
+    plugins: [ RevealMarkdown, RevealHighlight ]
   });
 </script>
 <!-- see also : https://revealjs.com/markdown/ -->
