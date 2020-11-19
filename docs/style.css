@@ -6,6 +6,24 @@ body {
  background-position: center;
 }
 
+.two-floating-elements > ul ~ p {
+    max-width: 50%;
+    float:left;
+    font-size: 0.7em;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    border: 1px solid red;
+  }
+.two-floating-elements > p ~ ul {
+    max-width: 50%;
+    float:left;
+    margin-left: 0;
+    padding-left: -2rem;
+    border: 1px solid blue;
+}
+
+
 div.content {
  background-color: rgba(230,234,240,0.90);
  color: black;
