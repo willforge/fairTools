@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    <meta charset="utf-8">
+    <title>A simple Javascript Biff on IPFS</title>
+    <link rel="stylesheet" href="style.css">
+
+    <script src="../js/sha256.js"></script>
+    <script src="../js/js-yaml.js" type=text/javascript></script>
+    <script src="../js/essential.js"></script>
+    <script src="../js/ipfs.js"></script>
+    <script src="../js/functions.js"></script>
+    </head>
+<body>
+<div class=content>
+<button id="join" onclick="join(event)">join</button> the
+<select type=text name=network onchange="update_qmcharter(event);">
+<option label="select network"></option>
+<option value=LNS>LNS</option>
+<option value=testNet>testNet</option>
+<option value=fairNet>fairNet</option>
+<option value=admNet>admNet</option>
+</select> Network
+
+<p id=charter>Charter: <input type=text name=qmcharter size=39 disabled>
+</p>
+
+<button id="view" onclick="display_members(event)">view members</button>
+<!-- 
+-->
+<p>peerids:<br><textarea id=peerids cols=48 rows=5></textarea>
+</p>
+<a href=http://127.0.0.1:8080/ipns/QmY5irRjuwhhFvkY88ScnM7ow3DxvbhEi13mDAsUUVHRN4/#/files/my/network/peerids.json>/my/network/peerids.json</a>
+
+</div>
+
+<script>
+  var api_url = 'http://127.0.0.1:5001/api/v0/';
+  const PUBLICID = 'QmezgbyqFCEybpSxCtGNxfRD9uDxC53aNv5PfhB3fGUhJZ';
+  const NETW_DEFAULT = 'fairNet';
+  const NETW_CHARTER = 'QmaeiKYDCmndBprGxs89tMrCRabDnV9te7dKPRK4U2JVg9';
+  document.getElementsByName('qmcharter')[0].value = NETW_CHARTER;
+  //document.getElementsByName('network')[0].value = NETW_DEFAULT;
+  var networks = [];
+  var members = [];
+ 
+main();
+async function main() {
+   let [callee, caller] = functionNameJS();
+   networks = await get_networks('LNS');
+   buildNetworkSelect(networks,'network');
+
+   let qmcharter = document.getElementsByName('qmcharter')[0].value;
+   console.debug(callee+'.qmcharter:',qmcharter);
+   document.getElementById('view').disabled = true;
+   members = await find_provs(qmcharter);
+   console.debug(callee+'.members:',members);
+   document.getElementById('view').disabled = false;
+
+   selected = members.sort( randomly );
+   console.debug(callee+'.selected:',selected);
+   /* 
+   for (peerkey of selected) {
+      // check if peer have message in their public/outbox ...
+      let mboxid = getNid('urn:message:to:'+PUBLICID+':from:'+peerkey);
+      let mbox_path = '/public/outbox/'+mboxid+'.json';
+      let ipfs_path = await getMutableHead(peerkey,mbox_path);
+      console.debug(callee+'.ipfs_path',ipfs_path);
+      let mbox = await ipfsGetContentByPath(ipfs_path);
+      console.debug(callee+'.mbox:',mbox);
+
+   }
+   */
+}
+
+
+function randomly(a,b) {
+  return (Math.random(1) > 0.5)? -1 : 1;
+}
+function join(ev) {
+   let [callee, caller] = functionNameJS();
+   let qmcharter = document.getElementsByName('qmcharter')[0].value;
+   return fetch(api_url+'pin/add?arg='+qmcharter,{ method:'POST'})
+      .then( resp => resp.json() )
+      .then( obj => { console.debug(callee+'.obj:',obj); return obj.Pins[0] })
+      .then( hash => { document.getElementById('charter').innerHTML =
+            `Charter: <a href="https://gateway.ipfs.io/ipfs/${hash}">/ipfs/${hash}</a>`; })
+      .catch(console.error);
+}
+
+async function display_members(ev) {
+   let [callee, caller] = functionNameJS();
+   let peerids = members;
+   console.debug(callee+'.peerids:',peerids)
+   document.getElementById('peerids').innerHTML = peerids;
+   ipfsWriteJson('/my/network/peerids.json',peerids);
+}
+
+async function update_qmcharter(ev) {
+
+  let [callee, caller] = functionNameJS();
+  let it = ev.target
+  console.debug(callee+'.it:',it)
+  let qmcharter = networks.reverse().find( (n) => n.Name == it.value).Qm ;
+  document.getElementById('charter').innerHTML = 'Charter: <input type=text name=qmcharter size=39 disabled>'
+  document.getElementsByName('qmcharter')[0].value = qmcharter;
+
+  console.debug(callee+'.qmcharter:',qmcharter)
+  document.getElementById('view').disabled = true;
+  members = await find_provs(qmcharter);
+  document.getElementById('view').disabled = false;
+}
+
+function buildNetworkSelect(array,selname) {
+   var select_obj = document.getElementsByName(selname)[0];
+   for ( let i=select_obj.length-1; i > 0; i-- ) {
+     select_obj.remove(i);
+   }
+   // add new groups
+    for (let netw of array) {
+       var option = document.createElement('option');
+       option.value = netw.Name;
+       option.text = netw.Name;
+      console.log('adding.option:',option)
+       select_obj.add(option)
+   }
+   //select_obj.options[-1].selected = true;
+}
+
+async function get_networks(group) {
+ let [callee, caller] = functionNameJS();
+ let zhash = await get_z6hash(group);
+ console.debug(callee+'.zhash:', zhash);
+
+ let peerids = await find_provs(`/ipfs/${zhash}`);
+ console.debug(callee+'.peerids:', peerids);
+ let selected = peerids.sort( randomly );
+ let rootdir= await ipfsNameResolve(selected[0]);
+ console.debug(callee+'.rootdir:',rootdir);
+
+ let indexf = await ipfsGetContentByPath(`${rootdir}/.../registries/networks.log`)
+ let networks = [];
+ let lines = indexf.slice(0,-1).split("\n");
+ // console.debug(callee+'.lines:',lines);
+ for (let line of lines) {
+   if (line.match(/^#/)) { continue; }
+   let [tics, qm, path] = line.split(' ');
+   //let name = path.substr(path.lastIndexOf('/')+1);
+   let name = path.split('/').slice(-2)[0];
+   networks.push({ Name: name, Qm: qm, Tics: tics, Path: path});
+ }
+ console.debug(callee+'.networks:',networks);
+ return networks;
+}
+
+function get_z6hash(s) {
+  let [callee, caller] = functionNameJS();
+  // echo -n "${s}" | ipfs add -Q - --hash sha3-224 --cid-base base58btc)
+  let form = new FormData();
+  form.append('file', s)
+  return fetch(api_url+'add?file=group.txt&cid-base=base58btc&hash=sha3-224',{ method: 'POST', body: form})
+      .then( resp => resp.json() )
+      .then( obj => { console.debug(callee+'.obj:', obj); return obj.Hash;  })
+  .catch(console.error);
+}
+
+function find_provs(key) {
+   let [callee, caller] = functionNameJS();
+   return fetch(api_url+'dht/findprovs?arg='+key+'&verbose=true&num-providers=4&timeout=5s',{ method:'POST'})
+      .then( resp => resp.text() )
+      .then( text => {
+           let objs = text.replace(/(\n|\r)+$/, '').split("\n");
+           let provs = objs.map( (s) => JSON.parse(s) ).filter( (o) => o.Type == 4 );
+           console.debug(callee+'.provs:',provs)
+           let peerids = provs.map( (o) => o.Responses[0].ID );
+           return peerids;
+      })
+      .catch(console.error);
+
+}
+  
+</script>
