@@ -41,14 +41,15 @@
   const NETW_CHARTER = 'QmaeiKYDCmndBprGxs89tMrCRabDnV9te7dKPRK4U2JVg9';
   document.getElementsByName('qmcharter')[0].value = NETW_CHARTER;
   //document.getElementsByName('network')[0].value = NETW_DEFAULT;
+  var netmap = {};
   var networks = [];
   var members = [];
  
 main();
 async function main() {
    let [callee, caller] = functionNameJS();
-   networks = await get_networks('LNS');
-   buildNetworkSelect(networks,'network');
+   netmap = await get_networks('LNS');
+   buildNetworkSelect(netmap,'network');
 
    let qmcharter = document.getElementsByName('qmcharter')[0].value;
    console.debug(callee+'.qmcharter:',qmcharter);
@@ -101,7 +102,8 @@ async function update_qmcharter(ev) {
   let [callee, caller] = functionNameJS();
   let it = ev.target
   console.debug(callee+'.it:',it)
-  let qmcharter = networks.reverse().find( (n) => n.Name == it.value).Qm ;
+  //let qmcharter = networks.reverse().find( (n) => n.Name == it.value).Qm ;
+  let qmcharter = netmap[it.value].Qm
   document.getElementById('charter').innerHTML = 'Charter: <input type=text name=qmcharter size=39 disabled>'
   document.getElementsByName('qmcharter')[0].value = qmcharter;
 
@@ -111,14 +113,15 @@ async function update_qmcharter(ev) {
   document.getElementById('view').disabled = false;
 }
 
-function buildNetworkSelect(array,selname) {
+function buildNetworkSelect(map,selname) {
    var select_obj = document.getElementsByName(selname)[0];
    for ( let i=select_obj.length-1; i > 0; i-- ) {
      select_obj.remove(i);
    }
-   // add new groups
-    for (let netw of array) {
-       var option = document.createElement('option');
+   // add new networks
+    for (let key of Object.keys(map).sort()) { /// TODO debug this !
+       let netw = map[key];
+       let option = document.createElement('option');
        option.value = netw.Name;
        option.text = netw.Name;
       console.log('adding.option:',option)
@@ -139,18 +142,20 @@ async function get_networks(group) {
  console.debug(callee+'.rootdir:',rootdir);
 
  let indexf = await ipfsGetContentByPath(`${rootdir}/.../registries/networks.log`)
- let networks = [];
+ // let networks = [];
+ let netmap = {};
  let lines = indexf.slice(0,-1).split("\n");
  // console.debug(callee+'.lines:',lines);
  for (let line of lines) {
    if (line.match(/^#/)) { continue; }
    let [tics, qm, path] = line.split(' ');
    //let name = path.substr(path.lastIndexOf('/')+1);
+   //networks.push({ Name: name, Qm: qm, Tics: tics, Path: path});
    let name = path.split('/').slice(-2)[0];
-   networks.push({ Name: name, Qm: qm, Tics: tics, Path: path});
+   netmap[name] = { Name: name, Qm: qm, Tics: tics, Path: path}
  }
- console.debug(callee+'.networks:',networks);
- return networks;
+ console.debug(callee+'.netmap:',netmap);
+ return netmap;
 }
 
 function get_z6hash(s) {

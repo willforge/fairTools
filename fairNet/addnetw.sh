@@ -8,7 +8,7 @@ lns=$(echo -n "LNS" | ipfs add -Q - --hash sha3-224 --cid-base base58btc)
 echo "lns: $lns"
 qm=$(sed -e "s/network: .*/network: $netw/" charter.txt | ipfs add -Q - --hash sha3-224 --raw-leaves --cid-base base58btc)
 echo qm: $qm
-record="$tics $qm /my/networks/$netw/charter.txt"
+record="$tics $qm /public/networks/$netw"
 ipfs-log append $regf "$record"
 # publish registry file
 qm=$(ipfs files stat $regf --hash)
@@ -17,10 +17,7 @@ ipfs-log append '/.../staged.idx' "$tics $qm $regf"
 webkey=$(ipfs key list -l --ipns-base=b58mh | grep -w webui | cut -d' ' -f 1)
 echo url: http://localhost:8080/ipns/$webkey/
 qm=$(ipfs files stat '/...' --hash)
-emptyd=$(ipfs object new -- unixfs-dir)
-qm=$(ipfs object patch add-link $emptyd '...' $qm)
-
-ipfs name publish /ipfs/$qm --allow-offline &
+ipfs name publish /ipfs/$qm --allow-offline
 
 
-
+# TODO turn network into a folder
