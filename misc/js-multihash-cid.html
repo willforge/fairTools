@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+
+<!--
+ intent: compute a qm using js only!
+-->
+
+<script src="https://unpkg.com/multihashing/dist/index.js"></script>
+<script src="https://unpkg.com/multihashes/dist/index.min.js"></script>
+<script src="https://unpkg.com/multicodec/dist/index.min.js"></script>
+<script src="https://unpkg.com/cids/dist/index.min.js"></script>
+<script src="https://unpkg.com/multibase/dist/index.min.js"></script>
+<script>
+let str = "Hello, World!\n"
+let sha1 = mhash('sha1','',str,20)
+let sha2 = khash('sha2-256','',str,32)
+let sha3 = khash('sha3-224','',str,28)
+
+let msh2 = mhash('sha2-256','',str,32)
+let msh3 = mhash('sha3-224','',str,28)
+
+let qm = new Cids(0, 'dag-pb', msh2, 'base58btc')
+console.info('qm:',qm.toString())
+let zb2 = new Cids(1, 'raw', msh2, 'base58btc')
+console.info('zb2:',zb2.toString())
+
+// see https://github.com/multiformats/js-multicodec/blob/master/src/base-table.json
+let a = Multicodec.addPrefix('raw',msh3)
+let h = Uint8Array.from([1]);
+console.log('a:',a);
+let c = concat([h,a]);
+console.log('c:',c);
+console.log('cid:',encode_base('base16', c) );
+console.log('cid:',encode_base('base36', c) );
+
+console.log('sha3:','f'+Multihashes.toHexString(Multihashes.encode(sha3,'sha3-224',28) ));
+console.log('sha3:','z'+Multihashes.toB58String(Multihashes.encode(sha3,'sha3-224',28) ));
+
+console.log('sha2:',Multihashes.toHexString(Multihashes.encode(sha2,'sha2-256',32) ));
+console.log('sha2:',Multihashes.toB58String(Multihashes.encode(sha2,'sha2-256',32) ));
+
+console.log('sha1:',encode_base('base16',sha1));
+console.log('sha1:',encode_base('base58btc',sha1));
+console.log('sha1:',encode_base('base32',sha1));
+console.log('sha1:',encode_base('base36',sha1));
+
+function mhash(algo,key,str,len) {
+  return Multihashing(Multihashing.Buffer.from(key+str),algo,len)
+}
+function khash(algo,key,str,len) {
+  return ahash = Multihashing.digest(Multihashing.Buffer.from(key+str),algo,len)
+}
+function encode_base(base,u8array) {
+  let enc = Multibase.encode(base,u8array);
+  let str = new TextDecoder('utf-8').decode( enc )
+  return str;
+}
+
+function concat (arrays, length) {
+  if (!length) {
+    length = arrays.reduce((acc, curr) => acc + curr.length, 0)
+  }
+
+  const output = new Uint8Array(length)
+  let offset = 0
+
+  for (const arr of arrays) {
+    output.set(arr, offset)
+    offset += arr.length
+  }
+
+  return output
+}
+
+
+</script>
