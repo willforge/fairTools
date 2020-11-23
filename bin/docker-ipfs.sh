@@ -1,7 +1,7 @@
 #!/bin/sh
 
 container=ipfs/go-ipfs
-export IPFS_PATH=$HOME/.../ipfs/repo/docker
+export IPFS_PATH=$HOME/.ipfs
 export IPFS_STAGING=$IPFS_PATH/staging
 
 if [ ! -d $IPFS_STAGING ]; then
