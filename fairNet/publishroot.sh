@@ -40,10 +40,15 @@ fi
 
 # identity ...
 kbuser=$(keybase status | head -1 | sed -e 's/  */ /' | cut -d' ' -f 2)
+if which ipfs 1>/dev/null 2>&1; then
 peerid=$(env IPFS_PATH=$HOME/.ipfs ipfs config Identity.PeerID)
+else
+peerid=$(ipfs config Identity.PeerID)
+fi
 echo kbuser: $kbuser
 echo peerid: $peerid
 
+exit;
 
 # pub ...
 emptyd=$(ipfs object new -- unixfs-dir)
