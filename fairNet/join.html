@@ -2,7 +2,7 @@
 <html>
     <head>
     <meta charset="utf-8">
-    <title>A simple Javascript Biff on IPFS</title>
+    <title>A Network Registration form on IPFS</title>
     <link rel="stylesheet" href="style.css">
 
     <script src="../js/sha256.js"></script>
@@ -16,10 +16,12 @@
 <button id="join" onclick="join(event)">join</button> the
 <select type=text name=network onchange="update_qmcharter(event);">
 <option label="select network"></option>
-<option value=LNS>LNS</option>
-<option value=testNet>testNet</option>
 <option value=fairNet>fairNet</option>
+<!--
+<option value=testNet>testNet</option>
 <option value=admNet>admNet</option>
+<option value=LNS>LNS</option>
+-->
 </select> Network
 
 <p id=charter>Charter: <input type=text name=qmcharter size=39 disabled>
@@ -30,7 +32,7 @@
 -->
 <p>peerids:<br><textarea id=peerids cols=48 rows=5></textarea>
 </p>
-<a href=http://127.0.0.1:8080/ipns/QmY5irRjuwhhFvkY88ScnM7ow3DxvbhEi13mDAsUUVHRN4/#/files/my/network/peerids.json>/my/network/peerids.json</a>
+<a href=http://127.0.0.1:8080/ipns/QmY5irRjuwhhFvkY88ScnM7ow3DxvbhEi13mDAsUUVHRN4/#/files/my/networks/peerids.json>/my/networks/peerids.json</a>
 
 </div>
 
@@ -38,10 +40,10 @@
   var api_url = 'http://127.0.0.1:5001/api/v0/';
   const PUBLICID = 'QmezgbyqFCEybpSxCtGNxfRD9uDxC53aNv5PfhB3fGUhJZ';
   const NETW_DEFAULT = 'fairNet';
-  const NETW_CHARTER = 'QmaeiKYDCmndBprGxs89tMrCRabDnV9te7dKPRK4U2JVg9';
+  const NETW_CHARTER = 'QmZxQtvm1W4542QG6hPtzk9FM9b89xVjcQWXbYiLeKpMkD';
   document.getElementsByName('qmcharter')[0].value = NETW_CHARTER;
   //document.getElementsByName('network')[0].value = NETW_DEFAULT;
-  var netmap = {};
+  var netmap = { "fairNet": "QmZxQtvm1W4542QG6hPtzk9FM9b89xVjcQWXbYiLeKpMkD", '': 'QmejvEPop4D7YUadeGqYWmZxHhLc4JBUCzJJHWMzdcMe2y' };
   var networks = [];
   var members = [];
  
@@ -60,8 +62,11 @@ async function main() {
 
    selected = members.sort( randomly );
    console.debug(callee+'.selected:',selected);
-   /* 
-   for (peerkey of selected) {
+   for (peerkey of selected.slice(0,5)) {
+      let tic = getTic();
+      let qm = ipfsNameResolve(peerkey);
+      console.debug(callee+'.qm:',qm);
+      /* 
       // check if peer have message in their public/outbox ...
       let mboxid = getNid('urn:message:to:'+PUBLICID+':from:'+peerkey);
       let mbox_path = '/public/outbox/'+mboxid+'.json';
@@ -69,9 +74,9 @@ async function main() {
       console.debug(callee+'.ipfs_path',ipfs_path);
       let mbox = await ipfsGetContentByPath(ipfs_path);
       console.debug(callee+'.mbox:',mbox);
+      */
 
    }
-   */
 }
 
 
@@ -81,7 +86,7 @@ function randomly(a,b) {
 function join(ev) {
    let [callee, caller] = functionNameJS();
    let qmcharter = document.getElementsByName('qmcharter')[0].value;
-   return fetch(api_url+'pin/add?arg='+qmcharter,{ method:'POST'})
+   return fetch(api_url+'pin/add?arg='+qmcharter,{ method:'POST', mode:'cors'})
       .then( resp => resp.json() )
       .then( obj => { console.debug(callee+'.obj:',obj); return obj.Pins[0] })
       .then( hash => { document.getElementById('charter').innerHTML =
@@ -94,7 +99,7 @@ async function display_members(ev) {
    let peerids = members;
    console.debug(callee+'.peerids:',peerids)
    document.getElementById('peerids').innerHTML = peerids;
-   ipfsWriteJson('/my/network/peerids.json',peerids);
+   ipfsWriteJson('/my/networks/peerids.json',peerids);
 }
 
 async function update_qmcharter(ev) {
@@ -103,6 +108,7 @@ async function update_qmcharter(ev) {
   let it = ev.target
   console.debug(callee+'.it:',it)
   //let qmcharter = networks.reverse().find( (n) => n.Name == it.value).Qm ;
+  console.debug(callee+'.netmap:',netmap)
   let qmcharter = netmap[it.value].Qm
   document.getElementById('charter').innerHTML = 'Charter: <input type=text name=qmcharter size=39 disabled>'
   document.getElementsByName('qmcharter')[0].value = qmcharter;
@@ -110,6 +116,7 @@ async function update_qmcharter(ev) {
   console.debug(callee+'.qmcharter:',qmcharter)
   document.getElementById('view').disabled = true;
   members = await find_provs(qmcharter);
+  console.info('members:',members);
   document.getElementById('view').disabled = false;
 }
 
@@ -124,7 +131,7 @@ function buildNetworkSelect(map,selname) {
        let option = document.createElement('option');
        option.value = netw.Name;
        option.text = netw.Name;
-      console.log('adding.option:',option)
+       // console.log('adding.option:',option)
        select_obj.add(option)
    }
    //select_obj.options[-1].selected = true;
@@ -134,8 +141,14 @@ async function get_networks(group) {
  let [callee, caller] = functionNameJS();
  let zhash = await get_z6hash(group);
  console.debug(callee+'.zhash:', zhash);
+ let netmap = {};
 
  let peerids = await find_provs(`/ipfs/${zhash}`);
+ if (peerids.length == 0) {
+   let tics = getTic();
+   netmap[NETW_DEFAULT] = {Name: NETW_DEFAULT, Qm: NETW_CHARTER, tics: tics, Path: `/public/networds/${NETW_DEFAULT}/charter.txt` };
+   return netmap;
+ }
  console.debug(callee+'.peerids:', peerids);
  let selected = peerids.sort( randomly );
  let rootdir= await ipfsNameResolve(selected[0]);
@@ -143,12 +156,13 @@ async function get_networks(group) {
 
  let indexf = await ipfsGetContentByPath(`${rootdir}/.../registries/networks.log`)
  // let networks = [];
- let netmap = {};
  let lines = indexf.slice(0,-1).split("\n");
  // console.debug(callee+'.lines:',lines);
  for (let line of lines) {
    if (line.match(/^#/)) { continue; }
+   if (line.match(/^\s*$/)) { continue; }
    let [tics, qm, path] = line.split(' ');
+   // console.debug(callee+'.path:',path);
    //let name = path.substr(path.lastIndexOf('/')+1);
    //networks.push({ Name: name, Qm: qm, Tics: tics, Path: path});
    let name = path.split('/').slice(-2)[0];
@@ -163,7 +177,7 @@ function get_z6hash(s) {
   // echo -n "${s}" | ipfs add -Q - --hash sha3-224 --cid-base base58btc)
   let form = new FormData();
   form.append('file', s)
-  return fetch(api_url+'add?file=group.txt&cid-base=base58btc&hash=sha3-224',{ method: 'POST', body: form})
+  return fetch(api_url+'add?file=group.txt&only-hash=true&cid-base=base58btc&hash=sha3-224',{ method: 'POST', mode: 'cors', body: form})
       .then( resp => resp.json() )
       .then( obj => { console.debug(callee+'.obj:', obj); return obj.Hash;  })
   .catch(console.error);
@@ -171,7 +185,7 @@ function get_z6hash(s) {
 
 function find_provs(key) {
    let [callee, caller] = functionNameJS();
-   return fetch(api_url+'dht/findprovs?arg='+key+'&verbose=true&num-providers=4&timeout=5s',{ method:'POST'})
+   return fetch(api_url+'dht/findprovs?arg='+key+'&verbose=true&num-providers=4&timeout=5s',{ method:'POST', mode: 'cors' })
       .then( resp => resp.text() )
       .then( text => {
            let objs = text.replace(/(\n|\r)+$/, '').split("\n");
