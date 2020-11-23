@@ -24,7 +24,7 @@ ipfs_i() {
   docker exec -i ipfs-node ipfs "$@"
 }
 
-set -e
+#set -e
 # api_port ?
 api=$(ipfs config Addresses.API)
 api_port=$(echo $api | cut -d/ -f 5)
@@ -59,18 +59,22 @@ if ipfs files stat /.../staged --hash 2>/dev/null ; then
    ipfs files mv /.../staged /.../published
    pub=$(ipfs files stat /.../publihed --hash);
 else
-   pub=$(ipfs files stat /public --hash) || pub=$emptyd
+   if ipfs files stat /public --hash 2>/dev/null; then
+     pub=$(ipfs files stat /public --hash)
+   else 
+    pub=$emptyd
+   fi
 fi
 echo pub: $pub
 
 # etc ... (spot computation)
 if [ "x$kbuser" != 'x' ]; then
-token=$(cat /keybase/private/$kbuser/secrets/ipinfo-token.txt 2>/dev/null)
-if [ "x$token" != 'x' ]; then
-curl -sL https://ipinfo.io/json?token=$token | json_xs -e " \$_->{tics} = \$^T; \$_; " > $cachedir/location.json
-else
-curl -sL https://ipinfo.io/json | json_xs -e " \$_->{tics}=\$^T;\$_->{kbuser}='$kbuser';\$_" > $cachedir/location.json
-fi
+  if [ -e /keybase/private/$kbuser/secrets/ipinfo-token.txt ]; then
+    token=$(cat /keybase/private/$kbuser/secrets/ipinfo-token.txt)
+    curl -sL https://ipinfo.io/json?token=$token | json_xs -e " \$_->{tics} = \$^T; \$_; " > $cachedir/location.json
+  else
+    curl -sL https://ipinfo.io/json | json_xs -e " \$_->{tics}=\$^T;\$_->{kbuser}='$kbuser';\$_" > $cachedir/location.json
+  fi
 else
 token=$(perl -e 'printf "%x\n",rand(72057594037927936);')
 ip=$(curl -sL http://iph.heliohost.org/cgi-bin/remote_addr.pl | tail -1)
