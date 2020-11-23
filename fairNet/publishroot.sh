@@ -48,8 +48,6 @@ fi
 echo kbuser: $kbuser
 echo peerid: $peerid
 
-exit;
-
 # pub ...
 emptyd=$(ipfs object new -- unixfs-dir)
 if ipfs files stat /.../staged --hash 2>/dev/null ; then
