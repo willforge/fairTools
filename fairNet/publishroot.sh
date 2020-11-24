@@ -24,7 +24,7 @@ ipfs_i() {
   docker exec -i ipfs-node ipfs "$@"
 }
 
-#set -e
+set -e
 # api_port ?
 api=$(ipfs config Addresses.API)
 api_port=$(echo $api | cut -d/ -f 5)
@@ -32,10 +32,20 @@ echo api: $api
 gw=$(ipfs config Addresses.Gateway)
 gw_port=$(echo $gw | cut -d/ -f 5)
 echo gw: $gw
+origin=$(ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | json_xs -e '$_ = $_->[0]' | sed -e 's/"//g')
+echo origin: $origin
+
 # webui ?
 if ipfs key list | grep -q -w 'webui'; then
  webui=$(ipfs key list -l --ipns-base=b58mh | grep -w 'webui' | cut -d' ' -f1)
- echo webui_url: http://127.0.0.1:$gw_port/ipns/$webui/#
+else
+ webui=QmY5irRjuwhhFvkY88ScnM7ow3DxvbhEi13mDAsUUVHRN4
+fi
+echo webui_url: $origin/ipns/$webui/#
+
+# creation of minimal root :
+if ! ipfs files stat --hash /... >/dev/null 2>&1; then
+ ipfs files mkdir /...
 fi
 
 # identity ...
@@ -69,16 +79,17 @@ echo pub: $pub
 
 # etc ... (spot computation)
 if [ "x$kbuser" != 'x' ]; then
+  # 50,000 API requests per month
   if [ -e /keybase/private/$kbuser/secrets/ipinfo-token.txt ]; then
     token=$(cat /keybase/private/$kbuser/secrets/ipinfo-token.txt)
-    curl -sL https://ipinfo.io/json?token=$token | json_xs -e " \$_->{tics} = \$^T; \$_; " > $cachedir/location.json
+    curl -sL https://ipinfo.io/json?token=$token | json_xs -e " \$_->{tics} = \$^T;; " > $cachedir/location.json
   else
-    curl -sL https://ipinfo.io/json | json_xs -e " \$_->{tics}=\$^T;\$_->{kbuser}='$kbuser';\$_" > $cachedir/location.json
+    curl -sL https://ipinfo.io/json | json_xs -e "delete \$_->{readme}; \$_->{tics}=\$^T;\$_->{kbuser}='$kbuser';" > $cachedir/location.json
   fi
 else
 token=$(perl -e 'printf "%x\n",rand(72057594037927936);')
 ip=$(curl -sL http://iph.heliohost.org/cgi-bin/remote_addr.pl | tail -1)
-curl -sL http://ipinfo.io/$ip/json | json_xs -e " \$_->{tics}=\$^T;\$_->{token}='$token';\$_->{peerid}='$peerid';\$_->{user}='$USER';\$_" > $cachedir/location.json
+curl -sL http://ipinfo.io/$ip/json | json_xs -e "delete \$_->{readme}; \$_->{tics}=\$^T;\$_->{token}='$token';\$_->{peerid}='$peerid';\$_->{user}='$USER'" > $cachedir/location.json
 fi
 spot=$(cat $cachedir/location.json | ipfs_i add -Q -)
 echo spot: $spot
@@ -125,13 +136,16 @@ ipfs files cp /ipfs/$spot /etc/spot.json
 
 dot3=$(ipfs files stat /... --hash);
 echo dot3: $dot3
+echo "publish : /...,/my,/public,/etc"
 qm=$(ipfs object patch add-link $emptyd '...' $dot3);
 qm=$(ipfs object patch add-link $qm 'my' $my);
 qm=$(ipfs object patch add-link $qm 'public' $pub);
 qm=$(ipfs object patch add-link $qm 'etc' $etc);
 echo url: https://dweb.link/ipfs/$qm
-echo url: http://localhost:8080/ipfs/$qm
+echo url: $origin/ipfs/$qm
+ipfs name publish /ipfs/$qm --allow-offline 1>/dev/null &
 echo qm: $qm
+# backup previous ...
 if ipfs files rm -r /.../published 2>/dev/null; then
   ipfs files cp /ipfs/$qm /.../published
   prev=$(ipfs files stat /.../published/.../published --hash)
@@ -142,9 +156,8 @@ if ipfs files rm -r /.../published 2>/dev/null; then
   #docker exec ipfs-node ls -l /export
   #ipfs files write --create /.../published/prev.yml /export/prev.yml
   echo "$tic: $prev" | ipfs_i files write --create /.../published/prev.yml
-  echo "url: http://127.0.0.1:8080/ipfs/$(ipfs files stat --hash /.../published)"
+  echo "url: $origin/ipfs/$(ipfs files stat --hash /.../published)"
 fi
-ipfs name publish /ipfs/$qm --allow-offline 1>/dev/null &
 
 
 
