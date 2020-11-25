@@ -2,9 +2,12 @@
 
 export IPFS_IMAGE=${IPFS_IMAGE:-ipfs/go-ipfs}
 export IPFS_CONTAINER=${IPFS_CONTAINER:-ipfs-node}
-ipfs() {
+# dockerized ipfs is _ipfs
+_ipfs() {
  docker exec $IPFS_CONTAINER ipfs $@
 }
+
+
 
 uid=$(id -u)
 gid=$(id -g)
@@ -25,33 +28,33 @@ docker ps -a -f name=$IPFS_CONTAINER
 
 
 # get config data
-peerid=$(ipfs config Identity.PeerID) && echo peerid: $peerid
-gateway=$(ipfs config Addresses.Gateway)
-api=$(ipfs config Addresses.API)
+peerid=$(_ipfs config Identity.PeerID) && echo peerid: $peerid
+gateway=$(_ipfs config Addresses.Gateway)
+api=$(_ipfs config Addresses.API)
 echo "gateway: $gateway"
 echo "api: $api"
 gw_port=$(echo $gateway | cut -d/ -f 5)
 api_port=$(echo $api | cut -d/ -f 5)
-swarm_port=$(ipfs config Addresses.Swarm | grep -e /tcp | head -1 | cut -d/ -f5 | sed -e 's/".*//')
+swarm_port=$(_ipfs config Addresses.Swarm | grep -e /tcp | head -1 | cut -d/ -f5 | sed -e 's/".*//')
 
 if ! grep -q Access-Control-Allow-Origin $IPFS_PATH/config ; then
-ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '["http://127.0.0.1:8080", "http://localhost:80", "http://127.0.0.1:5001", "https://webui.ipfs.io"]'
-ipfs config --json API.HTTPHeaders.Access-Control-Allow-Methods '["PUT", "POST"]'
+_ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '["http://127.0.0.1:8080", "http://localhost:80", "http://127.0.0.1:5001", "https://webui.ipfs.io"]'
+_ipfs config --json API.HTTPHeaders.Access-Control-Allow-Methods '["PUT", "POST"]'
 fi
 
 
-origin=$(ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | json_xs -e '$_ = $_->[0]' | sed -e 's/"//g')
+origin=$(_ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | json_xs -e '$_ = $_->[0]' | sed -e 's/"//g')
 gwport=$gw_port
-gwhost=$(ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | grep $gw_port | sed -e 's,.*https*://,,' -e "s/:$gw_port.*//")
+gwhost=$(_ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | grep $gw_port | sed -e 's,.*https*://,,' -e "s/:$gw_port.*//")
 if [ "x$gwhost" = 'x' ]; then
  gwport=8080
- gwhost=$(ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | grep $gwport | sed -e 's,.*https*://,,' -e "s/:$gwport.*//")
+ gwhost=$(_ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | grep $gwport | sed -e 's,.*https*://,,' -e "s/:$gwport.*//")
 fi
 apiport=$api_port
-apihost=$(ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | grep $api_port | sed -e 's,.*https*://,,' -e "s/:$api_port.*//")
+apihost=$(_ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | grep $api_port | sed -e 's,.*https*://,,' -e "s/:$api_port.*//")
 if [ "x$apihost" = 'x' ]; then
  apiport=5001
- apihost=$(ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | grep $apiport | sed -e 's,.*https*://,,' -e "s/:$apiport.*//")
+ apihost=$(_ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | grep $apiport | sed -e 's,.*https*://,,' -e "s/:$apiport.*//")
 fi
 
 echo "gw: $gwhost:$gwport -> $gw_port"
