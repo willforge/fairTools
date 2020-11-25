@@ -1,24 +1,27 @@
 #
 
-image=ipfs/go-ipfs
-container=${container:-ipfs-test}
+export IPFS_IMAGE=${IPFS_IMAGE:-ipfs/go-ipfs}
+export IPFS_CONTAINER=${IPFS_CONTAINER:-ipfs-node}
 ipfs() {
- docker exec $container ipfs $@
+ docker exec $IPFS_CONTAINER ipfs $@
 }
 
+uid=$(id -u)
+gid=$(id -g)
+
 # 1. start docker if necessary ...
-if ! docker ps -f name=$container | grep -q -w $container; then
-if ! docker ps -a -f name=$container | grep -q -w $container; then
-echo "docker: run $image in $container"
-docker run -d --name $container $image
+if ! docker ps -f name=$IPFS_CONTAINER | grep -q -w $IPFS_CONTAINER; then
+if ! docker ps -a -f name=$IPFS_CONTAINER | grep -q -w $IPFS_CONTAINER; then
+echo "docker: run $IPFS_IMAGE in $IPFS_CONTAINER"
+docker run -d --name $IPFS_CONTAINER --user $uid:$gid $IPFS_IMAGE
 else
-echo "docker: start $container"
-docker start $container
+echo "docker: start $IPFS_CONTAINER"
+docker start $IPFS_CONTAINER
 fi
 sleep 7
-docker logs $container | waitfor 'ready$'
+docker logs $IPFS_CONTAINER | waitfor 'ready$'
 fi
-docker ps -a -f name=$container
+docker ps -a -f name=$IPFS_CONTAINER
 
 
 # get config data
@@ -55,19 +58,20 @@ echo "gw: $gwhost:$gwport -> $gw_port"
 echo "api: $apihost:$apiport -> $api_port"
 
 echo -n "docker: stopping "
-docker stop $container
+docker stop $IPFS_CONTAINER
 echo -n "docker: removing "
-docker rm $container
+docker rm $IPFS_CONTAINER
 set -x
-docker run -d --name $container \
+docker run -d --name $IPFS_CONTAINER \
   -v $IPFS_STAGING:/export -v $IPFS_PATH:/data/ipfs -w /export \
+  -u $uid:$gig \
   -p 4001:$swarm_port/tcp \
   -p 4001:$swarm_port/udp \
   -p $gwhost:$gwport:$gw_port \
   -p $apihost:$apiport:$api_port \
-  $image daemon
+  $IPFS_IMAGE daemon
 
-docker logs --until 59s $container | waitfor 'ready$'
+docker logs --until 59s $IPFS_CONTAINER | waitfor 'ready$'
 
-docker ps -a -f name=$container
+docker ps -a -f name=$IPFS_CONTAINER
 

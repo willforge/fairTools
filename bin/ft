@@ -8,13 +8,26 @@
 #fi
 
 
+echo "\$0: $0"
+if echo "$-" | grep -q 'i'; then
+cmd=$(history | tail -1 | sed -e 's/.*://' -e 's/^[^ ]*/echo/' )
+zero=$(eval "$cmd" | cut -d' ' -f1);
+set $zero $*
+echo "zero: $zero"
+echo "\$0: $0"
+echo "\$1: $1"
+echo "\$2: $2"
+echo "\$3: $3"
+echo "\$4: $4"
+fi
 
 wrapper="$(readlink -f "$0")"
 bindir=$(dirname "$wrapper")
 rootdir=$(readlink -f "${bindir}/..")
 if [ ! -e $rootdir/fairNet ]; then
-  echo "Error: bad install"
-  exit $(expr $$ % 251)
+  echo "Error: $rootdir bad install"
+  echo exit $(expr $$ % 251)
+  return $(expr $$ % 251)
 fi
 
 
@@ -29,22 +42,20 @@ fi
 vtag=$(version -y $(which "$0") | json_xs -f yaml -e '$_ = $_->{vtag}' )
 echo "--- # $0 ~ $vtag"
 
-echo FAIRTOOLS_PATH: $FAIRTOOLS_PATH
-#echo wrapper: $wrapper
-#echo rootdir: $rootdir
-#echo bindir: $bindir
-echo PATH: $PATH
-
-if ! echo "$-" | grep -q '.*i.*'; then
+if ! echo "$-" | grep -q '.*i.*'; then # batch mode
 if [ "x$1" == 'x' ]; then
    echo 'type: |-'
    echo " . $0"
-   exit $?
+   echo exit $?
 else 
-echo exec: $@
+echo FAIRTOOLS_PATH: $FAIRTOOLS_PATH
+echo PATH: $PATH
+echo cmd: $@
 $@;
 exit $?
 fi
+else
+ . $bindir/envrc.sh
 fi
 
 true;
