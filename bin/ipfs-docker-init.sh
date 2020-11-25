@@ -1,5 +1,7 @@
 #
 
+export IPFS_PATH=${IPFS_PATH:-$HOME/.ipfs}
+
 export IPFS_IMAGE=${IPFS_IMAGE:-ipfs/go-ipfs}
 export IPFS_CONTAINER=${IPFS_CONTAINER:-ipfs-node}
 # dockerized ipfs is _ipfs
