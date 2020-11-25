@@ -1,0 +1,35 @@
+#
+
+# intent: wrapper to set fairTools environment...
+
+# vim: syntax=sh
+
+wrapper="$(readlink -f "$0")"
+bindir=$(dirname "$wrapper")
+rootdir=$(readlink -f "${bindir}/..")
+if [ ! -e $rootdir/fairNet ]; then
+  echo "Error: bad install"
+  exit $(expr $$ % 251)
+fi
+
+
+export FAIRTOOLS_PATH=$rootdir
+
+export PERL5LIB=${PERL5LIB:-$FAIRTOOLS_PATH/lib/perl5}
+export PATH=$PERL5LIB/bin:/usr/local/bin:/usr/bin:$bindir:/bin
+
+
+vtag=$(version -y $0 | json_xs -f yaml -e '$_ = $_->{vtag}' )
+echo "--- # $0 ~ $vtag"
+
+echo FAIRTOOLS_PATH: $FAIRTOOLS_PATH
+#echo wrapper: $wrapper
+#echo rootdir: $rootdir
+#echo bindir: $bindir
+echo PATH: $PATH
+
+echo exec: $@
+$@
+exit $?
+
+true;

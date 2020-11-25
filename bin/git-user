@@ -1,6 +1,6 @@
 #
 
-WT_DOMAIN=fairTool.ml
+WT_DOMAIN=fairTools.ml
 export IPFS_PATH=$HOME/.ipfs
 
 if ! which ipfs >/dev/null; then

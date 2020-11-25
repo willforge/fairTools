@@ -4,22 +4,8 @@ set -e
 
 IPFS_CONTAINER=${IPFS_CONTAINER:-ipfs-node}
 
-if ! which ipfs 1>/dev/null 2>&1; then
- echo info: no ipfs found, use docker
-ipfs() { 
- docker exec $IPFS_CONTAINER ipfs $@
-}
-else
- if ! ipfs id 1>/dev/null 2>&1; then
-  echo info: dockerized ipfs
-  ipfs() { 
-   echo docker exec ipfs-node ipfs $@ 1>&2
-   docker exec $IPFS_CONTAINER ipfs $@
-  }
- else
-  echo info: using $(which ipfs)
- fi
-fi
+bindir=$(dirname "$(readlink -f "$0")")
+. $bindir/envrc.sh
 
 peerid=$(ipfs config Identity.PeerID) && echo "peerid: $peerid"
 set +e
@@ -63,7 +49,8 @@ if [ "x$apihost" = 'x0.0.0.0' ]; then
   fi
 fi
 if [ 'z$peerid' != 'zQmcfHufAK9ErQ9ZKJF7YX68KntYYBJngkGDoVKcZEJyRve' ]; then
-  ipfs ping QmcfHufAK9ErQ9ZKJF7YX68KntYYBJngkGDoVKcZEJyRve
+  # call home !
+  ipfs ping -n 1 QmcfHufAK9ErQ9ZKJF7YX68KntYYBJngkGDoVKcZEJyRve
 fi
 ipath=$(ipfs resolve /ipns/$webkey)
 

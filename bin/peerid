@@ -1,0 +1,11 @@
+#
+
+# intent: return peerid
+
+bindir=$(dirname "$(readlink -f "$0")")
+. $bindir/envrc.sh
+
+ipfs --offline config Identity.PeerID
+
+
+true; # vim: syntax=sh
