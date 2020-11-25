@@ -1,0 +1,247 @@
+#!/usr/bin/env perl
+
+# $birth: 1602689526$
+
+our $dbug=0;
+#--------------------------------
+# -- Options parsing ...
+#
+my $all = 0;
+my $veronly = 1;
+while (@ARGV && $ARGV[0] =~ m/^-/)
+{
+  $_ = shift;
+  #/^-(l|r|i|s)(\d+)/ && (eval "\$$1 = \$2", next);
+  if (/^-v(?:ersion)?/)  { $veronly= 1; }
+  else { $veronly= 0;
+     if (/^-g(?:it)?/)      { $git= 1; }
+     elsif (/^-age?/) { $ageonly= 1; }
+     elsif (/^-b(?:uild)?/) { $build= 1; }
+     elsif (/^-ta?g/)       { $veronly= 1; $build= 1; }
+     elsif (/^-t(?:ime)?/)  { $time= 1; }
+     elsif (/^-y(?:ml)?/)   { $yml= 1; }
+     elsif (/^-a(?:ll)?/)   { $all= 1; }
+     else                   { die "Unrecognized switch: $_\n"; }
+  }
+}
+#--------------------------------
+#understand variable=value on the command line...
+eval "\$$1='$2'"while $ARGV[0] =~ /^(\w+)=(.*)/ && shift;
+
+our $VERSION=&version(__FILE__);
+
+my $file = shift || $0;
+my @ver = &version($file);
+my $age = $ver[0];
+my ($r,$m) = &rev(time);
+my $hdr = sprintf "blob %u\0",(lstat($file))[7]; # GIT header
+my $githash = &get_khash('SHA1',$hdr,$file);
+my $gitshort = substr(unpack('H*',$githash),0,7);
+
+
+if ($all) {
+   printf "file: %s\n",$file;
+   printf qq'gitshort: %s\n',$gitshort;
+   printf qq'version: "%d.%.2f - %s"\n',@ver;
+   printf qq'scheduled: "v%d.%.1f.%d" # (%s+%s)\n',int($age),int($r/10)/10,$r%10+$m,$r,$m;
+} elsif ($yml) {
+   printf "--- # %s (%s)\n",$0,$VERSION;
+   printf "gitid: %s\n",$gitid;
+   printf "file: %s\n",$file;
+   printf "age: %.2f\n",$ver[0];
+   printf "ver: %.2f\n",$ver[1];
+   printf "build: %s\n",$ver[2];
+   printf "major: %s\n",$r;
+   printf "minor: %s\n",$m;
+   printf "sched: %.1f.%d\n",int($r/10)/10,$r%10+$m;
+   printf qq'vtag: "%d.%.2f - %s"\n',@ver;
+   print "...\n"
+
+} else {
+  my @res = ();
+  if ($time) {
+    push @res, sprintf 'v%d.%.1f.%d',int($age),int($m/10)/10,$m%10+$r;
+  }
+  if ($veronly) {
+     push @res, sprintf '%d.%.2f',@ver[0,1];
+  }
+  if ($ageonly) {
+     push @res, $ver[0];
+  }
+  if ($git) {
+     push @res, $gitid;
+  }
+  if ($build) {
+     push @res, $ver[2];
+  }
+  my $sep = (scalar@res > 2) ? ', ' : ' - ';
+  print join$sep,@res;
+  
+}
+exit $?;
+
+# -----------------------------------------------------------------------
+sub version {
+  my $_1yrs = 365.25 * 24 * 3600;
+  my $birth = &get_birth($_[0]);
+  my @times = (lstat($_[0]))[8,9,10]; # atime, mtime,ctime
+  my $vtime = (sort { $a <=> $b } @times[1,2])[-1];
+  my ($etime,$ltime) = (sort { $a <=> $b } @times)[0,-1];
+  my $age = ( $ltime - $birth ) / $_1yrs;
+  my $version = &rev($vtime);
+
+
+  if (wantarray) {
+     my $shk = &get_shake(160,$_[0]);
+     printf "%s : shk:f%s\n",$_[0],unpack'H*',$shk if $dbug;
+     my $pn = unpack('n',substr($shk,-4)); # 16-bit
+     my $build = &word($pn);
+     return ($age, $version, $build);
+  } else {
+     return sprintf '%g',$version;
+  }
+}
+# -----------------------------------------------------------------------
+sub get_birth { # extract birth time from file
+  local *F; open F,'<',$_[0]; 
+  my $btic = 0;
+  while (<F>) {
+    if (m/\b\$?[bB]irth: (\d+)\$/) { $btic = $1; last; }
+  }
+  if ($btic == 0) { # try to see if there is a first git version ..
+    my ($fpath,$fname,undef,undef) = &fname($_[0]);
+    my $gitcmd = sprintf('git -C "%s" log --reverse --format="%%at" --all --full-history "%s"',$fpath,$fname);
+    printf "info: %s\n", $gitcmd if $dbug;
+    local *EXEC; open EXEC,"$gitcmd 2>/dev/null |" or warn $!;
+    local $/ = "\n";
+    $btic = <EXEC>; chomp($btic); close EXEC;
+
+  }
+  close F;
+  if (! $btic) {
+   $btic = (sort { $a <=> $b } (lstat($_[0]))[8,9,10])[0]; # smallest one !
+  }
+  printf "btic: %s\n",$btic if $dbug;
+  return $btic;
+}
+# -----------------------------------------------------------------------
+sub fname { # extract filename etc...
+  my $f = shift;
+  $f =~ s,\\,/,g; # *nix style !
+  my $s = rindex($f,'/');
+  my $fpath = '.';
+  if ($s > 0) {
+    $fpath = substr($f,0,$s);
+  } else {
+    use Cwd;
+    $fpath = Cwd::getcwd();
+  }
+  my $fname = substr($f,$s+1); # filename (basename) including extension
+  if (-d $f) {
+    return ($fpath,$fname);
+  } else {
+  my $rname; # rootname
+  my $ext; # extension
+  my $p = rindex($fname,'.');
+     $ext = lc substr($fname,$p+1);
+     $ext =~ s/\~$//;
+  if ($p > 0) {
+    $rname = substr($fname,0,$p);
+    $ext = lc substr($fname,$p+1);
+    $ext =~ s/\~$//;
+  } else {
+    $rname = $fname;
+    $ext = undef;
+  }
+  $rname =~ s/\s+\(\d+\)$//; # remove (1) in names ...
+
+  return ($fpath,$fname,$rname,$ext);
+
+  }
+}
+# -----------------------------------------------------------------------
+sub rev {
+  my ($sec,$min,$hour,$mday,$mon,$yy,$wday,$yday) = (localtime($_[0]))[0..7];
+  my $rweek=($yday+&fdow($_[0]))/7;
+  my $rev_id = int($rweek) * 4;
+  my $low_id = int(($wday+($hour/24)+$min/(24*60))*4/7);
+  my $revision = ($rev_id + $low_id) / 100;
+  return (wantarray) ? ($rev_id,$low_id) : $revision;
+}
+# -----------------------------------------------------------------------
+sub fdow {
+   my $tic = shift;
+   use Time::Local qw(timelocal);
+   ##     0    1     2    3    4     5     6     7
+   #y ($sec,$min,$hour,$day,$mon,$year,$wday,$yday)
+   my $year = (localtime($tic))[5]; my $yr4 = 1900 + $year ;
+   my $first = timelocal(0,0,0,1,0,$yr4);
+   $fdow = (localtime($first))[6];
+   #printf "1st: %s -> fdow: %s\n",&hdate($first),$fdow;
+   return $fdow;
+}
+# -----------------------------------------------------------------------
+sub word { # 20^4 * 6^3 words (25bit worth of data ...)
+ use integer;
+ my $n = $_[0];
+ my $vo = [qw ( a e i o u y )]; # 6
+ my $cs = [qw ( b c d f g h j k l m n p q r s t v w x z )]; # 20
+ my $str = '';
+ if (1 && $n < 26) {
+ $str = chr(ord('a') +$n%26);
+ } else {
+ $n -= 6;
+ while ($n >= 20) {
+   my $c = $n % 20;
+      $n /= 20;
+      $str .= $cs->[$c];
+   #print "cs: $n -> $c -> $str\n";
+   my $c = $n % 6;
+      $n /= 6;
+      $str .= $vo->[$c];
+   #print "vo: $n -> $c -> $str\n";
+
+ }
+ if ($n > 0) {
+   $str .= $cs->[$n];
+ }
+ return $str;
+ }
+}
+# -----------------------------------------------------------------------
+sub get_shake { # use shake 256 because of ipfs' minimal length of 20Bytes
+  use Crypt::Digest::SHAKE;
+  my $len = shift;
+  local *F; open F,$_[0] or do { warn qq{"$_[0]": $!}; return undef };
+  #binmode F unless $_[0] =~ m/\.txt/;
+  my $msg = Crypt::Digest::SHAKE->new(256);
+  $msg->addfile(*F);
+  my $digest = $msg->done(($len+7)/8);
+  return $digest;
+}
+# -----------------------------------------------------------------------
+sub get_khash {
+   use Crypt::Digest qw();
+   my $alg = shift;
+   my $file = pop;
+   my $data = join'',@_;
+  local *F; open F,$file or do { warn qq{"$file": $!}; return undef };
+  #binmode F unless $file =~ m/\.txt/;
+  my $msg = Crypt::Digest::new($alg);
+     $msg->add($data);
+     $msg->addfile(*F);
+   my $hash = $msg->digest();
+   return $hash;
+}
+# -----------------------------------------------------------------------
+sub hash1 { # keyed hash
+   use Crypt::Digest qw();
+   my $alg = shift;
+   my $data = join'',@_;
+   my $msg = Crypt::Digest->new($alg) or die $!;
+      $msg->add($data);
+   my $hash = $msg->digest();
+   return $hash;
+}
+# -----------------------------------------------------------------------
+1;
