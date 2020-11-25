@@ -1,0 +1,75 @@
+#
+
+WT_DOMAIN=fairTool.ml
+export IPFS_PATH=$HOME/.ipfs
+
+if ! which ipfs >/dev/null; then
+ exit $(expr $$ % 251)
+fi
+
+toplevel=$(git rev-parse --show-toplevel)
+gitdir=$(git rev-parse --git-dir)
+prefix=$(git rev-parse --show-prefix)
+headid=$(cat $gitdir/HEAD | cut -d' ' -f2)
+
+#prev=$(ipfs add -Q -w $gitdir/config )
+prev=$(git config ipfs.qm)
+prev=${prev:-QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn}
+if [ "x$IPFS_PATH" != 'x' ]; then
+echo  IPFS_PATH: $IPFS_PATH
+fi
+if [ ! -e $HOME/.ipfsignore ]; then
+  ipfs get -o $HOME/.ipfsignore QmUAf7KZ7NMYwajPrBG6g2VLxBmAjrnXXETMwjVbUsBmP5
+fi
+if [ -e $gitdir/$headid ]; then
+qm=$(ipfs add --ignore-rules-path=$HOME/.ipfsignore -Q -w -r $gitdir/config $gitdir/$headid . )
+else
+qm=$(ipfs add --ignore-rules-path=$HOME/.ipfsignore -Q -w -r $gitdir/config . )
+fi
+qm=$(ipfs object patch add-link $qm 'prev' $prev)
+echo qm: $qm
+
+
+eval $(perl -S fullname.pl -a $qm | eyml)
+echo firstname: $firstname
+echo lni: $lni
+tag=$(echo -n "$user@$WT_DOMAIN" | ipfs add -Q --raw-leaves --hash identity --cid-base=base58btc)
+echo tag: $tag
+
+if git remote get-url origin 2>/dev/null | grep -q -e '\.github\.com:' 1>/dev/null;  then 
+  remote=$(git remote get-url origin | sed -e "s/git@.*\.github\.com:/git@$user.github.com:/");
+  echo remote.origin: $remote
+  git remote set-url origin $remote
+fi
+if git remote get-url github 2>/dev/null | grep -q -e '\.github\.com:' 1>/dev/null;  then 
+  remote=$(git remote get-url github | sed -e "s/git@.*\.github\.com:/git@$user.github.com:/");
+  echo clone_url: $remote
+  git remote set-url github $remote
+fi
+
+
+git config user.name "$fullname"
+git config user.email $user@$WT_DOMAIN
+git config ipfs.qm $qm
+git config ipfs.prev $prev
+
+#echo "committer: $(git config user.name) <$(git config user.email)>"
+
+if git config user.name | grep -q '^michel'; then
+user=michelc
+export GIT_AUTHOR_NAME="Michel"
+export GIT_AUTHOR_EMAIL="michel@ocean"
+#echo "author: $GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL>"
+else
+peerid=$(ipms config Identity.PeerID)
+eval $(perl -S fullname.pl -a $peerid | eyml)
+git config committer.name "$fullname"
+git config committer.email "$email"
+export GIT_COMMITTER_NAME="$fullname"
+export GIT_COMMITTER_EMAIL="$email"
+#echo "author: $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL>"
+fi
+git var GIT_AUTHOR_IDENT
+git var GIT_COMMITTER_IDENT
+
+
