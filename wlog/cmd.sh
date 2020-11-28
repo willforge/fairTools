@@ -10,7 +10,7 @@ ping=$(echo -n $nid | ipfs add -Q -n --pin=true --raw-leaves --hash sha3-224 --c
 echo ping: $ping
 
 peerid=$(ipfs config Identity.PeerID)
-peerkey=$(ipfs --timeout 1s dht findprovs -n 1 /ipfs/$ping)
+peerkey=$(ipfs dht findprovs -n 1 /ipfs/$ping)
 ipfs=ipfs-docker
 cat <<EOT
 \`\`\`
