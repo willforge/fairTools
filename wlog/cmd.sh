@@ -18,7 +18,7 @@ echo ping: $ping
 
 peerid=$(ipfs config Identity.PeerID)
 peerkey=$(ipfs dht findprovs -n 1 /ipfs/$ping)
-ipfs=ipfs-docker
+ipfs=../bin/ipfs-docker
 cat <<EOT
 \`\`\`
 peerid=\$($ipfs config Identity.PeerID)
