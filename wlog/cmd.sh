@@ -1,5 +1,12 @@
 # 
 
+if ! which ipfs 2>/dev/null; then
+ipfs() {
+  docker exec -i ipfs-node ipfs "$@"
+}
+fi
+set PATH=../bin:$PATH
+
 key='clef-secrete'
 label='a-big-log.txt'
 urn="urn:wwlog:$label"
