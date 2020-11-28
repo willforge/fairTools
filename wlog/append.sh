@@ -8,6 +8,14 @@ if [ ! -d $cachedir ]; then
 fi
 
 
+if ! which ipfs 2>/dev/null; then 
+ ipfs() {
+  echo docker exec ipfs-node ipfs $@ 1>&2
+  docker exec -i $IPFS_CONTAINER ipfs "$@"
+ }
+fi
+
+
 peerid=$(ipfs config Identity.PeerID)
 key='clef-secrete'
 label='a-big-log.txt'
@@ -45,7 +53,7 @@ echo "$line" >> "$cachedir/$nid/$label"
 echo "file: $cachedir/$nid/$label |-"
 tail -3 "$cachedir/$nid/$label" | sed -e 's/^/  /';
 
-qm=$(ipfs add -Q --raw-leaves --hash sha1 --cid-base base36 "$cachedir/$nid/$label")
+qm=$(cat "$cachedir/$nid/$label" | ipfs add -Q --raw-leaves --hash sha1 --cid-base base36)
 echo qm: $qm;
 ipfs files cp /ipfs/$qm "/public/share/$nid/$label"
 new=$(ipfs files stat --hash "/public/share/$nid")
