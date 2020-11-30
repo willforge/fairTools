@@ -17,6 +17,9 @@ if ! which ipfs 2>/dev/null; then
   docker exec -i $IPFS_CONTAINER ipfs "$@"
  }
 fi
+moddir=$(dirname "$(readlink -f "$0")")
+rootdir=$(readlink -f "${moddir}/..")
+export PATH=$rootdir/bin:$PATH
 
 
 peerid=$(ipfs config Identity.PeerID)
@@ -38,10 +41,10 @@ if ! ipfs files stat /public/share/$nid --hash 1>/dev/null 2>&1; then
   ipfs files mkdir -p /public/share/$nid
 fi
 if ipfs files stat /public/share/$nid/$label --hash 1>/dev/null 2>&1; then
-  ipfs files read /public/share/$nid/$label > "$cachedir/$nid/$label"
+  ipfs files read /public/share/$nid/$label > "$cachedir/$nid/$label.all"
   ipfs files rm -r /public/share/$nid/$label
 else
-  echo "# log $urn (nid:$nid) $(date +%D)" > "$cachedir/$nid/$label"
+  echo "# log $urn (nid:$nid) $(date +%D)" > "$cachedir/$nid/$label.all"
 fi
 
 # ------------------------------------------
@@ -63,11 +66,11 @@ fi
 
 ipath=$(ipfs resolve /ipns/$peerkey/public/share/$nid)
 # get log...
-ipfs cat "$ipath/$label" >> "$cachedir/$nid/$label"
+ipfs cat "$ipath/$label" >> "$cachedir/$nid/$label.all"
 
 done
 # ------------------------------------------
-
+perl -S uniq.pl "$cachedir/$nid/$label.all > "$cachedir/$nid/$label"
 echo "$line" >> "$cachedir/$nid/$label"
 echo "file: $cachedir/$nid/$label |-"
 tail -3 "$cachedir/$nid/$label" | sed -e 's/^/  /';
