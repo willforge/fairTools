@@ -24,8 +24,9 @@ fi
 bindir=$(dirname "$(readlink -f "$0")")
 rootdir=$(readlink -f "${bindir}/..")
 export PERL5LIB=${PERL5LIB:-$rootdir/lib/perl5}
-export IPFS_PATH=${IPFS_PATH:-$HOME/.ipfs}
+export PATH=${PERL5LIB%/lib/perl5}/bin:$PATH
 
+export IPFS_PATH=${IPFS_PATH:-$HOME/.ipfs}
 export IPFS_IMAGE=${IPFS_IMAGE:-ipfs/go-ipfs}
 export IPFS_CONTAINER=${IPFS_CONTAINER:-ipfs-node}
 
