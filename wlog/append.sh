@@ -73,6 +73,7 @@ if ipfs files stat /public/share/$nid/$label --hash 1>/dev/null 2>&1; then
 fi
 # ------------------------------------------
 perl -S uniq.pl "$cachedir/$nid/$label.all" > "$cachedir/$nid/$label"
+echo "# user:$peerid $(date +"%Y-%m-%d @ %T")" >> "$cachedir/$nid/$label"
 echo "$line" >> "$cachedir/$nid/$label"
 echo "file: $cachedir/$nid/$label |-"
 tail -3 "$cachedir/$nid/$label" | sed -e 's/^/  /';
