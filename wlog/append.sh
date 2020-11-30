@@ -29,7 +29,7 @@ urn="urn:wwlog:$label"
 sha2=$(echo -n "$key,$label" | openssl sha256 | cut -d' ' -f2)
 nid=$(echo $sha2 | cut -c -13)
 
-ping=$(echo -n $nid | ipfs add -Q -n --pin=true --raw-leaves --hash sha3-224 --cid-base base58btc)
+ping=$(echo -n $nid | ipfs add -Q --pin=true --raw-leaves --hash sha3-224 --cid-base base58btc)
 
 # ------------------------------------------
 # create new log if doesn't exist
