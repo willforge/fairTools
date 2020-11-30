@@ -54,7 +54,7 @@ for peerkey in $peerkeys; do
 
 if [ "x$peerkey" != "x$peerid" ]; then
   ipfs ping -n 1 $peerkey
-  maddr=$(ipfs dht findpeer $peerkey | tail -1)
+  maddr=$(ipfs --timeout 30s dht findpeer $peerkey | tail -1)
   if [ "x$maddr" != 'x' ]; then
     echo maddr: $maddr
     echo ipfs swarm connect $maddr/p2p/$peerkey
@@ -62,9 +62,12 @@ if [ "x$peerkey" != "x$peerid" ]; then
   fi
 fi
 
-ipath=$(ipfs resolve /ipns/$peerkey/public/share/$nid)
+ipath=$(ipfs --timeout 120s resolve /ipns/$peerkey/public/share/$nid)
+echo "ipath: $ipath"
+if [ ! "x$ipath" = 'x' ]; then
 # get log...
 ipfs cat "$ipath/$label" >> "$cachedir/$nid/$label.all"
+fi
 
 done
 if ipfs files stat /public/share/$nid/$label --hash 1>/dev/null 2>&1; then
