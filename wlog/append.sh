@@ -42,7 +42,6 @@ if ! ipfs files stat /public/share/$nid --hash 1>/dev/null 2>&1; then
 fi
 if ipfs files stat /public/share/$nid/$label --hash 1>/dev/null 2>&1; then
   ipfs files read /public/share/$nid/$label > "$cachedir/$nid/$label.all"
-  ipfs files rm -r /public/share/$nid/$label
 else
   echo "# log $urn (nid:$nid) $(date +%D)" > "$cachedir/$nid/$label.all"
 fi
@@ -69,8 +68,11 @@ ipath=$(ipfs resolve /ipns/$peerkey/public/share/$nid)
 ipfs cat "$ipath/$label" >> "$cachedir/$nid/$label.all"
 
 done
+if ipfs files stat /public/share/$nid/$label --hash 1>/dev/null 2>&1; then
+  ipfs files rm -r /public/share/$nid/$label
+fi
 # ------------------------------------------
-perl -S uniq.pl "$cachedir/$nid/$label.all > "$cachedir/$nid/$label"
+perl -S uniq.pl "$cachedir/$nid/$label.all" > "$cachedir/$nid/$label"
 echo "$line" >> "$cachedir/$nid/$label"
 echo "file: $cachedir/$nid/$label |-"
 tail -3 "$cachedir/$nid/$label" | sed -e 's/^/  /';
