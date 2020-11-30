@@ -2,7 +2,6 @@
 
 # intend: append a global log !!!
 
-line="$@"
 core=fair
 cachedir=$HOME/.cache/${core}Tools
 if [ ! -d $cachedir ]; then
@@ -73,7 +72,6 @@ if ipfs files stat /public/share/$nid/$label --hash 1>/dev/null 2>&1; then
 fi
 # ------------------------------------------
 perl -S uniq.pl "$cachedir/$nid/$label.all" > "$cachedir/$nid/$label"
-echo "$line" >> "$cachedir/$nid/$label"
 echo "file: $cachedir/$nid/$label |-"
 tail -3 "$cachedir/$nid/$label" | sed -e 's/^/  /';
 
