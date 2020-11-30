@@ -1,5 +1,7 @@
 #
 
+# intend: append a global log !!!
+
 line="$@"
 core=fair
 cachedir=$HOME/.cache/${core}Tools
@@ -7,6 +9,7 @@ if [ ! -d $cachedir ]; then
   mkdir $cachedir
 fi
 
+export IPFS_CONTAINER=${IPFS_CONTAINER:-ipfs-node}
 
 if ! which ipfs 2>/dev/null; then 
  ipfs() {
@@ -25,15 +28,8 @@ nid=$(echo $sha2 | cut -c -13)
 
 ping=$(echo -n $nid | ipfs add -Q -n --pin=true --raw-leaves --hash sha3-224 --cid-base base58btc)
 
-peerkey=$(ipfs --timeout 1s dht findprovs -n 1 /ipfs/$ping)
-ipfs ping -n 1 $peerkey
-maddr=$(ipfs dht findpeer $peerkey | tail -1)
-echo maddr: $maddr
-echo ipfs swarm connect $maddr/p2p/$peerkey
-ipfs swarm connect $maddr/p2p/$peerkey
-
-ipath=$(ipfs resolve /ipns/$peerkey/public/share/$nid)
-# get log...
+# ------------------------------------------
+# create new log if doesn't exist
 if [ ! -d $cachedir/$nid ]; then
   mkdir -p $cachedir/$nid
 fi
@@ -48,7 +44,30 @@ else
   echo "# log $urn (nid:$nid) $(date +%D)" > "$cachedir/$nid/$label"
 fi
 
+# ------------------------------------------
+# pull log from peerkeys...
+peerkeys="$(ipfs --timeout 5s dht findprovs /ipfs/$ping 2>/dev/null)"
+
+for peerkey in $peerkeys; do
+ echo peerkey: $peerkey
+
+if [ "x$peerkey" != "x$peerid" ]; then
+  ipfs ping -n 1 $peerkey
+  maddr=$(ipfs dht findpeer $peerkey | tail -1)
+  if [ "x$maddr" != 'x' ]; then
+    echo maddr: $maddr
+    echo ipfs swarm connect $maddr/p2p/$peerkey
+    ipfs swarm connect $maddr/p2p/$peerkey
+  fi
+fi
+
+ipath=$(ipfs resolve /ipns/$peerkey/public/share/$nid)
+# get log...
 ipfs cat "$ipath/$label" >> "$cachedir/$nid/$label"
+
+done
+# ------------------------------------------
+
 echo "$line" >> "$cachedir/$nid/$label"
 echo "file: $cachedir/$nid/$label |-"
 tail -3 "$cachedir/$nid/$label" | sed -e 's/^/  /';

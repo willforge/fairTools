@@ -5,14 +5,30 @@
 
 # deps: 
 #   - keybase
+#   - perl5lib (json_xw)
 #   - ipfs
 #   - curl
+#provide_keybase
+#provide_perl5lib
+#...
+#provide_ipfs
+#provide_curl
+#
 
 core=fair
 cachedir=$HOME/.cache/${core}Tools
 if [ ! -d $cachedir ]; then
-mkdir $cachedir
+  mkdir $cachedir
 fi
+
+bindir=$(dirname "$(readlink -f "$0")")
+rootdir=$(readlink -f "${bindir}/..")
+export PERL5LIB=${PERL5LIB:-$rootdir/lib/perl5}
+export IPFS_PATH=${IPFS_PATH:-$HOME/.ipfs}
+
+export IPFS_IMAGE=${IPFS_IMAGE:-ipfs/go-ipfs}
+export IPFS_CONTAINER=${IPFS_CONTAINER:-ipfs-node}
+
 
 # dockerized ipfs:
 export IPFS_PATH=${IPFS_PATH:-$HOME/.ipfs}
@@ -20,7 +36,7 @@ export IPFS_STAGING=${IPFS_STAGING:-$IPFS_PATH/staging}
 echo IPFS_PATH: $IPFS_PATH
 if ! which ipfs 2>/dev/null; then
 ipfs() {
-  docker exec -i ipfs-node ipfs "$@"
+  docker exec -i $IPFS_CONTAINER ipfs "$@"
 }
 fi
 
