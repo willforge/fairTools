@@ -1,6 +1,11 @@
 #
 
 # intent: wrapper to set fairTools environment...
+#
+#  assume history is set
+if ! expr HISTSIZE \> 0 1>/dev/null; then
+HISTSIZE=1000
+fi
 
 # vim: syntax=sh
 #if test -z "$(type -p)"; then
@@ -13,6 +18,10 @@ if echo "$-" | grep -q 'i'; then
 cmd=$(history | tail -1 | sed -e 's/.*://' -e 's/^[^ ]*/echo/' )
 zero=$(eval "$cmd" | cut -d' ' -f1);
 set $zero $*
+fi
+
+if false; then
+echo "cmd: $cmd"
 echo "zero: $zero"
 echo "\$0: $0"
 echo "\$1: $1"
