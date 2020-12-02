@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<meta charset="utf8"/>
+<script src=../js/essential.js></script>
+<script src=../js/sha256.js></script>
+<script src=../js/ipfs.js></script>
+
+<div>
+network: <button id=join onclick="join(event)">join wlog</button> <span id=token></span>
+<br>find: <button id=provs onclick="provs(event)">provs</button>
+
+<br>line: <input type=text name=record size=74>
+<br><button id=append onclick="append(event)">append</button>
+<button id=update onclick="update(event)">update</button>
+</div>
+
+
+<script>
+const key='clef-secrete';
+const label='a-big-log.txt';
+const urn='urn:wwlog:'+label;
+let nid= getNid(urn);
+var token;
+var peerids;
+
+main();
+function main() {
+  get_token(nid).then(ipfsFindProvs).then( (a) => { peerids = a; console.log('main.peerids',peerids); });
+}
+
+async function get_token(str) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  token = await ipfsGetToken(str);
+  console.debug(callee+'.token:',token);
+  document.getElementById('token').innerHTML = token;
+  return token
+}
+
+
+async function join(ev) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  let token = await ipfsAddToken(nid);
+  console.debug(callee+'.token:',token);
+  document.getElementById('token').innerHTML = `<a href=http://127.0.0.1:8080/ipfs/${token}>${token}</a>`;
+}
+
+async function provs(ev) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  
+}
+</script>
+

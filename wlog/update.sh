@@ -47,14 +47,16 @@ fi
 
 # ------------------------------------------
 # pull log from peerkeys...
-peerkeys="$(ipfs --timeout 5s dht findprovs /ipfs/$ping 2>/dev/null)"
+peerkeys="$(ipfs --timeout 30s dht findprovs /ipfs/$ping 2>/dev/null)"
 
 for peerkey in $peerkeys; do
  echo peerkey: $peerkey
 
-if [ "x$peerkey" != "x$peerid" ]; then
+if [ "x$peerkey" = "x$peerid" ]; then
+  continue
+else 
   ipfs ping -n 1 $peerkey
-  maddr=$(ipfs --timeout 30s dht findpeer $peerkey | tail -1)
+  maddr=$(ipfs --timeout 15s dht findpeer $peerkey | tail -1)
   if [ "x$maddr" != 'x' ]; then
     echo maddr: $maddr
     echo ipfs swarm connect $maddr/p2p/$peerkey
@@ -62,7 +64,7 @@ if [ "x$peerkey" != "x$peerid" ]; then
   fi
 fi
 
-ipath=$(ipfs --timeout 120s resolve /ipns/$peerkey/public/share/$nid)
+ipath=$(ipfs --timeout 61s resolve /ipns/$peerkey/public/share/$nid)
 echo "ipath: $ipath"
 if [ ! "x$ipath" = 'x' ]; then
 # get log...
