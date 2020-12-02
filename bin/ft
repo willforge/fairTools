@@ -13,11 +13,13 @@ fi
 #fi
 
 
-echo "\$0: $0"
 if echo "$-" | grep -q 'i'; then
 cmd=$(history | tail -1 | sed -e 's/.*://' -e 's/^[^ ]*/echo/' )
 zero=$(eval "$cmd" | cut -d' ' -f2);
-set $zero $*
+wrapper="$(readlink -f "$zero")"
+#set $zero $*
+else
+wrapper="$(readlink -f "$0")"
 fi
 
 if false; then
@@ -30,10 +32,10 @@ echo "\$3: $3"
 echo "\$4: $4"
 fi
 
-wrapper="$(readlink -f "$0")"
 bindir=$(dirname "$wrapper")
 rootdir=$(readlink -f "${bindir}/..")
-if [ ! -e $rootdir/fairNet ]; then
+
+if [ ! -e $rootdir/VERSION ]; then
   echo "Error: $rootdir bad install"
   echo exit $(expr $$ % 251)
   return $(expr $$ % 251)
@@ -48,15 +50,18 @@ else
 export PATH=$PERL5LIB/bin:/usr/local/bin:/usr/bin:$bindir:/bin
 fi
 
+if which version 1>/dev/null; then
 vtag=$(version -y $(which "$0") | json_xs -f yaml -e '$_ = $_->{vtag}' )
 echo "--- # $0 ~ $vtag"
+fi
 
 if ! echo "$-" | grep -q '.*i.*'; then # batch mode
 if [ "x$1" == 'x' ]; then
-   echo 'type: |-'
+   echo 'usage:'
    echo " . $0"
    echo exit $?
 else 
+ . $bindir/envrc.sh
 echo FAIRTOOLS_PATH: $FAIRTOOLS_PATH
 echo PATH: $PATH
 echo cmd: $@

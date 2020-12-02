@@ -3,12 +3,17 @@
 # bootstrap !
 core=fair
 pre=ft
-FAIRTOOLS_PATH=${HOME}/.../${core}Tools
+FAIRTOOLS_PATH=${HOME}/.../opt/${core}Tools
 git_url=https://github.com/willforge/${core}Tools.git
 
+parent=$(dirname ${FAIRTOOLS_PATH})
 if [ ! -d $FAIRTOOLS_PATH ]; then
-  mkdir -p $(dirname ${FAIRTOOLS_PATH});
+  mkdir -p $parent
+  cd $parent
   git clone $git_url
+else
+  cd "$FAIRTOOLS_PATH"
+  git pull
 fi
 cd $FAIRTOOLS_PATH
 sh bin/${pre}-install.sh
@@ -19,4 +24,8 @@ cachedir=$HOME/.cache/${core}Tools
 if [ ! -d $cachedir ]; then
   mkdir -p $cachedir
 fi
-cd $cachedir
+
+
+exit $?
+
+true
