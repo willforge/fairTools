@@ -16,7 +16,7 @@ fi
 echo "\$0: $0"
 if echo "$-" | grep -q 'i'; then
 cmd=$(history | tail -1 | sed -e 's/.*://' -e 's/^[^ ]*/echo/' )
-zero=$(eval "$cmd" | cut -d' ' -f1);
+zero=$(eval "$cmd" | cut -d' ' -f2);
 set $zero $*
 fi
 
