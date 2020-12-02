@@ -48,12 +48,14 @@ else
 export PATH=$PERL5LIB/bin:/usr/local/bin:/usr/bin:$bindir:/bin
 fi
 
+if which version 1>/dev/null; then
 vtag=$(version -y $(which "$0") | json_xs -f yaml -e '$_ = $_->{vtag}' )
 echo "--- # $0 ~ $vtag"
+fi
 
 if ! echo "$-" | grep -q '.*i.*'; then # batch mode
 if [ "x$1" == 'x' ]; then
-   echo 'type: |-'
+   echo 'usage: |-'
    echo " . $0"
    echo exit $?
 else 

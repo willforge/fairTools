@@ -1,5 +1,24 @@
 # fairTools
 
+
+## INSTALLATION
+
+```sh
+if ! grep -q $HOME/.local/bin $HOME/.bashrc; then
+cat >> $HOME/.bashrc <<EOT
+if [ -d \$HOME/.local/bin ]; then
+export PATH=\$PATH:\$HOME/.local/bin
+fi 
+EOT
+fi
+
+curl -sL https://raw.githubusercontent.com/willforge/fairTools/master/bin/ft-init.sh | /bin/sh - 
+
+. $HOME/.bashrc
+which ft
+
+```
+
 In this repository you will find :
 
 1. the [biff] line (a one bit anonymous communication line)
