@@ -15,7 +15,7 @@ fi
 
 if echo "$-" | grep -q 'i'; then
 cmd=$(history | tail -1 | sed -e 's/.*://' -e 's/^[^ ]*/echo/' )
-zero=$(eval "$cmd" | cut -d' ' -f1);
+zero=$(eval "$cmd" | cut -d' ' -f2);
 set $zero $*
 fi
 
@@ -55,7 +55,7 @@ fi
 
 if ! echo "$-" | grep -q '.*i.*'; then # batch mode
 if [ "x$1" == 'x' ]; then
-   echo 'usage: |-'
+   echo 'usage:'
    echo " . $0"
    echo exit $?
 else 
