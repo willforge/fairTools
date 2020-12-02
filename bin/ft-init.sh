@@ -12,7 +12,7 @@ if [ ! -d $FAIRTOOLS_PATH ]; then
   cd $parent
   git clone $git_url
 else
-  cd $parent
+  cd "$FAIRTOOLS_PATH"
   git pull
 fi
 cd $FAIRTOOLS_PATH
