@@ -22,7 +22,7 @@ else
 wrapper="$(readlink -f "$0")"
 fi
 
-if true; then
+if false; then
 echo "cmd: $cmd"
 echo "zero: $zero"
 echo "\$0: $0"
