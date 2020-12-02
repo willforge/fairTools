@@ -1,0 +1,70 @@
+#
+
+# intent: wrapper to set fairTools environment...
+#
+#  assume history is set
+if ! expr HISTSIZE \> 0 1>/dev/null; then
+HISTSIZE=1000
+fi
+
+# vim: syntax=sh
+#if test -z "$(type -p)"; then
+# echo shell: $SHELL
+#fi
+
+
+echo "\$0: $0"
+if echo "$-" | grep -q 'i'; then
+cmd=$(history | tail -1 | sed -e 's/.*://' -e 's/^[^ ]*/echo/' )
+zero=$(eval "$cmd" | cut -d' ' -f1);
+set $zero $*
+fi
+
+if false; then
+echo "cmd: $cmd"
+echo "zero: $zero"
+echo "\$0: $0"
+echo "\$1: $1"
+echo "\$2: $2"
+echo "\$3: $3"
+echo "\$4: $4"
+fi
+
+wrapper="$(readlink -f "$0")"
+bindir=$(dirname "$wrapper")
+rootdir=$(readlink -f "${bindir}/..")
+if [ ! -e $rootdir/fairNet ]; then
+  echo "Error: $rootdir bad install"
+  echo exit $(expr $$ % 251)
+  return $(expr $$ % 251)
+fi
+
+
+export FAIRTOOLS_PATH=$rootdir
+export PERL5LIB=${PERL5LIB:-$FAIRTOOLS_PATH/lib/perl5}
+if echo "$-" | grep -q '.*i.*'; then
+export PATH=$PERL5LIB/bin:$bindir:$PATH
+else 
+export PATH=$PERL5LIB/bin:/usr/local/bin:/usr/bin:$bindir:/bin
+fi
+
+vtag=$(version -y $(which "$0") | json_xs -f yaml -e '$_ = $_->{vtag}' )
+echo "--- # $0 ~ $vtag"
+
+if ! echo "$-" | grep -q '.*i.*'; then # batch mode
+if [ "x$1" == 'x' ]; then
+   echo 'type: |-'
+   echo " . $0"
+   echo exit $?
+else 
+echo FAIRTOOLS_PATH: $FAIRTOOLS_PATH
+echo PATH: $PATH
+echo cmd: $@
+$@;
+exit $?
+fi
+else
+ . $bindir/envrc.sh
+fi
+
+true;

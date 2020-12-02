@@ -1,7 +1,6 @@
 # fairTools
 
-
-in this repository you will find :
+In this repository you will find :
 
 1. the [biff] line (a one bit anonymous communication line)
 2. an experiment w/ [Chameleon][Cham] Hashes
@@ -10,7 +9,7 @@ in this repository you will find :
 5. [js]: the Javascript code !
 6. misc.
 7. [PubSub]
-8. [Tnet]
+8. [fairNet]
 
 
 repo: 
