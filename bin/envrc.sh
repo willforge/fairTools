@@ -17,9 +17,9 @@ rootdir=$(readlink -f "${bindir}/..")
 export FAIRTOOLS_PATH=$rootdir
 export PERL5LIB=${PERL5LIB:-$FAIRTOOLS_PATH/lib/perl5}
 if echo "$-" | grep -q '.*i.*'; then
-export PATH=$PERL5LIB/bin:$bindir:$PATH
+export PATH=${PERL5LIB%/lib/perl5}/bin:$bindir:$PATH
 else
-export PATH=$PERL5LIB/bin:/usr/local/bin:/usr/bin:$bindir:/bin
+export PATH=${PERL5LIB%/lib/perl5}/bin:/usr/local/bin:/usr/bin:$bindir:/bin
 fi
 
 
