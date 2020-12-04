@@ -54,6 +54,9 @@ if [ 'z$peerid' != 'zQmcfHufAK9ErQ9ZKJF7YX68KntYYBJngkGDoVKcZEJyRve' ]; then
 fi
 ipath=$(ipfs resolve /ipns/$webkey)
 
+if [ ! -d $HOME/.../_data ]; then
+  mkdir -p $HOME/.../_data
+fi
 cat > $HOME/.../_data/ipms.yml <<EOT
 --- # ipms webui and gateway parameters
 origin: $origin
