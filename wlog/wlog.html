@@ -7,6 +7,7 @@
 <div>
 network: <button id=join onclick="join(event)">join wlog</button> <span id=token></span>
 <br>find: <button id=provs onclick="provs(event)">provs</button>
+<div id=peerids></div>
 
 <br>line: <input type=text name=record size=74>
 <br><button id=append onclick="append(event)">append</button>
@@ -24,7 +25,10 @@ var peerids;
 
 main();
 function main() {
-  get_token(nid).then(ipfsFindProvs).then( (a) => { peerids = a; console.log('main.peerids',peerids); });
+  get_token(nid).then(t => {
+   token = t;
+   return ipfsFindProvs(token) })
+  .then( (a) => { peerids = a; console.log('main.peerids',peerids); });
 }
 
 async function get_token(str) {
@@ -45,7 +49,24 @@ async function join(ev) {
 
 async function provs(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
+  if (typeof(peerids) == 'undefined') {
+    console.debug(callee+'.token:',token);
+    peerids = await ipfsFindProvs(token);
+  }
+  let buf = '<ul>';
+  for (peer of peerids) {
+    buf += `<li><a href=http://127.0.0.1:8080/ipns/${peer}/>${peer}</a></li>\n`
+  }
+  buf += "</ul>\n";
+  document.getElementById('peerids').innerHTML = buf;
   
+}
+
+async function append(ev) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  let line = document.getElementsByName('record')[0].value;
+    console.debug(callee+'.line:',line);
+   
 }
 </script>
 

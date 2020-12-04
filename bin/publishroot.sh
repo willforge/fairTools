@@ -26,14 +26,11 @@ rootdir=$(readlink -f "${bindir}/..")
 export PERL5LIB=${PERL5LIB:-$rootdir/lib/perl5}
 export PATH=${PERL5LIB%/lib/perl5}/bin:$PATH
 
-export IPFS_PATH=${IPFS_PATH:-$HOME/.ipfs}
-export IPFS_IMAGE=${IPFS_IMAGE:-ipfs/go-ipfs}
-export IPFS_CONTAINER=${IPFS_CONTAINER:-ipfs-node}
-
-
 # dockerized ipfs:
 export IPFS_PATH=${IPFS_PATH:-$HOME/.ipfs}
 export IPFS_STAGING=${IPFS_STAGING:-$IPFS_PATH/staging}
+export IPFS_IMAGE=${IPFS_IMAGE:-ipfs/go-ipfs}
+export IPFS_CONTAINER=${IPFS_CONTAINER:-ipfs-node}
 echo IPFS_PATH: $IPFS_PATH
 if ! which ipfs 2>/dev/null; then
 ipfs() {

@@ -25,9 +25,9 @@ export PATH=$rootdir/bin:$PATH
 peerid=$(ipfs config Identity.PeerID)
 key='clef-secrete'
 label='a-big-log.txt'
-urn="urn:wwlog:$label"
-sha2=$(echo -n "$key,$label" | openssl sha256 | cut -d' ' -f2)
-nid=$(echo $sha2 | cut -c -13)
+uri="$key,urn:wwlog:$label";
+#sha2=$(echo -n "$uri" | openssl sha256 | cut -d' ' -f2)
+nid=$(perl -S getnid.pl "$uri")
 
 ping=$(echo -n $nid | ipfs add -Q --pin=true --raw-leaves --hash sha3-224 --cid-base base58btc)
 
