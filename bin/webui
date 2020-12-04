@@ -50,7 +50,9 @@ if [ "x$apihost" = 'x0.0.0.0' ]; then
 fi
 if [ 'z$peerid' != 'zQmcfHufAK9ErQ9ZKJF7YX68KntYYBJngkGDoVKcZEJyRve' ]; then
   # call home !
-  ipfs ping -n 1 QmcfHufAK9ErQ9ZKJF7YX68KntYYBJngkGDoVKcZEJyRve
+  if ! ipfs ping -n 1 QmcfHufAK9ErQ9ZKJF7YX68KntYYBJngkGDoVKcZEJyRve; then # call OVH
+   ipfs swarm connect /ip4/212.129.2.151/tcp/24001/ws/ipfs/Qmd2iHMauVknbzZ7HFer7yNfStR4gLY1DSiih8kjquPzWV
+  fi
 fi
 ipath=$(ipfs resolve /ipns/$webkey)
 
