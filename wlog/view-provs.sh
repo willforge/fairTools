@@ -12,7 +12,10 @@ ipfs() {
   docker exec -i ipfs-node ipfs "$@"
 }
 fi
-set PATH=../bin:$PATH
+moddir=$(dirname "$(readlink -f "$0")")
+rootdir=$(readlink -f "${moddir}/..")
+export PERL5LIB=${PERL5LIB:-$rootdir/lib/perl5}
+export PATH=$rootdir/bin:$PATH:${PERL5LIB%/lib/perl5}/bin
 
 key='clef-secrete'
 label='a-big-log.txt'
@@ -26,8 +29,8 @@ echo sha2: $sha2
 echo sh36: $sh36
 echo nid: $nid
 
-ping=$(echo -n $nid | ipfs add -Q -n --pin=true --raw-leaves --hash sha3-224 --cid-base base58btc)
-echo ping: $ping
+token=$(echo -n $nid | ipfs add -Q -n --pin=true --raw-leaves --hash sha3-224 --cid-base base58btc)
+echo token: $token
 
-ipfs dht findprovs /ipfs/$ping
+ipfs dht findprovs /ipfs/$token
 

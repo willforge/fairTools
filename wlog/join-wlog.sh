@@ -12,7 +12,11 @@ ipfs() {
   docker exec -i ipfs-node ipfs "$@"
 }
 fi
-export PATH=../bin:$PATH
+moddir=$(dirname "$(readlink -f "$0")")
+rootdir=$(readlink -f "${moddir}/..")
+export PERL5LIB=${PERL5LIB:-$rootdir/lib/perl5}
+export PATH=$rootdir/bin:$PATH:${PERL5LIB%/lib/perl5}/bin
+
 
 key='clef-secrete'
 label='a-big-log.txt'

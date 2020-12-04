@@ -18,8 +18,8 @@ if ! which ipfs 2>/dev/null; then
 fi
 moddir=$(dirname "$(readlink -f "$0")")
 rootdir=$(readlink -f "${moddir}/..")
-export PATH=$rootdir/bin:$PATH
-
+export PERL5LIB=${PERL5LIB:-$rootdir/lib/perl5}
+export PATH=$rootdir/bin:$PATH:${PERL5LIB%/lib/perl5}/bin
 
 peerid=$(ipfs config Identity.PeerID)
 key='clef-secrete'
@@ -29,8 +29,8 @@ uri="$key,urn:wwlog:$label";
 nid=$(perl -S getnid.pl "$uri")
 echo "nid: $nid"
 
-ping=$(echo -n $nid | ipfs add -Q -n --pin=true --raw-leaves --hash sha3-224 --cid-base base58btc)
-echo "ping: $ping"
+token=$(echo -n $nid | ipfs add -Q -n --pin=true --raw-leaves --hash sha3-224 --cid-base base58btc)
+echo "token: $token"
 
 # ------------------------------------------
 # create new log if doesn't exist
@@ -49,7 +49,7 @@ fi
 
 # ------------------------------------------
 # pull log from peerkeys...
-peerkeys="$(ipfs --timeout 30s dht findprovs /ipfs/$ping 2>/dev/null)"
+peerkeys="$(ipfs --timeout 30s dht findprovs /ipfs/$token 2>/dev/null)"
 
 for peerkey in $peerkeys; do
  echo peerkey: $peerkey

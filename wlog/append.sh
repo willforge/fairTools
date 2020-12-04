@@ -19,7 +19,9 @@ if ! which ipfs 2>/dev/null; then
 fi
 moddir=$(dirname "$(readlink -f "$0")")
 rootdir=$(readlink -f "${moddir}/..")
-export PATH=$rootdir/bin:$PATH
+export PERL5LIB=${PERL5LIB:-$rootdir/lib/perl5}
+export PATH=$rootdir/bin:$PATH:${PERL5LIB%/lib/perl5}/bin
+
 
 
 peerid=$(ipfs config Identity.PeerID)
