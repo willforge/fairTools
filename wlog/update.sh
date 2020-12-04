@@ -27,8 +27,10 @@ label='a-big-log.txt'
 uri="$key,urn:wwlog:$label";
 #sha2=$(echo -n "$uri" | openssl sha256 | cut -d' ' -f2)
 nid=$(perl -S getnid.pl "$uri")
+echo "nid: $nid"
 
 ping=$(echo -n $nid | ipfs add -Q -n --pin=true --raw-leaves --hash sha3-224 --cid-base base58btc)
+echo "ping: $ping"
 
 # ------------------------------------------
 # create new log if doesn't exist
