@@ -18,7 +18,7 @@ network: <button id=join onclick="join(event)">join wlog</button> <span id=token
 const key='clef-secrete';
 const label='a-big-log.txt';
 const urn='urn:wwlog:'+label;
-let nid= getNid(urn);
+let nid= getNid(`${key},${urn}`);
 var token;
 var peerids;
 

@@ -17,8 +17,14 @@ set PATH=../bin:$PATH
 key='clef-secrete'
 label='a-big-log.txt'
 urn="urn:wwlog:$label"
-sha2=$(echo -n "$key,$label" | openssl sha256 | cut -d' ' -f2)
-nid=$(echo $sha2 | cut -c -13)
+str="$key,$urn"
+sha2=$(echo -n "$str" | openssl sha256 | cut -d' ' -f2)
+sh36=$(echo "f$sha2" | base36 -d)
+nid=$(echo "f$sha2" | base36 -d | cut -c 2-14)
+echo urn: $urn
+echo sha2: $sha2
+echo sh36: $sh36
+echo nid: $nid
 
 ping=$(echo -n $nid | ipfs add -Q -n --pin=true --raw-leaves --hash sha3-224 --cid-base base58btc)
 echo ping: $ping
