@@ -1,0 +1,75 @@
+# 
+
+set -e
+
+IPFS_CONTAINER=${IPFS_CONTAINER:-ipfs-node}
+
+bindir=$(dirname "$(readlink -f "$0")")
+. $bindir/envrc.sh
+
+peerid=$(ipfs config Identity.PeerID) && echo "peerid: $peerid"
+set +e
+
+if ipfs key | grep -q -w webui; then
+webkey=$(ipfs key list -l --ipns-base=b58mh | grep -w webui | cut -d' ' -f 1)
+else
+webkey=QmY5irRjuwhhFvkY88ScnM7ow3DxvbhEi13mDAsUUVHRN4
+fi
+
+
+gateway=$(ipfs config Addresses.Gateway)
+echo "gateway: $gateway"
+gwport=$(echo $gateway | cut -d/ -f 5)
+gwhost=$(echo $gateway | cut -d/ -f 3)
+
+if [ "x$gwhost" = 'x0.0.0.0' ]; then
+  # docker & misc  ...
+  origin=$(ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | json_xs -e '$_ = $_->[0]' | sed -e 's/"//g')
+  if [ "x$origin" = 'x*' ]; then
+    origin=http://127.0.0.1:8080
+  fi
+  gwhost=$(ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | grep $gwport | sed -e 's,.*https*://,,' -e "s/:$gwport.*//")
+  if [ "x$gwhost" = 'x' ]; then
+    gwport=8080
+    gwhost=$(ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | grep $gwport | sed -e 's,.*https*://,,' -e "s/:$gwport.*//")
+  fi
+  #h=$(expr "$gwport" % 251);
+  #gwhost=${gwhost:-127.0.0.$h}
+fi
+
+api=$(ipfs config Addresses.API)
+echo "api: $api"
+apiport=$(echo $api | cut -d/ -f 5)
+apihost=$(echo $api | cut -d/ -f 3)
+if [ "x$apihost" = 'x0.0.0.0' ]; then
+  apihost=$(ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | grep $apiport | sed -e 's,.*https*://,,' -e "s/:$apiport.*//")
+  if [ "x$apihost" = 'x' ]; then
+    apiport=5001
+    apihost=$(ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | grep $apiport | sed -e 's,.*https*://,,' -e "s/:$apiport.*//")
+  fi
+fi
+if [ 'z$peerid' != 'zQmcfHufAK9ErQ9ZKJF7YX68KntYYBJngkGDoVKcZEJyRve' ]; then
+  # call home !
+  if ! ipfs ping -n 1 QmcfHufAK9ErQ9ZKJF7YX68KntYYBJngkGDoVKcZEJyRve; then # call OVH
+   ipfs swarm connect /ip4/212.129.2.151/tcp/24001/ws/ipfs/Qmd2iHMauVknbzZ7HFer7yNfStR4gLY1DSiih8kjquPzWV
+  fi
+fi
+ipath=$(ipfs resolve /ipns/$webkey)
+
+if [ ! -d $HOME/.../_data ]; then
+  mkdir -p $HOME/.../_data
+fi
+cat > $HOME/.../_data/ipms.yml <<EOT
+--- # ipms webui and gateway parameters
+origin: $origin
+gwport: $gwport
+apiport: $apiport
+gateway: http://$gwhost:$gwport
+webui: http://$apihost:$apiport/
+ipath: $ipath
+EOT
+
+
+echo x-api-url: http://$apihost:$apiport/webui
+echo xdg-open http://$gwhost:$gwport/ipns/$webkey
+xdg-open $origin$ipath

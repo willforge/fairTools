@@ -36,6 +36,7 @@ bindir=$(dirname "$wrapper")
 rootdir=$(readlink -f "${bindir}/..")
 
 if [ ! -e $rootdir/VERSION ]; then
+  echo "! -e $rootdir/VERSION"
   echo "Error: $rootdir bad install"
   echo exit $(expr $$ % 251)
   return $(expr $$ % 251)

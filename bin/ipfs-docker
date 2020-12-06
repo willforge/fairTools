@@ -1,0 +1,9 @@
+#
+
+export IPFS_CONTAINER=${IPFS_CONTAINER:-ipfs-node}
+echo docker exec -i $IPFS_CONTAINER ipfs "$@" 1>&2
+docker exec -i $IPFS_CONTAINER ipfs "$@"
+
+exit $?;
+
+true;
