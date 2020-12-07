@@ -5,30 +5,35 @@
 <script src=../js/ipfs.js></script>
 
 <div>
-network: <button id=join onclick="join(event)">join wlog</button> <span id=token></span>
-<br>find: <button id=provs onclick="provs(event)">provs</button>
+network: <button id=join onclick="join(event)">join wlog</button>
+<br>token: <span id=token></span>
+<br>find: <button id=provs onclick="provs(event)">provs</button> <span id=status></span>
 <div id=peerids></div>
 
 <br>line: <input type=text name=record size=74>
 <br><button id=append onclick="append(event)">append</button>
 <button id=update onclick="update(event)">update</button>
+<br>url: <span id=url><span>
 </div>
 
 
 <script>
+var peerid;
 const key='clef-secrete';
 const label='a-big-log.txt';
-const urn='urn:wwlog:'+label;
-let nid= getNid(`${key},${urn}`);
+const uri=`${key},urn:wwlog:${label}`;
+let nid= getNid(uri);
 var token;
 var peerids;
 
 main();
-function main() {
-  get_token(nid).then(t => {
-   token = t;
-   return ipfsFindProvs(token) })
-  .then( (a) => { peerids = a; console.log('main.peerids',peerids); });
+async function main() {
+   peerid = await Promise.resolve(promisedPeerId);
+   token = await get_token(nid);
+   display_status('pending');
+   peerids = await ipfsFindProvs(token);
+   display_status('ok');
+   console.log('main.peerids',peerids);
 }
 
 async function get_token(str) {
@@ -51,11 +56,13 @@ async function provs(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   if (typeof(peerids) == 'undefined') {
     console.debug(callee+'.token:',token);
+    display_status('pending');
     peerids = await ipfsFindProvs(token);
+    display_status('ok');
   }
   let buf = '<ul>';
   for (peer of peerids) {
-    buf += `<li><a href=http://127.0.0.1:8080/ipns/${peer}/>${peer}</a></li>\n`
+    buf += `<li><a target=_blank href=http://127.0.0.1:8080/ipns/${peer}/>${peer}</a></li>\n`
   }
   buf += "</ul>\n";
   document.getElementById('peerids').innerHTML = buf;
@@ -65,8 +72,19 @@ async function provs(ev) {
 async function append(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let line = document.getElementsByName('record')[0].value;
-    console.debug(callee+'.line:',line);
-   
+  console.debug(callee+'.line:',line);
+  let file = `/public/share/${nid}/${label}`
+  //let buf = await getMFSFileContent(path);
+  let date = getDate();
+  let time = getTime();
+  let header = `# user:${peerid} on ${date} @ ${time}\n`
+  let hash = await ipfsLogAppend(file,header+line+"\n")
+  document.getElementById('url').innerHTML = `<a href=http://127.0.0.1:8080/ipfs/${hash}>${file}</a>`;
+}
+
+function display_status(s) {
+  let imgs = { 'pending':'img/spinner.png', 'ok':'img/check-mark.png' };
+  document.getElementById('status').innerHTML=`<img alt=${s} src=${imgs[s]} height="24">`;
 }
 </script>
 
