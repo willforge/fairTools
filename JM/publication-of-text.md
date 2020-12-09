@@ -6,15 +6,22 @@
 
 ## readers
 
-1. get "global merkle dad" for text
+1. get "global merkle dag" for text
 
 A : ordered list of 10 texts
 B : ordered list of 10 texts
 
 A:10 ∩ B:10 = {:5}
 
-A:10 + B:10 = A':15
+A:10 + B:10 = A':15 
 C:5 = maj(A':15,B:10)
+
+A is publishing A' and C where C is the result of the majority judgement for A,B
+
+
+Question: can we trust C ? 
+
+given an other node D, D can verify independently C by redoing the math with published A'
 
 C':5 = maj(A':15,B:10)
 

@@ -1,23 +1,27 @@
 #
 
 netw="$1"
-tics=$(date +%s)
+tic=$(date +%s)
 regf=/.../registries/networks.log
 # Location name service:
-lns=$(echo -n "LNS" | ipfs add -Q - --hash sha3-224 --cid-base base58btc)
+lns=$(echo -n "Location Name Service" | ipfs add -Q - --hash sha3-224 --cid-base base58btc)
 echo "lns: $lns"
-qm=$(sed -e "s/network: .*/network: $netw/" charter.txt | ipfs add -Q - --hash sha3-224 --raw-leaves --cid-base base58btc)
+qm=$(sed -e "s/network: .*/network: $netw/" charter.html | ipfs add -Q - --hash sha3-224 --raw-leaves --cid-base base58btc)
 echo qm: $qm
-record="$tics $qm /public/networks/$netw"
+record="$tic $qm /public/networks/$netw"
 ipfs-log append $regf "$record"
-# publish registry file
+
+# stage registry file
 qm=$(ipfs files stat $regf --hash)
-ipfs-log append '/.../staged.idx' "$tics $qm $regf"
+ipfs-log append '/.../staged.idx' "$tic $qm $regf"
 
 webkey=$(ipfs key list -l --ipns-base=b58mh | grep -w webui | cut -d' ' -f 1)
 echo url: http://localhost:8080/ipns/$webkey/
+
+if false; then # publish
 qm=$(ipfs files stat '/...' --hash)
 ipfs name publish /ipfs/$qm --allow-offline
+fi
 
 
 # TODO turn network into a folder

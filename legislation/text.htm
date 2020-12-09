@@ -29,12 +29,11 @@ lang: fr
 <option value=laws>{{dict.laws}}</option>
 </select>
 <br>{{dict.author}}: <input name=author placeholder="{{dict.author}}">
-<br>{{dict.topic}}: <input type=text name=topic placeholder="{{dict.topic}}">
 <br>{{dict.date}}: <input type=date name=date value='' placeholder="{{dict.date}}">
 <br>{{dict.peerid}}: <input name=peerid placeholder="{{dict.peerid}}" size=39 disabled>
 <hr>
 <br>{{dict.title}}: <input type=text name=title placeholder="{{dict.title}}">
-
+<br>{{dict.topic}}: <input type=text name=topic placeholder="{{dict.topic}}">
 <div id=complaint>
 <textarea name=complaint></textarea>
 <br><span id=signature></span>
@@ -103,6 +102,7 @@ console.debug(callee+'.logfile:',logfile);
 
 let text = document.getElementsByName('complaint')[0].value;
 let payload = await ipfsAddTextContent(text);
+
 let qm = await ipfsLogAppend(logfile,`${tics}: ${payload} by ${author}`);
 document.getElementById('qm').innerHTML = `<a href=http://localhost:${gwport}/${qm}>/ipfs/${qm}</a>`;
 console.debug(callee+'.qm:',qm);

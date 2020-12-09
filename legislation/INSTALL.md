@@ -12,7 +12,7 @@ sudo apt-key fingerprint 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
 sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable"
 sudo apt-get update
 sudo apt-get install docker-ce docker-ce-cli containerd.io
-sudo docker run hello-world
+sudo docker run --rm hello-world
 ```
 
 2. fetching jekyll

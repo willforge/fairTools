@@ -7,7 +7,7 @@ To compile the html file run
 
 ```sh
 docker run --rm --volume="$PWD:/srv/jekyll" \
-  -it jekyll/minimal jekyll build
+  -it -u root:root jekyll/minimal jekyll build
 ```
 
 - if you have jekyll you can run :

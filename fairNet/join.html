@@ -152,6 +152,7 @@ async function get_networks(group) {
  console.debug(callee+'.peerids:', peerids);
  let selected = peerids.sort( randomly );
  let rootdir= await ipfsNameResolve(selected[0]);
+ console.debug(callee+'.selected[0]:',selected[0]);
  console.debug(callee+'.rootdir:',rootdir);
 
  let indexf = await ipfsGetContentByPath(`${rootdir}/.../registries/networks.log`)
