@@ -4,11 +4,13 @@ blockring=Qmd2iHMauVknbzZ7HFer7yNfStR4gLY1DSiih8kjquPzWV
 michelc=QmcfHufAK9ErQ9ZKJF7YX68KntYYBJngkGDoVKcZEJyRve
 emilea=12D3KooWHpj1ercuLscv78Ezz4TADdwSgNkmNmd4qH8dfCCcwZHX
 alainbr=12D3KooWJDBrt6re8zveUPZKwC3QPBid4iCguyMVuWbKMXb5HeTa
+marys=QmTeqJutKAtVyX39qvhAGfjQFesbubamN8dvVPMg5jYRwS
 
 case "$1" in 
  michel*) peerkey=$michelc;;
  emile*) peerkey=$emilea;;
  alain*) peerkey=$alainbr;;
+ mary*) peerkey=$marys;;
  *) peerkey=$blockring;;
 esac
 

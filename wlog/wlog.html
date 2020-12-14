@@ -12,6 +12,7 @@ network: <button id=join onclick="join(event)">join wlog</button>
 
 <br>line: <input type=text name=record size=74>
 <br><button id=append onclick="append(event)">append</button>
+<button id=publish onclick="publish(event)">publish</button>
 <button id=update onclick="update(event)">update</button>
 <br>url: <span id=url><span>
 </div>
@@ -28,7 +29,10 @@ var peerids;
 
 main();
 async function main() {
+   config = await Promise.resolve(promisedConfig);
+   console.log('main.config:',config);
    peerid = await Promise.resolve(promisedPeerId);
+   console.info('main.peerid:',peerid);
    token = await get_token(nid);
    display_status('pending');
    peerids = await ipfsFindProvs(token);
@@ -69,6 +73,15 @@ async function provs(ev) {
   
 }
 
+async function update(ev) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  for (let peer of peerids) {
+    console.log(callee+'.peer:',peer);
+    if (peer == peerid) { continue }
+  } 
+}
+
+
 async function append(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let line = document.getElementsByName('record')[0].value;
@@ -77,8 +90,9 @@ async function append(ev) {
   //let buf = await getMFSFileContent(path);
   let date = getDate();
   let time = getTime();
-  let header = `# user:${peerid} on ${date} @ ${time}\n`
-  let hash = await ipfsLogAppend(file,header+line+"\n")
+  let header = `# user:${peerid} on ${date} @ ${time}\n`;
+  let hash = await ipfsLogAppend(file,header+line+"\n");
+  console.log(callee+'.hash:',hash);
   document.getElementById('url').innerHTML = `<a href=http://127.0.0.1:8080/ipfs/${hash}>${file}</a>`;
 }
 
