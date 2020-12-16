@@ -3,6 +3,7 @@
 <script src=../js/essential.js></script>
 <script src=../js/sha256.js></script>
 <script src=../js/ipfs.js></script>
+<script src=../js/functions.js></script>
 
 <div>
 network: <button id=join onclick="join(event)">join wlog</button>
@@ -15,6 +16,7 @@ network: <button id=join onclick="join(event)">join wlog</button>
 <button id=publish onclick="publish(event)">publish</button>
 <button id=update onclick="update(event)">update</button>
 <br>url: <span id=url><span>
+<br>root: <span id=root><span>
 </div>
 
 
@@ -29,8 +31,7 @@ var peerids;
 
 main();
 async function main() {
-   config = await Promise.resolve(promisedConfig);
-   console.log('main.config:',config);
+   await Promise.resolve(promisedConfig); // just to wait for config !
    peerid = await Promise.resolve(promisedPeerId);
    console.info('main.peerid:',peerid);
    token = await get_token(nid);
@@ -81,6 +82,11 @@ async function update(ev) {
   } 
 }
 
+async function publish(ev) {
+ let qm = await publish_root();
+ document.getElementById('root').innerHTML = `<a href="${gw_url}/ipfs/${qm}">${qm}</a>`
+ 
+}
 
 async function append(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
@@ -93,7 +99,7 @@ async function append(ev) {
   let header = `# user:${peerid} on ${date} @ ${time}\n`;
   let hash = await ipfsLogAppend(file,header+line+"\n");
   console.log(callee+'.hash:',hash);
-  document.getElementById('url').innerHTML = `<a href=http://127.0.0.1:8080/ipfs/${hash}>${file}</a>`;
+  document.getElementById('url').innerHTML = `<a href=${gw_url}/ipfs/${hash}>${file}</a>`;
 }
 
 function display_status(s) {

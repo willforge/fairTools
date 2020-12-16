@@ -85,13 +85,12 @@ if ipfs files stat /.../staged --hash 2>/dev/null ; then
    ipfs files cp /ipfs/$prev /.../staged/_prev
    ipfs files rm /.../published
    ipfs files mv /.../staged /.../published
-   pub=$(ipfs files stat /.../publihed --hash);
-else
-   if ipfs files stat /public --hash 2>/dev/null; then
-     pub=$(ipfs files stat /public --hash)
-   else 
-    pub=$emptyd
-   fi
+#  pub=$(ipfs files stat /.../publihed --hash);
+fi
+if ipfs files stat /public --hash 2>/dev/null; then
+  pub=$(ipfs files stat /public --hash)
+else 
+  pub=$emptyd
 fi
 echo pub: $pub
 
