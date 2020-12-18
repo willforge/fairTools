@@ -6,8 +6,10 @@
 <script src=../js/functions.js></script>
 
 <div>
-network: <button id=join onclick="join(event)">join wlog</button>
+peerid: <span id=peerid></span>
+<br>network: <button id=join onclick="join(event)">join wlog</button>
 <br>token: <span id=token></span>
+<br>local: <span id=local></span>
 <br>find: <button id=provs onclick="provs(event)">provs</button> <span id=status></span>
 <div id=peerids></div>
 
@@ -15,8 +17,10 @@ network: <button id=join onclick="join(event)">join wlog</button>
 <br><button id=append onclick="append(event)">append</button>
 <button id=publish onclick="publish(event)">publish</button>
 <button id=update onclick="update(event)">update</button>
+<button id=reduce onclick="reduce(event)">reduce</button>
 <br>url: <span id=url></span>
 <br>root: <span id=root></span>
+<br>remote: <span id=remote></span>
 </div>
 
 
@@ -26,6 +30,7 @@ const key='clef-secrete';
 const label='a-big-log.txt';
 const uri=`${key},urn:wwlog:${label}`;
 let nid= getNid(uri);
+let logf = `/public/share/${nid}/${label}`;
 var token;
 var peerids;
 
@@ -33,6 +38,8 @@ main();
 async function main() {
    await Promise.resolve(promisedConfig); // just to wait for config !
    peerid = await Promise.resolve(promisedPeerId);
+   document.getElementById('peerid').innerHTML = `<a href=${gw_url}/ipns/${peerid}>${peerid}</a>`;
+   document.getElementById('local').innerHTML = `<a href=${gw_url}/ipns/${peerid}${logf}>${logf}</a>`;
    console.info('main.peerid:',peerid);
    token = await get_token(nid);
    display_status('pending');
@@ -54,7 +61,7 @@ async function join(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let token = await ipfsAddToken(nid);
   console.debug(callee+'.token:',token);
-  document.getElementById('token').innerHTML = `<a href=http://127.0.0.1:8080/ipfs/${token}>${token}</a>`;
+  document.getElementById('token').innerHTML = `<a href=${gw_url}/ipfs/${token}>${token}</a>`;
 }
 
 async function provs(ev) {
@@ -67,19 +74,59 @@ async function provs(ev) {
   }
   let buf = '<ul>';
   for (peer of peerids) {
-    buf += `<li><a target=_blank href=http://127.0.0.1:8080/ipns/${peer}/>${peer}</a></li>\n`
+    buf += `<li><a target=_blank href=${gw_url}/ipns/${peer}/>${peer}</a></li>\n`
   }
   buf += "</ul>\n";
   document.getElementById('peerids').innerHTML = buf;
   
 }
 
+
+async function reduce(ev) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  let seen = {};
+  let result = '';
+  let content = await getMFSFileContent(logf);
+  let lines = content.split(/\n/);
+  console.debug(callee+'.lines:',lines);
+  for (let line of lines) {
+    if (typeof(seen[line]) == 'undefined') {
+      result += line+ "\n";
+      seen[line]++;
+    }
+  }
+  console.debug(callee+'.result:',result);
+  await mfsRemove(logf);
+  await mfsCopy('QmbFMke1KXqnYyBBWxB74N4c5SBnJMVAiMNRcGu6x1AwQH',logf);
+  let qmlogf = await ipfsLogAppend(logf,result);
+  return qmlogf
+  document.getElementById('url').innerHTML = `<a href="${gw_url}/ipfs/${qmlogf}">/ipfs/${qmlogf}</a>`
+}
+
 async function update(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
+  let qmlogf;
+  let buf = '<ul>';
   for (let peer of peerids) {
     console.log(callee+'.peer:',peer);
     if (peer == peerid) { continue }
-  } 
+    let ipath = await ipfsNameResolve(peer);
+    console.log(callee+'.ipath:',ipath);
+    let qpath = await ipfsResolve(`${ipath}${logf}`);
+    if (typeof(qpath) != 'undefined') {
+       console.debug(callee+'.qpath:',qpath);
+       let log = await ipfsGetContentByHash(qpath);
+       console.debug(callee+'.log:',log);
+       qmlogf = await ipfsLogAppend(logf,log);
+       console.debug(callee+'.qmlogf:',qmlogf);
+       buf += `<li><a target=_blank href=${gw_url}${qpath}/>${peer}${logf}</a></li>\n`;
+       document.getElementById('remote').innerHTML = buf + "</ul>";
+    }
+  }
+  buf += "</ul>\n";
+  document.getElementById('remote').innerHTML = buf;
+  console.debug(callee+'.qmlogf:',qmlogf);
+  return qmlogf;
 }
 
 async function publish(ev) {
@@ -105,6 +152,11 @@ async function append(ev) {
 function display_status(s) {
   let imgs = { 'pending':'img/spinner.png', 'ok':'img/check-mark.png' };
   document.getElementById('status').innerHTML=`<img alt=${s} src=${imgs[s]} height="24">`;
+  if (s.match('pending')) {
+     document.getElementById('update').disabled=true
+  } else if (s.match('ok')) { 
+     document.getElementById('update').disabled=false
+  }
 }
 </script>
 
