@@ -99,12 +99,13 @@ async function reduce(ev) {
   await mfsRemove(logf);
   await mfsCopy('QmbFMke1KXqnYyBBWxB74N4c5SBnJMVAiMNRcGu6x1AwQH',logf);
   let qmlogf = await ipfsLogAppend(logf,result);
-  return qmlogf
   document.getElementById('url').innerHTML = `<a href="${gw_url}/ipfs/${qmlogf}">/ipfs/${qmlogf}</a>`
+  return qmlogf
 }
 
 async function update(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
+  document.getElementById('update').disabled=true
   let qmlogf;
   let buf = '<ul>';
   for (let peer of peerids) {
@@ -124,6 +125,7 @@ async function update(ev) {
     }
   }
   buf += "</ul>\n";
+  document.getElementById('update').disabled=false;
   document.getElementById('remote').innerHTML = buf;
   console.debug(callee+'.qmlogf:',qmlogf);
   return qmlogf;
