@@ -21,6 +21,7 @@ peerid: <span id=peerid></span>
 <br>url: <span id=url></span>
 <br>root: <span id=root></span>
 <br>remote: <span id=remote></span>
+<br>wlog:<br><textarea id=file cols=80 rows=25></textarea>
 </div>
 
 
@@ -40,7 +41,7 @@ async function main() {
    peerid = await Promise.resolve(promisedPeerId);
    document.getElementById('peerid').innerHTML = `<a href=${gw_url}/ipns/${peerid}>${peerid}</a>`;
    document.getElementById('local').innerHTML = `<a href=${gw_url}/ipns/${peerid}${logf}>${logf}</a>`;
-   console.info('main.peerid:',peerid);
+   console.log('main.peerid:',peerid);
    token = await get_token(nid);
    display_status('pending');
    peerids = await ipfsFindProvs(token);
@@ -62,6 +63,12 @@ async function join(ev) {
   let token = await ipfsAddToken(nid);
   console.debug(callee+'.token:',token);
   document.getElementById('token').innerHTML = `<a href=${gw_url}/ipfs/${token}>${token}</a>`;
+  display_file(logf);
+}
+
+async function display_file(file) {
+  let content = await getMFSFileContent(file);
+  document.getElementById('file').value = content;
 }
 
 async function provs(ev) {
@@ -95,11 +102,12 @@ async function reduce(ev) {
       seen[line]++;
     }
   }
-  console.debug(callee+'.result:',result);
+  console.debug(callee+'.result:',[{result}]);
   await mfsRemove(logf);
   await mfsCopy('QmbFMke1KXqnYyBBWxB74N4c5SBnJMVAiMNRcGu6x1AwQH',logf);
   let qmlogf = await ipfsLogAppend(logf,result);
   document.getElementById('url').innerHTML = `<a href="${gw_url}/ipfs/${qmlogf}">/ipfs/${qmlogf}</a>`
+  display_file(logf);
   return qmlogf
 }
 
@@ -112,6 +120,7 @@ async function update(ev) {
     console.log(callee+'.peer:',peer);
     if (peer == peerid) { continue }
     let ipath = await ipfsNameResolve(peer);
+    if (typeof(ipath) != 'undefined') {
     console.log(callee+'.ipath:',ipath);
     let qpath = await ipfsResolve(`${ipath}${logf}`);
     if (typeof(qpath) != 'undefined') {
@@ -120,8 +129,10 @@ async function update(ev) {
        console.debug(callee+'.log:',log);
        qmlogf = await ipfsLogAppend(logf,log);
        console.debug(callee+'.qmlogf:',qmlogf);
-       buf += `<li><a target=_blank href=${gw_url}${qpath}/>${peer}${logf}</a></li>\n`;
+       buf += `<li><a target=_blank href=${gw_url}${qpath}/>${ipath}${logf}</a></li>\n`;
        document.getElementById('remote').innerHTML = buf + "</ul>";
+       display_file(logf);
+    }
     }
   }
   buf += "</ul>\n";
@@ -132,8 +143,10 @@ async function update(ev) {
 }
 
 async function publish(ev) {
+ document.getElementById('publish').disabled=true
  let qm = await publish_root();
  document.getElementById('root').innerHTML = `<a href="${gw_url}/ipfs/${qm}">${qm}</a>`
+ document.getElementById('publish').disabled=false
  
 }
 
@@ -141,14 +154,14 @@ async function append(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let line = document.getElementsByName('record')[0].value;
   console.debug(callee+'.line:',line);
-  let file = `/public/share/${nid}/${label}`
   //let buf = await getMFSFileContent(path);
   let date = getDate();
   let time = getTime();
   let header = `# user:${peerid} on ${date} @ ${time}\n`;
-  let hash = await ipfsLogAppend(file,header+line+"\n");
+  let hash = await ipfsLogAppend(logf,header+line+"\n");
   console.log(callee+'.hash:',hash);
-  document.getElementById('url').innerHTML = `<a href=${gw_url}/ipfs/${hash}>${file}</a>`;
+  document.getElementById('url').innerHTML = `<a href=${gw_url}/ipfs/${hash}>${logf}</a>`;
+  display_file(logf);
 }
 
 function display_status(s) {
