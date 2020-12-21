@@ -13,10 +13,13 @@ peerid: <span id=peerid></span>
 <br>find: <button id=provs onclick="provs(event)">provs</button> <span id=status></span>
 <div id=peerids></div>
 
+<br>timestamp: <input name=ts value onmouseover="this.value=Date.now();">
 <br>line: <input type=text name=record size=74>
+<input type=checkbox name=delete title=delete>
 <br><button id=append onclick="append(event)">append</button>
 <button id=publish onclick="publish(event)">publish</button>
 <button id=update onclick="update(event)">update</button>
+<progress id="bar" value="0" max="100">0%</progress><span id="per"></span>
 <button id=reduce onclick="reduce(event)">reduce</button>
 <br>url: <span id=url></span>
 <br>root: <span id=root></span>
@@ -67,8 +70,46 @@ async function join(ev) {
 }
 
 async function display_file(file) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
   let content = await getMFSFileContent(file);
-  document.getElementById('file').value = content;
+  let lines = content.split(/\r?\n/).slice(0,-1);
+  let filtered = lines.filter( _ => { return _.match(/^[^#]/) });
+  let records = filtered.map( _ => { return mysplit(' ',_,3); });
+
+  let selected = {};
+  for (record of records.sort(by_time)) {
+    console.debug(callee+'.record:',record);
+    if (record[1] == 'A') {
+      selected[record[2]] = record;
+    }
+    if (record[1] == 'D') {
+      delete selected[record[2]];
+    }
+  }
+  console.debug(callee+'.selected:',selected);
+
+
+  document.getElementById('file').value = filtered.sort(numerically).join("\n");
+}
+
+function by_time(a,b) {
+  return ((a[0] - b[0]) || compare(a[1],b[1]));
+}
+function numerically(a,b) {
+  return (a.split(' ',1) - b.split(' ',1)) || compare(a,b);
+}
+
+function mysplit(sep,str,limit) { // split a la perl !
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  let a = str.split(sep);
+  let last = a[limit-1];
+  for (let i = limit; i < a.length; i++) {
+    last += sep + a[i];
+  }
+  a[limit-1] = last;
+  a = a.slice(0,limit); // end position excluded
+  // console.debug(callee+'.a:after',a)
+  return a
 }
 
 async function provs(ev) {
@@ -88,14 +129,18 @@ async function provs(ev) {
   
 }
 
+function chop(s) {
+  return s.slice(0,-1);
+}
 
 async function reduce(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let seen = {};
   let result = '';
   let content = await getMFSFileContent(logf);
+      content = content.replace(/\r\n/g,"\n").slice(0,-1); // remove last \n
   let lines = content.split(/\n/);
-  console.debug(callee+'.lines:',lines);
+  // console.debug(callee+'.lines:',lines);
   for (let line of lines) {
     if (typeof(seen[line]) == 'undefined') {
       result += line+ "\n";
@@ -111,11 +156,19 @@ async function reduce(ev) {
   return qmlogf
 }
 
+function progress (percent) {
+let bar = document.getElementById("bar");
+let per = document.getElementById("per");
+bar.value = percent;
+per.innerHTML = percent + "%";
+}
+
 async function update(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   document.getElementById('update').disabled=true
   let qmlogf;
   let buf = '<ul>';
+  progress (10)
   for (let peer of peerids) {
     console.log(callee+'.peer:',peer);
     if (peer == peerid) { continue }
@@ -139,6 +192,7 @@ async function update(ev) {
   document.getElementById('update').disabled=false;
   document.getElementById('remote').innerHTML = buf;
   console.debug(callee+'.qmlogf:',qmlogf);
+progress (100)
   return qmlogf;
 }
 
@@ -152,13 +206,16 @@ async function publish(ev) {
 
 async function append(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
+  let delete_flag = document.getElementsByName('delete')[0].checked ? 'D' : 'A';
+  let timestamp = document.getElementsByName('ts')[0].value;
   let line = document.getElementsByName('record')[0].value;
+  let record = `${timestamp} ${delete_flag} ${line}`;
   console.debug(callee+'.line:',line);
   //let buf = await getMFSFileContent(path);
   let date = getDate();
   let time = getTime();
   let header = `# user:${peerid} on ${date} @ ${time}\n`;
-  let hash = await ipfsLogAppend(logf,header+line+"\n");
+  let hash = await ipfsLogAppend(logf,header+record+"\n");
   console.log(callee+'.hash:',hash);
   document.getElementById('url').innerHTML = `<a href=${gw_url}/ipfs/${hash}>${logf}</a>`;
   display_file(logf);
