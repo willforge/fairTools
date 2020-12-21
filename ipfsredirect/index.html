@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<meta charset="utf8"/>
+<script>
+  const regkey='Qmdg3iqghvthfjMh1y8F3nkFqGq9WtHYX28ZJPcp2DmyCj';
+  const gen='QmTKVcRtbWjJqVMUVhN1Yda3x2oikSHTEjznNHwDVi9kzf'; // example.com
+  const qm='QmXJ4gcWJc4QeGJpc9kmCfzFQZa4xuk8yn3jiJXZSmoRJH'; // previous
+</script>
+<style>
+body {
+  background-color: #325;
+}
+.dbug {
+  border: 1px dashed red;
+}
+.content {
+  /*
+  position: absolute;
+   */
+  max-width: 720px;
+  background: white;
+  opacity: 0.98;
+  margin: auto;
+  margin-top: 40px;
+  padding: 1rem;
+}
+img {
+  padding: 0.5rem;
+  float: left;
+}
+p {
+  padding-left: 0.8rem;
+  padding-right: 0.8rem;
+}
+</style>
+<body>
+<div class=content>
+<img alt="[photo]" width=320 height=320 src=https://source.unsplash.com/random/320x320/?human&sig=:qm>
+<h2>Why, Hello World</h2>
+<p>We'd like to run our websites hostless, so we have them viewable on the Mychelium P2P Network.
+if you have an <a href=https://www.ipfs.io/>IPFS</a> node running then you will be redirected to :
+ <p style="margin-left:200px; margin-right:50px;">
+   <a href=http://127.0.0.1:8080/ipfs/:qm>/ipfs/:qm</a>
+ </p>
+otherwise you can use a public gateway such as :
+ <p style="margin-left:200px; margin-right:50px;">
+   <a href=https://gateway.ipfs.io/ipfs/:qm>https://gateway.ipfs.io/ipfs/:qm</a>
+ </p>
+
+<br><br>
+contact: <a href="mailto:info@:host">info@:host</a>
+</div>
+<script>
+ var hostname = location.hostname.replace('www.','');
+ var gw_url = 'https://127.0.0.1:8080';
+ const ok = test_url(gw_url+'/ipfs/zz38RTafUtxY')
+   .catch( () => { get_config('http://127.0.0.1:1124/config.json') } );
+
+ ok.then(main).catch(_ => { console.error('ok.catch:',_); });
+
+function get_config(url) {
+  fetch(url).then( resp => resp.json() )
+  .then(json => {
+    console.info('get_config.json:',json);
+    if (json && typeof(json.gw_url) != 'undefined') {
+      gw_url = json.gw_url;
+      return true;
+    } else {
+      console.warn('get_config.: no gw_url',gw_url);
+    }
+  })
+  .catch(console.warn);
+}
+
+ function main(ok) {
+    console.info('location:',location);
+    if (ok) {
+      console.log('ok: %o',ok);
+      console.log('gw_url: %s',gw_url);
+    } else {
+      console.warn('!ok:',ok);
+      gw_url = 'https://gateway.ipfs.io';
+    }
+    let reg = get_registry(regkey);
+
+    let e = document.getElementsByClassName('content')[0];
+    e.innerHTML = e.innerHTML.replace(/:host/g,hostname);
+
+    let i = document.getElementsByTagName('img')[0];
+    i.src = i.src.replace(':qm',qm);
+
+    let els = document.getElementsByTagName('a');
+    for (e of els) {
+       if (e.href.match(':qm')) {
+          e.href = e.href.replace('http://127.0.0.1:8080',gw_url);
+          e.href = e.href.replace(':qm',qm);
+          e.innerHTML = e.href.replace(':qm',qm);
+       }
+    }
+
+ }
+ async function get_registry(k) {
+   let url= gw_url + '/api/v0/name/resolve?arg='+k;
+   return fetch(url).then( resp => resp.json() )
+    .then( json => json.Path )
+    .then( ipath => {
+        let map = { 'localhost' : qm};
+        console.log('ipath:',ipath);
+        let reg = fetch(gw_url + ipath, { mode: 'cors' })
+         .then( resp => resp.text() )
+         .then( reg => {
+            let t = reg.split("\n").map( _ => _.split(' ') );
+            console.log('t:',t); 
+            let sorted = t.sort(by_time);
+            for (let i in sorted) {
+              let fields=sorted[i];
+              map[fields[2]] = fields[1];
+            }
+            console.log('get_registry.map:',map);
+            if (map[hostname]) {
+               qmloc = map[hostname];
+               location.href = `${gw_url}/ipfs/${qmloc}/`;
+            } else {
+               qmloc = 'Qmb3cY3zFJ5isjJ5H9cP47Vfqa6pqNwypbuo2TiBGjUmLd';
+            }
+            return qmloc;
+         })
+        .then( hash => {
+           console.log('get_registry.hash:',hash);
+           let els = document.getElementsByTagName('a');
+           for (e of els) {
+             if (e.href.match(/Qm\w+/)) {
+               e.href = e.href.replace(/Qm\w+/,hash);
+               e.innerHTML = e.href.replace(/Qm\w+/,hash);
+             }
+           }
+        })
+        .catch(console.error);
+
+        return ipath;
+        })
+    .catch(console.error);
+ }
+
+function by_time (a,b) {
+  let order = compare(a[0],b[0]);
+  if (order == 0) { order = compare(a[1],b[1]); }
+  return order;
+}
+
+function compare(a,b) {
+    let order = 0;
+    if (a > b) {
+       order = 1;
+    } else if (a < b) {
+       order = -1;
+    }
+    return order;
+ }
+
+async function test_url(u) {
+  return fetch(u, { mode: 'cors' })
+   .then( resp => {
+     if(resp.ok) {
+       return Promise.resolve(true);
+     } else {
+       return Promise.reject(false);
+     }
+   })
+   .catch( _ => { console.warn('test_url:',_); return Promise.reject(false); });
+}
+</script>
