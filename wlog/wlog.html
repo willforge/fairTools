@@ -30,6 +30,7 @@ peerid: <span id=peerid></span>
 
 <script>
 var peerid;
+const webkey='QmY5irRjuwhhFvkY88ScnM7ow3DxvbhEi13mDAsUUVHRN4';
 const key='clef-secrete';
 const label='a-big-log.txt';
 const uri=`${key},urn:wwlog:${label}`;
@@ -43,7 +44,7 @@ async function main() {
    await Promise.resolve(promisedConfig); // just to wait for config !
    peerid = await Promise.resolve(promisedPeerId);
    document.getElementById('peerid').innerHTML = `<a href=${gw_url}/ipns/${peerid}>${peerid}</a>`;
-   document.getElementById('local').innerHTML = `<a href=${gw_url}/ipns/${peerid}${logf}>${logf}</a>`;
+   document.getElementById('local').innerHTML = `<a href=${gw_url}/ipns/${webkey}/#/files${logf}>${logf}</a>`;
    console.log('main.peerid:',peerid);
    token = await get_token(nid);
    display_status('pending');
@@ -70,27 +71,32 @@ async function join(ev) {
 }
 
 async function display_file(file) {
-  let [callee, caller] = functionNameJS(); // logInfo("message !")
-  let content = await getMFSFileContent(file);
-  let lines = content.split(/\r?\n/).slice(0,-1);
-  let filtered = lines.filter( _ => { return _.match(/^[^#]/) });
-  let records = filtered.map( _ => { return mysplit(' ',_,3); });
+   let [callee, caller] = functionNameJS(); // logInfo("message !")
+   let content = await getMFSFileContent(file);
+   let lines = content.split(/\r?\n/).slice(0,-1);
+   let filtered = lines.filter( _ => { return _.match(/^[^#]/) });
+   let records = filtered.map( _ => { return mysplit(' ',_,3); });
 
-  let selected = {};
-  for (record of records.sort(by_time)) {
-    console.debug(callee+'.record:',record);
-    if (record[1] == 'A') {
-      selected[record[2]] = record;
-    }
-    if (record[1] == 'D') {
-      delete selected[record[2]];
-    }
-  }
-  console.debug(callee+'.selected:',selected);
+   var selected = {};
+   for (record of records.sort(by_time)) {
+      console.debug(callee+'.record:',record);
+      if (record[1] == 'A') {
+         selected[record[2]] = record;
+      }
+      if (record[1] == 'D') {
+         delete selected[record[2]];
+      }
+   }
+   console.debug(callee+'.records.sort(by_time):',records.sort(by_time));
+   console.debug(callee+'.selected:',selected);
 
+   function selected_by_timestamp(a,b) {
+      return ((selected[a][0] - selected[b][0]) || compare(a,b));
+   }
 
-  document.getElementById('file').value = filtered.sort(numerically).join("\n");
+   document.getElementById('file').value = Object.keys(selected).sort(selected_by_timestamp).join("\n");
 }
+
 
 function by_time(a,b) {
   return ((a[0] - b[0]) || compare(a[1],b[1]));
