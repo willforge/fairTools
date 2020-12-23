@@ -15,8 +15,13 @@ peerid: <span id=peerid></span>
 
 <br>timestamp: <input name=ts value onmouseover="this.value=Date.now();">
 <br>line: <input type=text name=record size=74>
-<input type=checkbox name=delete title=delete>
-<br><button id=append onclick="append(event)">append</button>
+<button id=submit>
+<select name=op style="margin-right: 1rem;">
+<option value=D >remove</option>
+<option value=A >append</option>
+</select><span onclick="submit(event)">submit</span>
+</button>
+
 <button id=publish onclick="publish(event)">publish</button>
 <button id=update onclick="update(event)">update</button>
 <progress id="bar" value="0" max="100">0%</progress><span id="per"></span>
@@ -44,7 +49,7 @@ async function main() {
    await Promise.resolve(promisedConfig); // just to wait for config !
    peerid = await Promise.resolve(promisedPeerId);
    document.getElementById('peerid').innerHTML = `<a href=${gw_url}/ipns/${peerid}>${peerid}</a>`;
-   document.getElementById('local').innerHTML = `<a href=${gw_url}/ipns/${webkey}/#/files${logf}>${logf}</a>`;
+   document.getElementById('local').innerHTML = `<a target=_blank href=${gw_url}/ipns/${webkey}/#/files${logf}>${logf}</a>`;
    console.log('main.peerid:',peerid);
    token = await get_token(nid);
    display_status('pending');
@@ -210,12 +215,15 @@ async function publish(ev) {
  
 }
 
-async function append(ev) {
+async function submit(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
-  let delete_flag = document.getElementsByName('delete')[0].checked ? 'D' : 'A';
+  // let delete_flag = document.getElementsByName('delete')[0].checked ? 'D' : 'A';
+  let op_cmd = document.getElementsByName('op')[0].value;
+  console.debug(callee+'.op_cmd:',op_cmd);
+ 
   let timestamp = document.getElementsByName('ts')[0].value;
   let line = document.getElementsByName('record')[0].value;
-  let record = `${timestamp} ${delete_flag} ${line}`;
+  let record = `${timestamp} ${op_cmd} ${line}`;
   console.debug(callee+'.line:',line);
   //let buf = await getMFSFileContent(path);
   let date = getDate();
