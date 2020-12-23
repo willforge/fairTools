@@ -13,9 +13,10 @@ peerid: <span id=peerid></span>
 <br>find: <button id=provs onclick="provs(event)">provs</button> <span id=status></span>
 <div id=peerids></div>
 
+<br><input type=checkbox name=qmonpub> add qm with publish
 <br>timestamp: <input name=ts value onmouseover="this.value=Date.now();">
 <br>line: <input type=text name=record size=74>
-<button id=submit>
+<br><button id=submit>
 <select name=op style="margin-right: 1rem;">
 <option value=D >remove</option>
 <option value=A >append</option>
@@ -28,6 +29,7 @@ peerid: <span id=peerid></span>
 <button id=reduce onclick="reduce(event)">reduce</button>
 <br>url: <span id=url></span>
 <br>root: <span id=root></span>
+<br>prev: <span id=prev></span>
 <br>remote: <span id=remote></span>
 <br>wlog:<br><textarea id=file cols=80 rows=25></textarea>
 </div>
@@ -35,6 +37,7 @@ peerid: <span id=peerid></span>
 
 <script>
 var peerid;
+const qmgen='QmbFMke1KXqnYyBBWxB74N4c5SBnJMVAiMNRcGu6x1AwQH';
 const webkey='QmY5irRjuwhhFvkY88ScnM7ow3DxvbhEi13mDAsUUVHRN4';
 const key='clef-secrete';
 const label='a-big-log.txt';
@@ -85,7 +88,7 @@ async function display_file(file) {
    var selected = {};
    for (record of records.sort(by_time)) {
       console.debug(callee+'.record:',record);
-      if (record[1] == 'A') {
+      if (record[1] == 'A' || record[1] == 'P' ) {
          selected[record[2]] = record;
       }
       if (record[1] == 'D') {
@@ -98,8 +101,31 @@ async function display_file(file) {
    function selected_by_timestamp(a,b) {
       return ((selected[a][0] - selected[b][0]) || compare(a,b));
    }
+   //  -------------------------------------------------
+   // note: P records are deletable !
+   let qmprev = qmgen;
+   let qmcur = qmgen;
+   let sorted_selected_keys = Object.keys(selected).sort(selected_by_timestamp)
+   for (record of sorted_selected_keys.map( k => selected[k] )) {
+      if ( record[1] == 'P' ) {
+         lastpub = record[2];
+         let P = lastpub.split(/\s+/,3);
+         qmprev = qmcur;
+         qmcur = P[2];
+         auth = P[0];
+         console.debug(callee+'.auth:',auth);
+         console.debug(callee+'.qmcur:',qmcur);
+         if (auth != `user:${peerid}`) {
+            qmprev = qmcur;
+         }
+         console.debug(callee+'.qmprev:',qmprev);
+     }
+     document.getElementById('prev').innerHTML = `<a href=${gw_url}/ipfs/${qmprev}${logf}>${qmprev}</a>`;
+  
+   }
+   // -------------------------------------------------
 
-   document.getElementById('file').value = Object.keys(selected).sort(selected_by_timestamp).join("\n");
+   document.getElementById('file').value = sorted_selected_keys.join("\n");
 }
 
 
@@ -208,11 +234,24 @@ progress (100)
 }
 
 async function publish(ev) {
- document.getElementById('publish').disabled=true
- let qm = await publish_root();
- document.getElementById('root').innerHTML = `<a href="${gw_url}/ipfs/${qm}">${qm}</a>`
- document.getElementById('publish').disabled=false
- 
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+   document.getElementById('publish').disabled=true
+   let qm = await publish_root();
+   let qm_on_publish_flag = document.getElementsByName('qmonpub')[0].checked;
+   if (qm_on_publish_flag) {
+      display_file(logf);
+      let tics = Date.now();
+      let date = getDate();
+      let time = getTime();
+      let record = `${tics} P user:${peerid} published ${qm} on ${date} @ ${time}`;
+      let hash = await ipfsLogAppend(logf,record+"\n");
+      console.log(callee+'.hash:',hash);
+      display_file(logf);
+   }
+
+   document.getElementById('root').innerHTML = `<a href="${gw_url}/ipfs/${qm}">${qm}</a> (published)`
+      document.getElementById('publish').disabled=false
+
 }
 
 async function submit(ev) {
