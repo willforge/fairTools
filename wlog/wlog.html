@@ -7,19 +7,21 @@
 
 <div>
 peerid: <span id=peerid></span>
-<br>network: <button id=join onclick="join(event)">join wlog</button>
+<br>network: <input name=label size=12 onchange="change_token(event)"; value="a big log"> <button id=join onclick="join(event)">join</button>
 <br>token: <span id=token></span>
-<br>local: <span id=local></span>
-<br>find: <button id=provs onclick="provs(event)">provs</button> <span id=status></span>
+<br>local: <span id=local></span> (mfs version)
+<button id=display onclick="display_file(logf)">display</button>
+<br>providers <span id=status></span>:
 <div id=peerids></div>
+<button id=provs onclick="provs(event)">provs</button>
 
-<br><input type=checkbox name=qmonpub> add qm with publish
+<br><input type=checkbox name=qmonpub> add qm with publish (<i>blockchain</i>)
 <br>timestamp: <input name=ts value onmouseover="this.value=Date.now();">
 <br>line: <input type=text name=record size=74>
 <br><button id=submit>
 <select name=op style="margin-right: 1rem;">
 <option value=D >remove</option>
-<option value=A >append</option>
+<option value=A selected>append</option>
 </select><span onclick="submit(event)">submit</span>
 </button>
 
@@ -27,10 +29,10 @@ peerid: <span id=peerid></span>
 <button id=update onclick="update(event)">update</button>
 <progress id="bar" value="0" max="100">0%</progress><span id="per"></span>
 <button id=reduce onclick="reduce(event)">reduce</button>
-<br>url: <span id=url></span>
-<br>root: <span id=root></span>
-<br>prev: <span id=prev></span>
-<br>remote: <span id=remote></span>
+<br>url: <span id=url></span> (url of new log file on ipfs)
+<br>root: <span id=root></span> (published root folder (/.../published/))
+<br>prev: <span id=prev></span> (previous version of log file)
+<br>remote: <span id=remote></span> (list of log file providers)
 <br>wlog:<br><textarea id=file cols=80 rows=25></textarea>
 </div>
 
@@ -40,10 +42,8 @@ var peerid;
 const qmgen='QmbFMke1KXqnYyBBWxB74N4c5SBnJMVAiMNRcGu6x1AwQH';
 const webkey='QmY5irRjuwhhFvkY88ScnM7ow3DxvbhEi13mDAsUUVHRN4';
 const key='clef-secrete';
-const label='a-big-log.txt';
-const uri=`${key},urn:wwlog:${label}`;
-let nid= getNid(uri);
-let logf = `/public/share/${nid}/${label}`;
+var label=document.getElementsByName('label')[0].value;
+let logf;
 var token;
 var peerids;
 
@@ -52,13 +52,37 @@ async function main() {
    await Promise.resolve(promisedConfig); // just to wait for config !
    peerid = await Promise.resolve(promisedPeerId);
    document.getElementById('peerid').innerHTML = `<a href=${gw_url}/ipns/${peerid}>${peerid}</a>`;
-   document.getElementById('local').innerHTML = `<a target=_blank href=${gw_url}/ipns/${webkey}/#/files${logf}>${logf}</a>`;
    console.log('main.peerid:',peerid);
+   update_token( document.getElementsByName('label')[0].value);
    token = await get_token(nid);
    display_status('pending');
    peerids = await ipfsFindProvs(token);
    display_status('ok');
+   display_provs(peerids);
    console.log('main.peerids',peerids);
+}
+
+function change_token(ev) {
+   label = ev.target.value.replace(/ /g,'-');
+   update_token(label);
+}
+
+async function update_token(label) {
+   let [callee, caller] = functionNameJS(); // logInfo("message !")
+   console.debug(callee+'.label:',label);
+   let labelp = label.replace(/\s+/g,'-');
+   uri=`${key},urn:wwlog:${labelp}.txt`;
+   nid= getNid(uri);
+   logf = `/public/share/${nid}/${labelp}.txt`;
+   document.getElementById('local').innerHTML = `<a target=_blank href=${gw_url}/ipns/${webkey}/#/files${logf}>${logf}</a>`;
+   token = await get_token(nid);
+   display_status('pending');
+   peerids = await ipfsFindProvs(token);
+   display_status('ok');
+   display_provs(peerids);
+   console.log('main.peerids',peerids);
+
+
 }
 
 async function get_token(str) {
@@ -75,7 +99,15 @@ async function join(ev) {
   let token = await ipfsAddToken(nid);
   console.debug(callee+'.token:',token);
   document.getElementById('token').innerHTML = `<a href=${gw_url}/ipfs/${token}>${token}</a>`;
-  display_file(logf);
+}
+
+async function display_provs(peerids) {
+  let buf = '<ul>';
+  for (peer of peerids) {
+    buf += `<li><a target=_blank href=${gw_url}/ipns/${peer}/>${peer}</a></li>\n`
+  }
+  buf += "</ul>\n";
+  document.getElementById('peerids').innerHTML = buf;
 }
 
 async function display_file(file) {
@@ -151,18 +183,12 @@ function mysplit(sep,str,limit) { // split a la perl !
 
 async function provs(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
-  if (typeof(peerids) == 'undefined') {
+  // if (typeof(peerids) == 'undefined') {
     console.debug(callee+'.token:',token);
     display_status('pending');
     peerids = await ipfsFindProvs(token);
     display_status('ok');
-  }
-  let buf = '<ul>';
-  for (peer of peerids) {
-    buf += `<li><a target=_blank href=${gw_url}/ipns/${peer}/>${peer}</a></li>\n`
-  }
-  buf += "</ul>\n";
-  document.getElementById('peerids').innerHTML = buf;
+  // }
   
 }
 
