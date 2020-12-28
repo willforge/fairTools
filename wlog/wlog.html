@@ -4,13 +4,14 @@
 <script src=../js/sha256.js></script>
 <script src=../js/ipfs.js></script>
 <script src=../js/functions.js></script>
+<link rel="stylesheet" href="style.css"/>
 
 <div>
 peerid: <span id=peerid></span>
 <br>network: <input name=label size=12 onchange="change_token(event)"; value="a big log"> <button id=join onclick="join(event)">join</button>
 <br>token: <span id=token></span>
 <br>local: <span id=local></span> (mfs version)
-<button id=display onclick="display_file(logf)">display</button>
+<button id=display onclick="display_table(logf)">display</button>
 <br>providers <span id=status></span>:
 <div id=peerids></div>
 <button id=provs onclick="provs(event)">provs</button>
@@ -31,14 +32,27 @@ peerid: <span id=peerid></span>
 <button id=reduce onclick="reduce(event)">reduce</button>
 <br>url: <span id=url></span> (url of new log file on ipfs)
 <br>root: <span id=root></span> (published root folder (/.../published/))
-<br>prev: <span id=prev></span> (previous version of log file)
+<br>prev: <span id=prev></span> (previous version of root folder)
 <br>remote: <span id=remote></span> (list of log file providers)
+<hr>
+
+<table id=table border=2>
+<thead>
+<tr><th colspan=6>:label</th></tr>
+<tr><th>rank</th><th>stamp</th><th>flag</th><th>text</th><th>owner</th><th>date</th><th>action</th></tr>
+</thead>
+<tbody id=tbody>
+<tr id=row0><td>:idx</td><td>:ts</td><td>:flag</td><td>:text</td><td>:owner</td><td>:date</td><td>:action</td></tr>
+</tbody>
+</table>
+<hr>
 <br>wlog:<br><textarea id=file cols=80 rows=25></textarea>
 </div>
 
 
 <script>
 var peerid;
+const emptyd='QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn';
 const qmgen='QmbFMke1KXqnYyBBWxB74N4c5SBnJMVAiMNRcGu6x1AwQH';
 const webkey='QmY5irRjuwhhFvkY88ScnM7ow3DxvbhEi13mDAsUUVHRN4';
 const key='clef-secrete';
@@ -110,6 +124,88 @@ async function display_provs(peerids) {
   document.getElementById('peerids').innerHTML = buf;
 }
 
+async function display_table(file) {
+   let [callee, caller] = functionNameJS(); // logInfo("message !")
+   let content = await getMFSFileContent(file);
+   let lines = content.split(/\r?\n/).slice(0,-1);
+   let user = peerid;
+   let records = [];
+   for (let line of lines) {
+     let matches = line.match(/^# user:(\w+)/);
+     if (matches) {
+        user = matches[1];
+     } else if (line.match(/^\d+ /)) {
+       record = mysplit(' ',line,3);
+       if (record[1] == 'P') {
+         user = record[2].match(/user:(\w+)/)[1];
+       } 
+       record[3] = user;
+       records.push(record);
+     }
+   } 
+   let selected = {};
+   for (let record of records.sort(by_time) ) {
+      let key = record[2];
+      if (record[1] == 'A' || record[1] == 'P' ) {
+         selected[key] = record;
+      }
+      if (record[1] == 'D') {
+         delete selected[key];
+      }
+   }
+   console.debug(callee+'.selected:',selected);
+   let table = document.getElementById('tbody');
+   // save template
+   let tmpl = document.getElementById('row0');
+   // clear table...
+   clear_table();
+
+   for (let key of Object.keys(selected).sort(selected_by_timestamp) ) {
+
+      let [timestamp,op,text,user] = selected[key];
+      console.debug(callee+'.text:before',text);
+      text = text.replace(user,alias(user));
+      console.debug(callee+'.text:after',text);
+      let time = getTime(timestamp);
+      let date = getDate(timestamp);
+      let button = '<button onclick="delete(event)">delete</button>';
+      let newrow = table.insertRow(-1); // insert in last position
+      // replace parameter's values w/i template :
+      // format <tr id=row0><td>:idx</td><td>:ts</td><td>:flag</td><td>:text</td><td>:owner</td><td>:date</td><td>:action</td></tr>
+      newrow.innerHTML = tmpl.innerHTML.replace(/:idx/,newrow.rowIndex);
+      newrow.innerHTML = newrow.innerHTML.replace(/:ts/,time);
+      newrow.innerHTML = newrow.innerHTML.replace(/\:flag/,op);
+      newrow.innerHTML = newrow.innerHTML.replace(/\:text/,text);
+      newrow.innerHTML = newrow.innerHTML.replace(/\:owner/,alias(user));
+      newrow.innerHTML = newrow.innerHTML.replace(/\:date/,date);
+      newrow.innerHTML = newrow.innerHTML.replace(/\:action/,button);
+      console.debug(callee+'.newrow:',newrow);
+   }
+
+    
+       /* if (typeof(seen[key]) == 'undefined') { # drops all duplicates
+         selected[key] = record;
+       } */
+
+   function selected_by_timestamp(a,b) {
+     return ((selected[a][0] - selected[b][0]) || compare(a,b));
+   }
+}
+
+function alias(u) {
+  return u.substring(0,2)+'--'+u.substr(-6);
+}
+
+function clear_table() {
+     let [callee, caller] = functionNameJS();
+     let e = document.getElementById('table');
+     console.log(callee+'.template row:',e.rows[2]);
+     for (i = e.rows.length-1; i > 1; i--) {
+           e.deleteRow(i)
+     }
+     console.log(callee+'.nrow after delete:',e.rows.length)
+}
+
 async function display_file(file) {
    let [callee, caller] = functionNameJS(); // logInfo("message !")
    let content = await getMFSFileContent(file);
@@ -135,8 +231,8 @@ async function display_file(file) {
    }
    //  -------------------------------------------------
    // note: P records are deletable !
-   let qmprev = qmgen;
-   let qmcur = qmgen;
+   let qmprev = emptyd;
+   let qmcur = emptyd;
    let sorted_selected_keys = Object.keys(selected).sort(selected_by_timestamp)
    for (record of sorted_selected_keys.map( k => selected[k] )) {
       if ( record[1] == 'P' ) {
@@ -152,7 +248,9 @@ async function display_file(file) {
          }
          console.debug(callee+'.qmprev:',qmprev);
      }
-     document.getElementById('prev').innerHTML = `<a href=${gw_url}/ipfs/${qmprev}${logf}>${qmprev}</a>`;
+     if (qmprev != emptyd) {
+       document.getElementById('prev').innerHTML = `<a href=${gw_url}/ipfs/${qmprev}${logf}>${qmprev}</a>`;
+     }
   
    }
    // -------------------------------------------------
