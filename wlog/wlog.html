@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="style.css"/>
 
 <div>
-peerid: <span id=peerid></span>
+peerid: <span id=peerid>:peerid</span>
 <br>network: <input name=label size=12 onchange="change_token(event)"; value="a big log"> <button id=join onclick="join(event)">join</button>
 <br>token: <span id=token></span>
 <br>local: <span id=local></span> (mfs version)
@@ -22,7 +22,7 @@ peerid: <span id=peerid></span>
 <tr><th>rank</th><th>stamp</th><th>flag</th><th>text</th><th>owner</th><th>date</th><th>action</th></tr>
 </thead>
 <tbody id=tbody>
-<tr id=row0><td>:idx</td><td>:ts</td><td>:flag</td><td style="overflow: hidden;">:text</td><td>:owner</td><td>:date</td><td>:action</td></tr>
+<tr id=row0><td>:idx</td><td>:ts</td><td>:flag</td><td style="overflow: hidden;">:text</td><td><a href=":gw_url/ipns/:owner">:alias</td><td>:date</td><td>:action</td></tr>
 </tbody>
 </table>
 <br><input type=checkbox name=qmonpub> add root qm in log (i.e. publish as a <i>blockchain</i>)
@@ -40,7 +40,7 @@ peerid: <span id=peerid></span>
 <progress id="bar" value="0" max="100">0%</progress><span id="per"></span>
 <button id=reduce onclick="reduce(event)">reduce</button>
 <br>url: <span id=url></span> (url of new log file on ipfs)
-<br>root: <span id=root></span> (/.../published/))
+<br>root: <span id=root></span> (<a href=":gw_url/ipfs/:qmwebui/#/files/.../published/">/.../published/</a>)
 <br>prev: <span id=prev></span> (previous version of root folder)
 <br>remote: <span id=remote></span> (list of log file providers)
 <hr>
@@ -54,6 +54,8 @@ var peerid;
 const emptyd='QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn';
 const qmgen='QmbFMke1KXqnYyBBWxB74N4c5SBnJMVAiMNRcGu6x1AwQH';
 const webkey='QmY5irRjuwhhFvkY88ScnM7ow3DxvbhEi13mDAsUUVHRN4';
+// ipfs name resolve QmY5irRjuwhhFvkY88ScnM7ow3DxvbhEi13mDAsUUVHRN4
+const qmwebui='Qmb3cY3zFJ5isjJ5H9cP47Vfqa6pqNwypbuo2TiBGjUmLd';
 const key='clef-secrete';
 var label=document.getElementsByName('label')[0].value;
    let labelp = label.replace(/\s+/g,'-');
@@ -66,6 +68,10 @@ var peerids;
 main();
 async function main() {
    await Promise.resolve(promisedConfig); // just to wait for config !
+
+   let maindiv = document.getElementsByTagName('div')[0];
+   maindiv.innerHTML = maindiv.innerHTML.replace(/:gw_url/g,gw_url);
+   maindiv.innerHTML = maindiv.innerHTML.replace(/:qmwebui/g,qmwebui);
    peerid = await Promise.resolve(promisedPeerId);
    document.getElementById('peerid').innerHTML = `<a href=${gw_url}/ipns/${peerid}>${peerid}</a>`;
    console.log('main.peerid:',peerid);
@@ -201,11 +207,12 @@ async function display_table(file) {
       // replace parameter's values w/i template :
       // format <tr id=row0><td>:idx</td><td>:ts</td><td>:flag</td><td>:text</td><td>:owner</td><td>:date</td><td>:action</td></tr>
       newrow.dataset['user'] = user;
-      newrow.innerHTML = innerTmpl.replace(/:idx/,newrow.rowIndex);
+      newrow.innerHTML = innerTmpl.replace(/:idx/,newrow.rowIndex-1);
       newrow.innerHTML = newrow.innerHTML.replace(/:ts/,time);
       newrow.innerHTML = newrow.innerHTML.replace(/\:flag/,op);
       newrow.innerHTML = newrow.innerHTML.replace(/\:text/,textp);
-      newrow.innerHTML = newrow.innerHTML.replace(/\:owner/,alias(user));
+      newrow.innerHTML = newrow.innerHTML.replace(/\:owner/,user);
+      newrow.innerHTML = newrow.innerHTML.replace(/\:alias/,alias(user));
       newrow.innerHTML = newrow.innerHTML.replace(/\:date/,date);
       newrow.innerHTML = newrow.innerHTML.replace(/\:action/,button);
 
