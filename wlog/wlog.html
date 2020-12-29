@@ -15,8 +15,17 @@ peerid: <span id=peerid></span>
 <br>providers <span id=status></span>:
 <div id=peerids></div>
 <button id=provs onclick="provs(event)">provs</button>
-
-<br><input type=checkbox name=qmonpub> add qm with publish (<i>blockchain</i>)
+<hr>
+<table id=table border=2>
+<thead>
+<tr><th colspan=7 id=labelp>:label</th></tr>
+<tr><th>rank</th><th>stamp</th><th>flag</th><th>text</th><th>owner</th><th>date</th><th>action</th></tr>
+</thead>
+<tbody id=tbody>
+<tr id=row0><td>:idx</td><td>:ts</td><td>:flag</td><td style="overflow: hidden;">:text</td><td>:owner</td><td>:date</td><td>:action</td></tr>
+</tbody>
+</table>
+<br><input type=checkbox name=qmonpub> add root qm in log (i.e. publish as a <i>blockchain</i>)
 <br>timestamp: <input name=ts value onmouseover="this.value=Date.now();">
 <br>line: <input type=text name=record size=74>
 <br><button id=submit>
@@ -31,22 +40,12 @@ peerid: <span id=peerid></span>
 <progress id="bar" value="0" max="100">0%</progress><span id="per"></span>
 <button id=reduce onclick="reduce(event)">reduce</button>
 <br>url: <span id=url></span> (url of new log file on ipfs)
-<br>root: <span id=root></span> (published root folder (/.../published/))
+<br>root: <span id=root></span> (/.../published/))
 <br>prev: <span id=prev></span> (previous version of root folder)
 <br>remote: <span id=remote></span> (list of log file providers)
 <hr>
+<br>wlog:<br><textarea id=file cols=80 rows=25"></textarea>
 
-<table id=table border=2>
-<thead>
-<tr><th colspan=6>:label</th></tr>
-<tr><th>rank</th><th>stamp</th><th>flag</th><th>text</th><th>owner</th><th>date</th><th>action</th></tr>
-</thead>
-<tbody id=tbody>
-<tr id=row0><td>:idx</td><td>:ts</td><td>:flag</td><td>:text</td><td>:owner</td><td>:date</td><td>:action</td></tr>
-</tbody>
-</table>
-<hr>
-<br>wlog:<br><textarea id=file cols=80 rows=25></textarea>
 </div>
 
 
@@ -57,7 +56,10 @@ const qmgen='QmbFMke1KXqnYyBBWxB74N4c5SBnJMVAiMNRcGu6x1AwQH';
 const webkey='QmY5irRjuwhhFvkY88ScnM7ow3DxvbhEi13mDAsUUVHRN4';
 const key='clef-secrete';
 var label=document.getElementsByName('label')[0].value;
+   let labelp = label.replace(/\s+/g,'-');
+   document.getElementById('labelp').innerHTML = labelp;
 let logf;
+var innerTmpl;
 var token;
 var peerids;
 
@@ -76,15 +78,26 @@ async function main() {
    console.log('main.peerids',peerids);
 }
 
+function lineToDelete(event) {
+const selection = event.target.value.substring(event.target.selectionStart, event.target.selectionEnd);
+  console.log(`sélection : ${selection}`);
+  document.getElementsByName('op')[0].value = 'D';
+  document.getElementsByName("record")[0].value = selection;
+  submit(event)
+}
+
+
 function change_token(ev) {
    label = ev.target.value.replace(/ /g,'-');
    update_token(label);
+   display_table(logf);
 }
 
 async function update_token(label) {
    let [callee, caller] = functionNameJS(); // logInfo("message !")
    console.debug(callee+'.label:',label);
    let labelp = label.replace(/\s+/g,'-');
+   document.getElementById('labelp').innerHTML = labelp;
    uri=`${key},urn:wwlog:${labelp}.txt`;
    nid= getNid(uri);
    logf = `/public/share/${nid}/${labelp}.txt`;
@@ -127,6 +140,7 @@ async function display_provs(peerids) {
 async function display_table(file) {
    let [callee, caller] = functionNameJS(); // logInfo("message !")
    let content = await getMFSFileContent(file);
+   document.getElementById('file').value = content;
    let lines = content.split(/\r?\n/).slice(0,-1);
    let user = peerid;
    let records = [];
@@ -156,40 +170,88 @@ async function display_table(file) {
    console.debug(callee+'.selected:',selected);
    let table = document.getElementById('tbody');
    // save template
-   let tmpl = document.getElementById('row0');
+   if (typeof(innerTmpl) == 'undefined') {
+      innerTmpl = document.getElementById('row0').innerHTML;
+   } else {
+      console.log(callee+'.innerTmpl:',innerTmpl);
+   }
    // clear table...
    clear_table();
 
-   for (let key of Object.keys(selected).sort(selected_by_timestamp) ) {
+   let skip ;
+   let qmprev = emptyd;
+   let qmcur = emptyd;
+   let sorted_selected_keys = Object.keys(selected).sort(selected_by_timestamp)
+   for (let key of sorted_selected_keys ) {
 
       let [timestamp,op,text,user] = selected[key];
-      console.debug(callee+'.text:before',text);
-      text = text.replace(user,alias(user));
-      console.debug(callee+'.text:after',text);
+      let textp = text.replace(user,alias(user));
+      // Qm23456789012345678901234567890123456789012345
+      // QmcfHufAK9ErQ9ZKJF7YX68KntYYBJngkGDoVKcZEJyRve
+      let matches = textp.match(/Qm\w{44,}/);
+      if (matches) {
+         console.debug(callee+'🐛.matches:',matches)
+         textp = textp.replace(matches[0],`<a href="${gw_url}/ipfs/${matches[0]}">${alias(matches[0])}</a>`);
+      }
       let time = getTime(timestamp);
       let date = getDate(timestamp);
-      let button = '<button onclick="delete(event)">delete</button>';
+      let button = '<button onclick="delete_line(event)">delete</button>';
       let newrow = table.insertRow(-1); // insert in last position
+      newrow.dataset['textRecord'] = text;
       // replace parameter's values w/i template :
       // format <tr id=row0><td>:idx</td><td>:ts</td><td>:flag</td><td>:text</td><td>:owner</td><td>:date</td><td>:action</td></tr>
-      newrow.innerHTML = tmpl.innerHTML.replace(/:idx/,newrow.rowIndex);
+      newrow.dataset['user'] = user;
+      newrow.innerHTML = innerTmpl.replace(/:idx/,newrow.rowIndex);
       newrow.innerHTML = newrow.innerHTML.replace(/:ts/,time);
       newrow.innerHTML = newrow.innerHTML.replace(/\:flag/,op);
-      newrow.innerHTML = newrow.innerHTML.replace(/\:text/,text);
+      newrow.innerHTML = newrow.innerHTML.replace(/\:text/,textp);
       newrow.innerHTML = newrow.innerHTML.replace(/\:owner/,alias(user));
       newrow.innerHTML = newrow.innerHTML.replace(/\:date/,date);
       newrow.innerHTML = newrow.innerHTML.replace(/\:action/,button);
+
+      // compute previous ...
+      // note: P records are deletable !
+      if ( op == 'P' ) {
+         lastpub = text
+            let P = lastpub.split(/\s+/,3);
+         qmprev = qmcur;
+         qmcur = P[2];
+         auth = P[0];
+         newrow.dataset['qm'] = qmcur;
+         /* console.debug(callee+'.auth:',auth);
+            console.debug(callee+'.qmcur:',qmcur);
+            console.debug(callee+'.qmprev:',qmprev);
+          */
+         if (auth == `user:${peerid}`) { skip = 1; }
+      } else {
+         skip = 0;
+      }
       console.debug(callee+'.newrow:',newrow);
    }
-
-    
-       /* if (typeof(seen[key]) == 'undefined') { # drops all duplicates
-         selected[key] = record;
-       } */
+   console.debug(callee+'.qmcur:last:',qmcur);
+   console.debug(callee+'.auth:last:',auth);
+   if (! skip) {
+     qmprev = qmcur;
+   }
+   if (qmprev != emptyd) {
+     document.getElementById('prev').innerHTML = `<a href=${gw_url}/ipfs/${qmprev}${logf}>${qmprev}</a>`;
+   }
 
    function selected_by_timestamp(a,b) {
      return ((selected[a][0] - selected[b][0]) || compare(a,b));
    }
+}
+
+function delete_line(ev) {
+  let [callee, caller] = functionNameJS();
+  console.log(callee+'.ev.target:',ev.target)
+  let gdparent = ev.target.parentNode.parentNode;
+  console.log(callee+'.gdparent:',gdparent)
+  let timestamp = Date.now();
+  //let textp = gdparent.getElementsByTagName('td')[3].innerText; // textContent;
+  let line = gdparent.dataset['textRecord'];
+  console.log(callee+'.line:',line)
+  return submit_op(timestamp,'D',line);
 }
 
 function alias(u) {
@@ -209,6 +271,12 @@ function clear_table() {
 async function display_file(file) {
    let [callee, caller] = functionNameJS(); // logInfo("message !")
    let content = await getMFSFileContent(file);
+   document.getElementById('file').value = content;
+}
+
+async function display_log(file) {
+   let [callee, caller] = functionNameJS(); // logInfo("message !")
+   let content = await getMFSFileContent(file);
    let lines = content.split(/\r?\n/).slice(0,-1);
    let filtered = lines.filter( _ => { return _.match(/^[^#]/) });
    let records = filtered.map( _ => { return mysplit(' ',_,3); });
@@ -226,38 +294,7 @@ async function display_file(file) {
    console.debug(callee+'.records.sort(by_time):',records.sort(by_time));
    console.debug(callee+'.selected:',selected);
 
-   function selected_by_timestamp(a,b) {
-      return ((selected[a][0] - selected[b][0]) || compare(a,b));
-   }
-   //  -------------------------------------------------
-   // note: P records are deletable !
-   let qmprev = emptyd;
-   let qmcur = emptyd;
-   let sorted_selected_keys = Object.keys(selected).sort(selected_by_timestamp)
-   for (record of sorted_selected_keys.map( k => selected[k] )) {
-      if ( record[1] == 'P' ) {
-         lastpub = record[2];
-         let P = lastpub.split(/\s+/,3);
-         qmprev = qmcur;
-         qmcur = P[2];
-         auth = P[0];
-         console.debug(callee+'.auth:',auth);
-         console.debug(callee+'.qmcur:',qmcur);
-         if (auth != `user:${peerid}`) {
-            qmprev = qmcur;
-         }
-         console.debug(callee+'.qmprev:',qmprev);
-     }
-     if (qmprev != emptyd) {
-       document.getElementById('prev').innerHTML = `<a href=${gw_url}/ipfs/${qmprev}${logf}>${qmprev}</a>`;
-     }
-  
-   }
-   // -------------------------------------------------
-
-   document.getElementById('file').value = sorted_selected_keys.join("\n");
 }
-
 
 function by_time(a,b) {
   return ((a[0] - b[0]) || compare(a[1],b[1]));
@@ -313,7 +350,7 @@ async function reduce(ev) {
   await mfsCopy('QmbFMke1KXqnYyBBWxB74N4c5SBnJMVAiMNRcGu6x1AwQH',logf);
   let qmlogf = await ipfsLogAppend(logf,result);
   document.getElementById('url').innerHTML = `<a href="${gw_url}/ipfs/${qmlogf}">/ipfs/${qmlogf}</a>`
-  display_file(logf);
+  display_table(logf);
   return qmlogf
 }
 
@@ -345,7 +382,7 @@ async function update(ev) {
        console.debug(callee+'.qmlogf:',qmlogf);
        buf += `<li><a target=_blank href=${gw_url}${qpath}/>${ipath}${logf}</a></li>\n`;
        document.getElementById('remote').innerHTML = buf + "</ul>";
-       display_file(logf);
+       display_table(logf);
     }
     }
   }
@@ -367,27 +404,22 @@ async function publish(ev) {
       let tics = Date.now();
       let date = getDate();
       let time = getTime();
+      // no header for publish events !
       let record = `${tics} P user:${peerid} published ${qm} on ${date} @ ${time}`;
       let hash = await ipfsLogAppend(logf,record+"\n");
       console.log(callee+'.hash:',hash);
-      display_file(logf);
+      display_table(logf);
    }
 
-   document.getElementById('root').innerHTML = `<a href="${gw_url}/ipfs/${qm}">${qm}</a> (published)`
+   document.getElementById('root').innerHTML = `<a href="${gw_url}/ipfs/${qm}">${qm}</a> (published root folder)`
       document.getElementById('publish').disabled=false
 
 }
 
-async function submit(ev) {
+async function submit_op(timestamp,op_cmd,line) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
-  // let delete_flag = document.getElementsByName('delete')[0].checked ? 'D' : 'A';
-  let op_cmd = document.getElementsByName('op')[0].value;
-  console.debug(callee+'.op_cmd:',op_cmd);
- 
-  let timestamp = document.getElementsByName('ts')[0].value;
-  let line = document.getElementsByName('record')[0].value;
+
   let record = `${timestamp} ${op_cmd} ${line}`;
-  console.debug(callee+'.line:',line);
   //let buf = await getMFSFileContent(path);
   let date = getDate();
   let time = getTime();
@@ -395,9 +427,22 @@ async function submit(ev) {
   let hash = await ipfsLogAppend(logf,header+record+"\n");
   console.log(callee+'.hash:',hash);
   document.getElementById('url').innerHTML = `<a href=${gw_url}/ipfs/${hash}>${logf}</a>`;
-  display_file(logf);
+  display_table(logf);
+  return hash;
 }
 
+
+function submit(ev) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  let timestamp = document.getElementsByName('ts')[0].value;
+  // let delete_flag = document.getElementsByName('delete')[0].checked ? 'D' : 'A';
+  let op_cmd = document.getElementsByName('op')[0].value;
+  console.debug(callee+'.op_cmd:',op_cmd);
+  let line = document.getElementsByName('record')[0].value;
+  console.debug(callee+'.line:',line);
+  return submit_op(timestamp,op_cmd,line);
+}
+ 
 function display_status(s) {
   let imgs = { 'pending':'img/spinner.png', 'ok':'img/check-mark.png' };
   document.getElementById('status').innerHTML=`<img alt=${s} src=${imgs[s]} height="24">`;
