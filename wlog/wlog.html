@@ -196,7 +196,7 @@ async function display_table(file) {
       // QmcfHufAK9ErQ9ZKJF7YX68KntYYBJngkGDoVKcZEJyRve
       let matches = textp.match(/Qm\w{44,}/);
       if (matches) {
-         console.debug(callee+'🐛.matches:',matches)
+         // console.debug(callee+'🐛.matches:',matches)
          textp = textp.replace(matches[0],`<a href="${gw_url}/ipfs/${matches[0]}">${alias(matches[0])}</a>`);
       }
       let time = getTime(timestamp);
@@ -387,7 +387,7 @@ async function update(ev) {
        console.debug(callee+'.log:',log);
        qmlogf = await ipfsLogAppend(logf,log);
        console.debug(callee+'.qmlogf:',qmlogf);
-       buf += `<li><a target=_blank href=${gw_url}${qpath}/>${ipath}${logf}</a></li>\n`;
+       buf += `<li><a target=_blank href=${gw_url}${qpath}/>${ipath}${logf}</a> (${alias(peer)})</li>\n`;
        document.getElementById('remote').innerHTML = buf + "</ul>";
        display_table(logf);
     }
