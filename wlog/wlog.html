@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <meta charset="utf8"/>
+<script src=../js/config.js></script>
+
 <script src=../js/essential.js></script>
 <script src=../js/sha256.js></script>
 <script src=../js/ipfs.js></script>
@@ -67,11 +69,12 @@ var peerids;
 
 main();
 async function main() {
-   await Promise.resolve(promisedConfig); // just to wait for config !
+   // await Promise.resolve(promisedConfig); // just to wait for config !
 
    let maindiv = document.getElementsByTagName('div')[0];
    maindiv.innerHTML = maindiv.innerHTML.replace(/:gw_url/g,gw_url);
    maindiv.innerHTML = maindiv.innerHTML.replace(/:qmwebui/g,qmwebui);
+
    peerid = await Promise.resolve(promisedPeerId);
    document.getElementById('peerid').innerHTML = `<a href=${gw_url}/ipns/${peerid}>${peerid}</a>`;
    console.log('main.peerid:',peerid);
