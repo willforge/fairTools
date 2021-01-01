@@ -18,8 +18,15 @@ else
  update=0
 fi
 
-PERL5LIB=${PERL5LIB:-/usr/local/perl5/lib/perl5}
+# ----------------------------------------------
+# by default Perl's modules are in ../lib/perl5
+wrapper="$(readlink -f "$0")"
+bindir=$(dirname "$wrapper")
+rootdir=$(readlink -f "${bindir}/..")
+#PERL5LIB=${PERL5LIB:-/usr/local/perl5/lib/perl5}
+export PERL5LIB=${PERL5LIB:-$rootdir/lib/perl5}
 export PATH=$PATH:../bin:${PERL5LIB%/lib/perl5}/bin
+# ----------------------------------------------
 
 
 IPFS_CONTAINER=${IPFS_CONTAINER:-ipfs-node}
