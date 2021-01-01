@@ -1,6 +1,7 @@
 #
 
 # deps:
+#   perl
 #   json_xs
 #   uniq.pl
 
@@ -16,6 +17,10 @@ if [ "o$1" = 'o-u' ]; then
 else
  update=0
 fi
+
+PERL5LIB=${PERL5LIB:-/usr/local/perl5/lib/perl5}
+export PATH=$PATH:../bin:${PERL5LIB%/lib/perl5}/bin
+
 
 IPFS_CONTAINER=${IPFS_CONTAINER:-ipfs-node}
 
@@ -63,6 +68,12 @@ qm=$(docker exec $IPFS_CONTAINER ipfs object patch add-link $qmrelease js/config
 
 # ---------------------------------------
 # update (append) config for origins
+if ! which uniq.pl > /dev/null; then
+  qmbin=QmaYUY6WVY4SRB3HNmd2Uu56N6sbwMec53rpSNRBYb6bKe
+  curl -o ../bin/uniq.pl "http://${dockerip}:${gw_port}/ipfs/$qmbin/uniq.pl"
+  chmod a+x ../bin/uniq.pl
+fi
+
 docker exec -i $IPFS_CONTAINER ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | \
 json_xs -t yaml > $cachedir/origin.yml
 cat > $cachedir/default.yml <<EOT
