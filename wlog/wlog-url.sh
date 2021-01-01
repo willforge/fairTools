@@ -1,23 +1,46 @@
 #
 
+# deps:
+#   json_xs
+#   uniq.pl
+
 core=fair
 cachedir=$HOME/.cache/${core}Tools
 if [ ! -d $cachedir ]; then
 mkdir $cachedir
 fi
 
-container=ipfs-node
+if [ "o$1" = 'o-u' ]; then
+ shift;
+ update=1
+else
+ update=0
+fi
 
+IPFS_CONTAINER=${IPFS_CONTAINER:-ipfs-node}
 
-qmrelease='QmdEAbnezmD8NcnpBouJ8cYqbdhUiB6iYoitfwfSkoiyvc'
-if [ "z$qmrelease" = 'z' ]; then
-qmrelease=$(ipfs add -Q -w -r ../js ../wlog )
+if ! docker ps | grep -q -w $IPFS_CONTAINER; then
+ echo -n 'IPFS_CONTAINER: '
+ docker start $IPFS_CONTAINER
+ sleep 10
+ docker logs --since 59s $IPFS_CONTAINER
+fi
+
+qmrelease='QmY8xENcqtuKZ1zYkEWc5GavEwucDDgKzssNiULSDFvDeh'
+if [ "$update" -eq 1 -o "z$qmrelease" = 'z' ]; then
+docker cp ../js $IPFS_CONTAINER:/export
+docker exec -i $IPFS_CONTAINER rm -f /export/js/config.js
+docker cp ../wlog $IPFS_CONTAINER:/export
+qmrelease=$(docker exec -i $IPFS_CONTAINER ipfs add -Q -w -r /export/js /export/wlog )
+docker exec -i $IPFS_CONTAINER rm -rf /export/js
+docker exec -i $IPFS_CONTAINER rm -rf /export/wlog
+sed -i -e "s/^qmrelease='.*'/qmrelease='$qmrelease'/" $0
 fi
 echo qmrelease: $qmrelease
 
-dockerip=$(docker exec $container ifconfig eth0 | grep addr | sed -n -e 's/^ *inet addr:\([^ ]*\).*/\1/p;')
-apiaddr=$(docker exec $container ipfs config Addresses.API)
-gwaddr=$(docker exec $container ipfs config Addresses.Gateway)
+dockerip=$(docker exec $IPFS_CONTAINER ifconfig eth0 | grep addr | sed -n -e 's/^ *inet addr:\([^ ]*\).*/\1/p;')
+apiaddr=$(docker exec $IPFS_CONTAINER ipfs config Addresses.API)
+gwaddr=$(docker exec $IPFS_CONTAINER ipfs config Addresses.Gateway)
 api_port=$(echo $apiaddr | cut -d/ -f5)
 gw_port=$(echo $gwaddr | cut -d/ -f5)
 
@@ -33,12 +56,48 @@ window.config = {
  'api_url': "http://${dockerip}:${api_port}/api/v0/"
 };
 EOF
-qmcfg=$(cat $cachedir/config.js | docker exec -i $container ipfs add -Q -)
+qmcfg=$(cat $cachedir/config.js | docker exec -i $IPFS_CONTAINER ipfs add -Q -)
 echo qmcfg: $qmcfg
 
-qm=$(docker exec $container ipfs object patch add-link $qmrelease js/config.js $qmcfg);
+qm=$(docker exec $IPFS_CONTAINER ipfs object patch add-link $qmrelease js/config.js $qmcfg);
 
+# ---------------------------------------
+# update (append) config for origins
+docker exec -i $IPFS_CONTAINER ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | \
+json_xs -t yaml > $cachedir/origin.yml
+cat > $cachedir/default.yml <<EOT
+- http://127.0.0.1:8080
+- http://127.0.0.1:5001
+- http://127.0.0.113:8080
+- http://127.0.0.113:5001
+
+- http://172.17.0.2:8396
+- http://172.17.0.2:5001
+
+- http://localhost
+- http://localhost:3000
+- http://localhost:4000
+- http://localhost:8080
+- https://webui.ipfs.io
+EOT
+json=$(cat $cachedir/origin.yml $cachedir/default.yml | \
+perl -S uniq.pl | json_xs -f yaml -t json)
+
+docker exec -i $IPFS_CONTAINER ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin "$json"
+
+# ---------------------------------------
+# restart docker to consider the new config
+
+echo -n 'IPFS_CONTAINER: '
+if docker ps | grep -q -w $IPFS_CONTAINER; then
+ docker restart $IPFS_CONTAINER;
+else
+ docker start $IPFS_CONTAINER;
+fi
+# ---------------------------------------
 
 echo "url: http://$dockerip:$gw_port/ipfs/$qm/wlog/wlog.html"
 
+exit $?;
 
+true # $Source: /my/shell/script/wlog-url.sh $
