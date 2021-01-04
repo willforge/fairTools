@@ -8,10 +8,30 @@
 <script src=../js/functions.js></script>
 <link rel="stylesheet" href="style.css"/>
 
+<div class=modal>
+<div class=overlay></div>
+<div id=popup>
+  <p style="text-align:center;"> Your IPFS node seems to be unreachable,
+  as we your "peerid" has been evaluated to '<span style="color:red;">undefined</span>'.</p>
+  <br>There are two possible options :
+  <ul>
+  <li>If you have not installed <a href=https://hub.docker.com/r/ipfs/go-ipfs>IPFS docker</a>,
+  please follow the installation instructions in the 
+  <a href=INSTALL.html>INSTALL</a> file.
+
+  <li>you docker container might not be loaded, please run the following in a shell:
+  <code> sh wlog-url.sh</code>
+  </ul>
+
+  <br><br>
+  <button style="float:right" onclick="close_popup(event);">OK</button>
+</div>
+</div>
+
 <div>
 peerid: <span id=peerid>:peerid</span>
 <br>network: <input name=label size=12 onchange="change_token(event)"; value="a big log"> <button id=join onclick="join(event)">join</button>
-<br>token: <span id=token></span>
+<br>token: <span id=token></span> (network token : identifies wlog)
 <br>local: <span id=local></span> (mfs version)
 <button id=display onclick="display_table(logf)">display</button>
 <br>providers <span id=status></span>:
@@ -74,8 +94,14 @@ async function main() {
    let maindiv = document.getElementsByTagName('div')[0];
    maindiv.innerHTML = maindiv.innerHTML.replace(/:gw_url/g,gw_url);
    maindiv.innerHTML = maindiv.innerHTML.replace(/:qmwebui/g,qmwebui);
-
-   peerid = await Promise.resolve(promisedPeerId);
+   peerid = await promisedPeerId;
+   if (typeof(peerid) == 'undefined') {
+    /* alert('IPFS node NOT reachable') */
+    /*
+    */
+    document.getElementsByClassName('modal')[0].style.display='block';
+    document.getElementById('popup').style.display='block';
+   }
    document.getElementById('peerid').innerHTML = `<a href=${gw_url}/ipns/${peerid}>${peerid}</a>`;
    console.log('main.peerid:',peerid);
    update_token( document.getElementsByName('label')[0].value);
@@ -127,6 +153,11 @@ async function get_token(str) {
   console.debug(callee+'.token:',token);
   document.getElementById('token').innerHTML = token;
   return token
+}
+
+async function close_popup(ev) {
+  let modal = document.getElementsByClassName('modal')[0];
+  modal.style.display = 'none';
 }
 
 
