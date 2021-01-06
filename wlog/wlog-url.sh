@@ -42,7 +42,7 @@ if ! docker ps | grep -q -w $IPFS_CONTAINER; then
  docker logs --since 59s $IPFS_CONTAINER
 fi
 
-qmrelease='QmbKs4zwE2o7oEryGPaQ5GkFyPZBy4b2ModCx8AZyHFh1M'
+qmrelease='QmQdKrbbXjvTfCtMq25HiondwkW63ityRtXkY5KAB3bATt'
 if [ "$local" -eq 1 -o "z$qmrelease" = 'z' ]; then
   docker cp ../js $IPFS_CONTAINER:/export
   docker exec -i $IPFS_CONTAINER rm -f /export/js/config.js
