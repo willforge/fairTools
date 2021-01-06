@@ -44,7 +44,10 @@ docker cp ../wlog $IPFS_CONTAINER:/export
 qmrelease=$(docker exec -i $IPFS_CONTAINER ipfs add -Q -w -r /export/js /export/wlog )
 docker exec -i $IPFS_CONTAINER rm -rf /export/js
 docker exec -i $IPFS_CONTAINER rm -rf /export/wlog
-sed -i -e "s/^qmrelease='.*'/qmrelease='$qmrelease'/" $0
+if [ "uri:$peerid" = "uri:QmcfHufAK9ErQ9ZKJF7YX68KntYYBJngkGDoVKcZEJyRve" -o \
+     "uri:$peerid" = "uri:QmTeqJutKAtVyX39qvhAGfjQFesbubamN8dvVPMg5jYRwS" ]; then
+  sed -i -e "s/^qmrelease='.*'/qmrelease='$qmrelease'/" $0
+fi
 fi
 echo qmrelease: $qmrelease
 
