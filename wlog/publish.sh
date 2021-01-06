@@ -24,8 +24,9 @@ cd ..
 fi
 
 qm=$(ipfs add -Q -r -w js wlog)
+echo qm: $qm
 cd wlog
-sh wlog-url.sh -u 
+sh wlog-url.sh -l -u 
 
 git add wlog-url.sh
 gituser
