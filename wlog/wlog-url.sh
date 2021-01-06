@@ -8,6 +8,13 @@ if [ ! -d $cachedir ]; then
 mkdir $cachedir
 fi
 
+# /!\ option order matters
+if [ "o$1" = 'o-l' ]; then
+ shift;
+ local=1
+else
+ local=0
+fi
 if [ "o$1" = 'o-u' ]; then
  shift;
  update=1
@@ -35,21 +42,31 @@ if ! docker ps | grep -q -w $IPFS_CONTAINER; then
  docker logs --since 59s $IPFS_CONTAINER
 fi
 
-peerid=$(docker exec $IPFS_CONTAINER ipfs config Identity.PeerID)
-qmrelease='QmSuZLvVyRD11FgjikQp1ArQqwCXeSJZWnKzGwZ749DN8a'
-if [ "$update" -eq 1 -o "z$qmrelease" = 'z' ]; then
-docker cp ../js $IPFS_CONTAINER:/export
-docker exec -i $IPFS_CONTAINER rm -f /export/js/config.js
-docker cp ../wlog $IPFS_CONTAINER:/export
-qmrelease=$(docker exec -i $IPFS_CONTAINER ipfs add -Q -w -r /export/js /export/wlog )
-docker exec -i $IPFS_CONTAINER rm -rf /export/js
-docker exec -i $IPFS_CONTAINER rm -rf /export/wlog
-if [ "uri:$peerid" = "uri:QmcfHufAK9ErQ9ZKJF7YX68KntYYBJngkGDoVKcZEJyRve" -o \
-     "uri:$peerid" = "uri:QmTeqJutKAtVyX39qvhAGfjQFesbubamN8dvVPMg5jYRwS" ]; then
-  sed -i -e "s/^qmrelease='.*'/qmrelease='$qmrelease'/" $0
+
+qmrelease='QmSjm95VVNLLb6nQimAK9rCysKGpbextXEc33ux5RTSx8L'
+if [ "$local" -eq 1 -o "z$qmrelease" = 'z' ]; then
+  docker cp ../js $IPFS_CONTAINER:/export
+  docker exec -i $IPFS_CONTAINER rm -f /export/js/config.js
+  docker cp ../wlog $IPFS_CONTAINER:/export
+  qmrelease=$(docker exec -i $IPFS_CONTAINER ipfs add -Q -w -r /export/js /export/wlog )
+  docker exec -i $IPFS_CONTAINER rm -rf /export/js
+  docker exec -i $IPFS_CONTAINER rm -rf /export/wlog
+  if [ "$update" -eq 1 ]; then
+    sed -i -e "s/^qmrelease='.*'/qmrelease='$qmrelease'/" $0
+  fi
+else if [ "$update" -eq 1 ]; then
+    echo -n "# please enter qmrelease: " 
+    read qmrelease
+    sed -i -e "s/^qmrelease='.*'/qmrelease='$qmrelease'/" $0
 fi
 fi
 echo qmrelease: $qmrelease
+
+peerid=$(docker exec $IPFS_CONTAINER ipfs config Identity.PeerID)
+#if [ "uri:$peerid" = "uri:QmcfHufAK9ErQ9ZKJF7YX68KntYYBJngkGDoVKcZEJyRve" -o \
+#     "uri:$peerid" = "uri:QmTeqJutKAtVyX39qvhAGfjQFesbubamN8dvVPMg5jYRwS" ]; then
+#  sed -i -e "s/^qmrelease='.*'/qmrelease='$qmrelease'/" $0
+#fi
 
 dockerip=$(docker exec $IPFS_CONTAINER ifconfig eth0 | grep addr | sed -n -e 's/^ *inet addr:\([^ ]*\).*/\1/p;')
 apiaddr=$(docker exec $IPFS_CONTAINER ipfs config Addresses.API)
