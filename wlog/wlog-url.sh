@@ -36,7 +36,7 @@ if ! docker ps | grep -q -w $IPFS_CONTAINER; then
 fi
 
 peerid=$(docker exec $IPFS_CONTAINER ipfs config Identity.PeerID)
-qmrelease='QmSJWNdE8jwBNX4ENKUpPU129e36t1oGf1wY9wHXn8fHd5'
+qmrelease='QmVXsPuc4XbPcwfxhTu3WPk7WLLb2kwvUiJTtTB71FBYJj'
 if [ "$update" -eq 1 -o "z$qmrelease" = 'z' ]; then
 docker cp ../js $IPFS_CONTAINER:/export
 docker exec -i $IPFS_CONTAINER rm -f /export/js/config.js
