@@ -24,6 +24,8 @@ cd ..
 fi
 
 qm=$(ipfs add -Q -r -w js wlog)
+# the release must not have a config file ..
+qm=$(ipfs object patch rm-link $qm js/config.js)
 echo qm: $qm
 cd wlog
 sh wlog-url.sh -l -u 
