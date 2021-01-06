@@ -1,9 +1,6 @@
 #
 
-# deps:
-#   perl
-#   json_xs
-#   uniq.pl
+# make: docker perl json_xs uniq.pl
 
 core=fair
 cachedir=$HOME/.cache/${core}Tools
@@ -38,7 +35,7 @@ if ! docker ps | grep -q -w $IPFS_CONTAINER; then
  docker logs --since 59s $IPFS_CONTAINER
 fi
 
-qmrelease='QmY8xENcqtuKZ1zYkEWc5GavEwucDDgKzssNiULSDFvDeh'
+qmrelease='QmUgVa3YA5UZHtwAm8u7Gxtk7cfGggPsPgLv5nntEJ7Nkb'
 if [ "$update" -eq 1 -o "z$qmrelease" = 'z' ]; then
 docker cp ../js $IPFS_CONTAINER:/export
 docker exec -i $IPFS_CONTAINER rm -f /export/js/config.js
@@ -79,6 +76,9 @@ if ! which uniq.pl > /dev/null; then
   qmbin=QmaYUY6WVY4SRB3HNmd2Uu56N6sbwMec53rpSNRBYb6bKe
   curl -o ../bin/uniq.pl "http://${dockerip}:${gw_port}/ipfs/$qmbin/uniq.pl"
   chmod a+x ../bin/uniq.pl
+fi
+if ! which json_xs > /dev/null; then
+  sh ../bin/add-perl-modules.sh JSON::XS
 fi
 
 docker exec -i $IPFS_CONTAINER ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | \
