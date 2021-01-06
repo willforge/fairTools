@@ -35,7 +35,8 @@ if ! docker ps | grep -q -w $IPFS_CONTAINER; then
  docker logs --since 59s $IPFS_CONTAINER
 fi
 
-qmrelease='QmUgVa3YA5UZHtwAm8u7Gxtk7cfGggPsPgLv5nntEJ7Nkb'
+peerid=$(docker exec $IPFS_CONTAINER ipfs config Identity.PeerID)
+qmrelease='QmSJWNdE8jwBNX4ENKUpPU129e36t1oGf1wY9wHXn8fHd5'
 if [ "$update" -eq 1 -o "z$qmrelease" = 'z' ]; then
 docker cp ../js $IPFS_CONTAINER:/export
 docker exec -i $IPFS_CONTAINER rm -f /export/js/config.js
@@ -61,6 +62,7 @@ echo gw_port: $gw_port
 
 cat > $cachedir/config.js <<EOF
 window.config = {
+ 'qmrelease': "${qmrelease}",
  'gw_url': "http://${dockerip}:${gw_port}",
  'api_url': "http://${dockerip}:${api_port}/api/v0/"
 };
