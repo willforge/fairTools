@@ -1,0 +1,33 @@
+#
+
+# deps:
+#  - ipfs
+#  - xxd
+#  - openssl
+#  - base36
+
+
+charter=${1:-anonymous}
+
+if [ -e "$charter" ]; then
+  echo charterf: $charter
+  qm=$(ipfs add -Q --raw-leaves $charter --pin=true --hash sha3-224 --cid-base base58btc)
+else 
+if echo $charter | grep -q -e '^Qm'; then
+  echo qmcharter: $charter
+  qm=$(ipfs cat $charter | ipfs add -Q --raw-leaves --pin=true --hash sha3-224 --cid-base base58btc)
+else
+  key="clef-secrete"
+  label="$@"
+  echo "label: $label"
+  labelp=$(echo -n "$label" | sed -e 's/ /-/g')
+  uri="${key},urn:wwlog:${labelp}.txt"
+  echo "uri: $uri"
+  nid=$(echo -n $uri | openssl sha256 -r | cut -d' ' -f1 | xxd -r -p | base36 | cut -c 2-14)
+  qm=$(echo -n $nid | ipfs add -Q --raw-leaves --pin=true --hash sha3-224 --cid-base base58btc)
+fi
+fi
+echo token: $qm
+
+
+# vim: syntax=sh

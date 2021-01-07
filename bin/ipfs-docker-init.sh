@@ -48,6 +48,10 @@ _ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '["http://127.0.
 _ipfs config --json API.HTTPHeaders.Access-Control-Allow-Methods '["PUT", "POST"]'
 fi
 
+# assumptions:
+#  - origin is the first of the Access-Control-Allow-Origin list
+#  - gateway is the first w/ port = 8080 or gw_port (from Addresses.Gateway)
+#  - api is the first w/ port = 5001 or api_port (from Addresses.API)
 
 origin=$(_ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | json_xs -e '$_ = $_->[0]' | sed -e 's/"//g')
 gwport=8080
@@ -71,6 +75,7 @@ docker stop $IPFS_CONTAINER
 echo -n "docker: removing "
 docker rm $IPFS_CONTAINER
 set -x
+# allow docker to access fairTools folder
 docker run -d --name $IPFS_CONTAINER \
   -v $IPFS_STAGING:/export -v $IPFS_PATH:/data/ipfs -w /export \
   -u $uid:$gid \
