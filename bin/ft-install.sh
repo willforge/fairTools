@@ -1,29 +1,52 @@
-# 
+#
 
-# deps:
-# - readlink
-# - symlinks
+# bootstrap !
+core=fair
+pre=ft
+FAIRTOOLS_PATH=${FAIRTOOLS_PATH:-${HOME}/.../opt/${core}Tools}
 
-pgm=ft
-self=$(readlink -f "$0")
-bindir=$(dirname "$self")
+git_url=https://github.com/willforge/${core}Tools.git
 
-if [ -d $HOME/.local/bin ]; then
- #install -p -m 0755 ft $HOME/.local/bin;
- rm -f $HOME/.local/bin/$pgm
- ln -s $bindir/$pgm $HOME/.local/bin/$pgm
- symlinks -csor $HOME/.local/bin/ | grep -w changed | sed -e 's/changed/installed/'
-else
-  if [ -e $HOME/bin ]; then
-   #install -p -m 0755 ft $HOME/bin;
-   rm -f $HOME/bin/$pgm
-   ln -s $bindir/$pgm $HOME/bin/$pgm
-   symlinks -csor $HOME/bin/ | grep -w changed | sed -e 's/changed/installed/'
-  else
-   #install -p -m 0755 ft /usr/local/bin
-   sudo rm -f /usr/local/bin/$pgm
-   sudo ln -s $bindir/$pgm /usr/local/bin/$pgm
-   symlinks -tsor /usr/local/bin/
-  fi
+# install deps: sudo, git
+if ! which sudo >/dev/null; then
+  su root -c "apt-get -y install sudo"
+fi
+if ! echo | sudo -Sv ; then
+   cat <<EOM
+   ATTENTION: ft-install.sh requires administrative privileges to continue setup
+   On Linux and macOS please enter your current user password,
+   in Ubuntu App for Windows 10 use Linux user password in this step.
+   For more information, see $git_url
+EOM
+   sleep 1
 fi
 
+if ! which git >/dev/null; then
+  apt-get install -y git
+fi
+
+
+export GIT_ALLOW_PROTOCOL=keybase:https:ssh:file
+parent=$(dirname ${FAIRTOOLS_PATH})
+if [ ! -d $FAIRTOOLS_PATH ]; then
+  mkdir -p $parent
+  cd $parent
+  git clone --recursive $git_url
+else
+  cd "$FAIRTOOLS_PATH"
+  git pull
+fi
+cd $FAIRTOOLS_PATH
+sh bin/${pre}-init.sh
+
+#https://github.com/willforge/fairTools/tags
+
+XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
+cachedir=$XDG_CACHE_HOME/${core}Tools
+if [ ! -d $cachedir ]; then
+  mkdir -p $cachedir
+fi
+
+exit $?
+
+true
