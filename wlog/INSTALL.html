@@ -1,5 +1,4 @@
-<!DOCTYPE>
-
+<!DOCTYPE html><meta charset="utf8"/>
 <div class=md>
 # INSTALLATION GUIDE FOR FAIRTOOLS 
 
@@ -7,13 +6,31 @@
 1. open a command terminal
 2. install curl if you don't have it running the command :
 
-   ```sh
-   sudo apt-get install curl
-   ```
+  sudo apt-get install [curl][1]
 
 3. run the following command
-   ```sh
-   curl -L https://ipfs.blockringtm.ml/ipfs/Qm123/fairTools/bin/ft-provide.sh | sh -xe - ipfs-docker
-   ```
+
+  curl -L [https://ipfs.blockringtm.ml/ipfs/Qm123/fairTools/bin/ft-install.sh][2] | sh -xe -
+  ft-provide ipfs-docker
+
+
+
+[1]: https://duckduckgo.com/?q=curl+install+%21
+[2]: https://ipfs.blockringtm.ml/ipfs/Qmb1kEGTXwwkvwpp8ZwNTBdL62PgVZTeixZz2DyNqRWxKx/fairTools/bin/ft-install.sh 
+
+<!--
+ # local install :
+ curl -L http://192.168.8.100:8088/michelc/repo/keybase/fairTools/bin/ft-install.sh | sh -xe -
+ # update qm:
+ cd /tmp
+ rm -rf fairTools
+ export GIT_ALLOW_PROTOCOL=keybase:https:ssh
+ git clone --branch master --recursive https://github.com/willforge/fairTools.git fairTools
+ #git clone --branch dbug --recursive git@github.com:willforge/fairTools.git fairTools
+ ipfs add -w -r fairTools
+ rm -rf fairTools
+
+-->
 </div>
+<script src=../js/mdrender.js></script>
 

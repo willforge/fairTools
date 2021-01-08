@@ -1,11 +1,17 @@
 # 
 
 set -e
-rm -rf cloned
+cwd=$(pwd)
+cloned=/tmp/fairtools-dist
+origin=$(git rev-parse --git-dir)
+origin=${origin:-../.git}
+echo origin: $origin
+rm -rf $cloned
 export GIT_ALLOW_PROTOCOL=keybase:file
-git clone --single-branch --branch dbug --recursive ../.git cloned
-cd cloned
+git clone --single-branch --branch dbug --recursive $origin $cloned
+cd $cloned
 git remote set-url --add --push origin keybase://team/distributedbrain/fairTools
+git remote add willforge git@willforge.github.com:willforge/fairjs.git
 
 cd wlog
 git rev-parse HEAD
@@ -35,6 +41,6 @@ gituser
 git commit -m "new wlog release: $qm on $(date +%D)"
 git push origin
 
-cd ../..
-rm -rf cloned
+cd $cwd
+rm -rf $cloned
 
