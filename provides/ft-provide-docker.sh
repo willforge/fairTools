@@ -1,10 +1,21 @@
 #
 
-sh $(which ft-provide-sudo.sh)
+echo "--- # ${0##*/}"
+if [ "x$FAIRTOOLS_PATH" = 'x' ]; then . $(which ft-envrc.sh); fi # load run-time env
 
-. $(which ft-provide-envrc.sh)
+red=$(echo -n "\e[31m")
+green=$(echo -n "\e[1;32m")
+nc=$(echo -n "\e[0m")
+
+
+if cat /proc/self/cgroup | grep -q -e '/docker/'; then
+  echo "docker: ${green}already within a container !${nc}"
+  exit 0
+fi
+
 
 if ! which docker > /dev/null; then
+sh $(which ft-provide-sudo.sh)
   # uninstall old
   sudo apt-get remove docker docker-engine docker.io containerd runc 2>/dev/null
   # install prerequisites

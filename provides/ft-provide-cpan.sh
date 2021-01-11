@@ -5,6 +5,7 @@ red=$(echo -n "\e[31m");
 nc=$(echo -n "\e[0m");
 
 echo "--- # ${0##*/}"
+if [ "x$FAIRTOOLS_PATH" = 'x' ]; then . $(which ft-envrc.sh) fi # load run-time env
 
 if ! which perl > /dev/null; then
 sudo apt-get install perl

@@ -1,9 +1,10 @@
 #
 echo "--- # ${0##*/}"
 
+set -e
 . $(which ft-provide-envrc.sh)
 if ! which curl >/dev/null; then
-sudo apt-get curl
+sudo apt-get -y install curl
 fi
 
 

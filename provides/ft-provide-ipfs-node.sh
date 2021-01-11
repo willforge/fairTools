@@ -1,71 +1,64 @@
 #
 
+fname=${0##*/}
+echo "--- # ${fname}"
+prefix=${fname%%-*}; cli=$(which $prefix); wrapper=$(readlink -f $cli);
+CLIDIR=$(dirname $wrapper); export PATH=$PATH:$CLIDIR;
+if [ "x$FAIRTOOLS_PATH" = 'x' ]; then . $CLIDIR/ft-envrc.sh; fi # load run-time env
+
 red=$(echo -n "\e[31m")
 green=$(echo -n "\e[1;32m")
 yellow=$(echo -n "\e[1;33m")
 grey=$(echo -n "\e[0;90m")
 nc=$(echo -n "\e[0m")
 
-echo "--- # ${0##*/}"
-sh $(which ft-provide-json_xs.sh)
-. $(which ft-envrc.sh)
-
-core=${code:-fair}
+core=${core:-fair}
+rname=${fname%%.*}
+what=${rname#*provide-}
 cachedir=${XDG_CACHE_HOME:-$HOME/.cache}/${core}Tools
+echo cachedir: $cachedir
 
+#export IPFS_PATH=${IPFS_PATH:-$ROOTDIR/ipfs/repo/docker}
 export IPFS_PATH=${IPFS_PATH:-$HOME/.ipfs}
 export IPFS_STAGING=${IPFS_STAGING:-$IPFS_PATH/staging}
 if test ! -d $IPFS_STAGING; then mkdir -p $IPFS_STAGING; fi
+
+
+# on a native system install docker and container ipfs/go-ipfs
+# otherwise run natively ipfs 
+
+# 1. get IPFS node running
+if grep -qa /docker /proc/1/cgroup; then
+
+# ------------------------------------------------------------------------------------
+sh $(which ft-provide-ipfs.sh)
+sh $(which ft-ipfs-native-run.sh)
+# ------------------------------------------------------------------------------------
+
+else 
 export IPFS_IMAGE=${IPFS_IMAGE:-ipfs/go-ipfs}
 export IPFS_CONTAINER=${IPFS_CONTAINER:-ipfs-node}
 
-echo "export IPFS_CONTAINER=$IPFS_CONTAINER" >> $(which ft-envrc.sh)
+echo "export IPFS_CONTAINER=$IPFS_CONTAINER" >> $CLIDIR/ft-envrc.sh
 
+# ------------------------------------------------------------------------------------
 sh $(which ft-provide-docker.sh)
+sh $(which ft-ipfs-docker-run.sh)
 
 # dockerized ipfs is _ipfs
 ipfs() {
  docker exec -i $IPFS_CONTAINER ipfs $@
 }
-
-
-uid=$(id -u)
-gid=$(id -g)
-
-# 1. start docker 
-if ! docker ps -f name=$IPFS_CONTAINER | grep -q -w $IPFS_CONTAINER; then
-  # remove pre-existing container
-  if docker ps -a -f name=$IPFS_CONTAINER | grep -q -w $IPFS_CONTAINER; then
-     echo "docker: rm $IPFS_CONTAINER"
-     docker rm $IPFS_CONTAINER
-  fi
-  # run a new one
-  docker run -d --name $IPFS_CONTAINER --user $uid:$gid \
-             -v $IPFS_PATH:/data/ipfs -w /export $IPFS_IMAGE daemon
-  sleep 7
-  docker logs $IPFS_CONTAINER
+dockerip=$(docker exec $IPFS_CONTAINER ifconfig eth0 | grep addr | sed -n -e 's/^ *inet addr:\([^ ]*\).*/\1/p;')
+echo dockerip: $dockerip
+# ------------------------------------------------------------------------------------
 fi
-
-
-if ! docker ps -f name=$IPFS_CONTAINER | grep -q -w $IPFS_CONTAINER; then
-  echo "${red}Error: $IPFS_CONTAINER docker didn't start${nc}"
-  exit 251
-fi
-
-# wait until daemon is ready
-while true; do
- if docker logs --tail 3 $IPFS_CONTAINER | grep -q -w 'Daemon is ready'; then
-   break
- fi
-done
 
 # 2. get config data
 echo "IPFS_PATH=$IPFS_PATH"
 peerid=$(ipfs config Identity.PeerID) && echo peerid: $peerid
-dockerip=$(docker exec $IPFS_CONTAINER ifconfig eth0 | grep addr | sed -n -e 's/^ *inet addr:\([^ ]*\).*/\1/p;')
 gwaddr=$(ipfs config Addresses.Gateway)
 apiaddr=$(ipfs config Addresses.API)
-echo dockerip: $dockerip
 echo "gwaddr: $gwaddr"
 echo "apiaddr: $apiaddr"
 
@@ -73,8 +66,7 @@ gw_port=$(echo $gwaddr | cut -d/ -f 5)
 api_port=$(echo $apiaddr | cut -d/ -f 5)
 # pick the first for the swarm address
 swarm_port=$(ipfs config Addresses.Swarm | grep -e /tcp | head -1 | cut -d/ -f5 | sed -e 's/".*//')
-h=$( expr $gw_port \% 251 )
-echo "gateway: http://127.0.0.$h/ipfs/"
+#h=$( expr $gw_port \% 251 )
 
 # assumptions:
 #  - origin is the first of the Access-Control-Allow-Origin list
@@ -86,16 +78,28 @@ if ! grep -q Access-Control-Allow-Origin $IPFS_PATH/config ; then
 gwport=8080
 h=$( expr $gwport \% 251 )
 localgw="127.0.0.$h"
+echo "localgw: http://$localgw:$gwport/ipfs/Qmb3cY3zFJ5isjJ5H9cP47Vfqa6pqNwypbuo2TiBGjUmLd"
+if [ "0$dockerip" != '0' ]; then
 ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '["http://${dokerip}:${gw_port}", "http://${dokerip}:${api_port}", http://${localgw}:8080", "http://${localgw}:5001", "https://127.0.0.1:8080", "https://127.0.0.1:3000", "http://localhost:1124", "https://localhost", "https://webui.ipfs.io", "https://ipfs.blockringtm.ml"]'
+else
+ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '["http://0.0.0.0:${gw_port}", "http://0.0.0.0:${api_port}", http://${localgw}:8080", "http://${localgw}:5001", "https://127.0.0.1:8080", "https://127.0.0.1:3000", "http://localhost:1124", "https://localhost", "https://webui.ipfs.io", "https://ipfs.blockringtm.ml"]'
+fi
+
 ipfs config --json API.HTTPHeaders.Access-Control-Allow-Methods '["PUT", "POST"]'
 fi
 
-origin=$(ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | json_xs -e '$_ = $_->[0]' | sed -e 's/"//g')
+sh $(which ft-provide-json_xs.sh)
+
+origin=$(ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | json_xs -t string -e '$_ = $_->[0]')
 gwport=8080
 gwhost=$(ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | grep $gwport | head -1 | sed -e 's,.*https*://,,' -e "s/:$gwport.*//")
+if [ "h$gwhost" = 'h127.0.0.1' ]; then
+  ping=$(curl -sL $gwhost:$gwport/ipfs/QmejvEPop4D7YUadeGqYWmZxHhLc4JBUCzJJHWMzdcMe2y)
+  if [ "x$ping" = 'xipfs' ]; then gwhost=$localgw; fi
+fi
 if [ "x$gwhost" = 'x' ]; then
   gwport=$gw_port
-  gwhost=$(_ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | grep $gw_port | head -1 | sed -e 's,.*https*://,,' -e "s/:$gw_port.*//")
+  gwhost=$(ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | grep $gw_port | head -1 | sed -e 's,.*https*://,,' -e "s/:$gw_port.*//")
 fi
 apiport=5001
 apihost=$(ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | grep $apiport | head -1 | sed -e 's,.*https*://,,' -e "s/:$apiport.*//")
@@ -138,10 +142,13 @@ qmcfg=$(cat $cachedir/config.js | ipfs add -Q -)
 echo qmcfg: $qmcfg
 
 
+# -------------------------------------------------------------
 # 3. recreate container w/ port forwarding and mounted volumes
-echo -n "docker: stopping "
+if ! grep -qa /docker /proc/1/cgroup; then
+
+echo -n "docker: ${yellow}stopping${nc} "
 docker stop $IPFS_CONTAINER
-echo -n "docker: removing "
+echo -n "docker: ${yellow}removing${nc} "
 docker rm $IPFS_CONTAINER
 set -x
 # allow docker to access fairTools folder
@@ -153,6 +160,7 @@ docker run -d --name $IPFS_CONTAINER \
   -p $gwhost:$gwport:$gw_port \
   -p $apihost:$apiport:$api_port \
   $IPFS_IMAGE daemon
+  sleep 7
 set +x
 docker logs --until 59s $IPFS_CONTAINER
 
@@ -160,5 +168,21 @@ docker ps -a -f name=$IPFS_CONTAINER
 
 echo api: http://${dockerip}:${api_port}/webui/
 echo gw: http://${dockerip}:${gw_port}/ipns/$peerid/
-echo webui: http://$host:${gwport}$webui/
+echo webui: http://$gwhost:${gwport}$webui/
+
+fi
+
+# -------------------------------------------------------------
+echo "---"
+if ipfs cat QmYM9DjwHp7nFHw4kezZSc3kev7LL1X6LuLFJGJCpxx9bX >/dev/null; then
+  echo "$what: ${green}provided${nc}"
+  echo "... # $fname"
+  return $?
+else
+  echo "${red}Error: $what failed to install!${nc}"
+  echo "... # $fname 💣"
+  return $(expr $$ % 252)
+fi
+
+true;
 

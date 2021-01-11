@@ -103,7 +103,7 @@ console.debug(callee+'.logfile:',logfile);
 let text = document.getElementsByName('complaint')[0].value;
 let payload = await ipfsAddTextContent(text);
 
-let qm = await ipfsLogAppend(logfile,`${tics}: ${payload} by ${author}`);
+let qm = await ipfsLogAppend(logfile,`${tics}: ${payload} by ${author}\n`);
 document.getElementById('qm').innerHTML = `<a href=http://localhost:${gwport}/${qm}>/ipfs/${qm}</a>`;
 console.debug(callee+'.qm:',qm);
 
