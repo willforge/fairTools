@@ -1,0 +1,4 @@
+# 
+
+core=fair
+prefix=ft
