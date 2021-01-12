@@ -1,10 +1,9 @@
 # fairTools runtime ENVIRONMENT
 
-echo "--- # $0 (source fr-envrc.sh)"
-
 core="${core:-fair}"
 fname="${0##*/}"
 prefix=${fname%%-*}
+echo "--- # ${prefix}-envrc.sh (caller $0)"
 
 export XDG_CACHE_HOME="$HOME/.cache"
 
@@ -13,24 +12,23 @@ FTCONFIG=$LOCALDIR/${core}Tools/${prefix}-config.sh
 if [ "x$FAIRTOOLS_PATH" = 'x' ]; then
 
 cli=$(which ${prefix})
+root_cli=$(readlink $cli)
 wrapper=$(readlink -f $cli)
+
+echo "cli: $cli"
+echo "root_cli: $root_cli"
 echo "wrapper: $wrapper"
+
 CLIDIR=$(dirname "$wrapper")
+echo "CLIDIR: $CLIDIR"
 LOCALDIR=$(readlink -m $CLIDIR/..)
 
 INSTALLDIR=${cli%%/bin/*}
-
-
-OPT_WRAPPER=$(readlink $cli)
-ROOTDIR="${OPT_WRAPPER%%/opt/*}"
-
-#provide=$(which ${prefix}-provide.sh)
+ROOTDIR="${root_cli%%/opt/*}"
 
 # calling script
 self=$(readlink -f $0)
 CALLINGDIR=$(dirname $self)
-
-
 
 # fairTools ENVIRONMENT
 #export FAIRTOOLS_PATH=${FAIRTOOLS_PATH:-$ROOTDIR/opt/${core}Tools}
@@ -55,12 +53,3 @@ PERL_MM_OPT="INSTALL_BASE=$ROOTDIR"; export PERL_MM_OPT;
 export IPFS_CONTAINER=ipfs-node
 
 # --- all edits below this line are subject to be erased !
-export IPFS_CONTAINER=ipfs-node
-export IPFS_CONTAINER=ipfs-node
-export IPFS_CONTAINER=ipfs-node
-export IPFS_CONTAINER=ipfs-node
-export IPFS_CONTAINER=ipfs-node
-export IPFS_CONTAINER=ipfs-node
-export IPFS_CONTAINER=ipfs-node
-export IPFS_CONTAINER=ipfs-node
-export IPFS_CONTAINER=ipfs-node
