@@ -51,7 +51,10 @@ sh $(which ft-ipfs-docker-run.sh)
 ipfs() {
  docker exec -i $IPFS_CONTAINER ipfs $@
 }
-dockerip=$(docker exec $IPFS_CONTAINER ifconfig eth0 | grep addr | sed -n -e 's/^ *inet addr:\([^ ]*\).*/\1/p;')
+sh $(which ft-provide-ifconfig.sh)
+# ipfs-node: inet addr:172.17.0.3
+# ubuntu/debian inet 192.168.1.119
+dockerip=$(docker exec $IPFS_CONTAINER ifconfig eth0 | grep inet | sed -n -e 's/inet addr:/inet /' -e 's/^ *inet \([^ ]*\).*/\1/p;')
 echo dockerip: $dockerip
 # ------------------------------------------------------------------------------------
 fi
@@ -66,6 +69,9 @@ echo "apiaddr: $apiaddr"
 
 gw_port=$(echo $gwaddr | cut -d/ -f 5)
 api_port=$(echo $apiaddr | cut -d/ -f 5)
+node_ip=$(ipfs swarm addrs listen | grep /ip4 | tail -1 | cut -d/ -f 3)
+echo "node_ip: $node_ip"
+
 # pick the first for the swarm address
 swarm_port=$(ipfs config Addresses.Swarm | grep -e /tcp | head -1 | cut -d/ -f5 | sed -e 's/".*//')
 #h=$( expr $gw_port \% 251 )
@@ -75,6 +81,7 @@ swarm_port=$(ipfs config Addresses.Swarm | grep -e /tcp | head -1 | cut -d/ -f5 
 #  - gateway is the first w/ port = 8080 or gw_port (from Addresses.Gateway)
 #  - api is the first w/ port = 5001 or api_port (from Addresses.API)
 
+if ! grep -qa /docker /proc/1/cgroup; then
 if ! grep -q Access-Control-Allow-Origin $IPFS_PATH/config ; then
 # localgw
 gwport=8080
@@ -114,6 +121,21 @@ h=$( expr $gwport \% 251 )
 host="127.0.0.$h"
 echo host: $host
 
+gw_host=$dockerip
+api_host=$dockerip
+
+else # native ipfs
+gwhost=$(echo $gwaddr | cut -d'/' -f3)
+apihost=$(echo $apiaddr | cut -d'/' -f3)
+gwport=$gw_port
+apiport=$api_port
+host=$gwhost
+origin=$gwhost
+
+gw_host=$node_ip
+api_host=$node_ip
+fi
+
 echo origin: $origin
 echo gwhost: $gwhost
 echo apihost: $apihost
@@ -130,10 +152,10 @@ cat > $cachedir/config.js <<EOF
 window.config = {
  'origin': "$origin",
  'host': "$host",
- 'gw_url': "http://${dockerip}:${gw_port}",
- 'api_url': "http://${dockerip}:${api_port}/api/v0/"
+ 'gw_url': "http://${gw_host}:${gw_port}",
+ 'api_url': "http://${api_host}:${api_port}/api/v0/"
  'swarm_port': "${swarm_port}",
- 'swarm_ip': "${dockerip}",
+ 'swarm_ip': "${node_ip}",
  'webkey': "$webkey",
  'webui': "$webui",
  'tic': "${tic}"
@@ -170,9 +192,11 @@ docker ps -a -f name=$IPFS_CONTAINER
 
 echo api: http://${dockerip}:${api_port}/webui/
 echo gw: http://${dockerip}:${gw_port}/ipns/$peerid/
-echo webui: http://$gwhost:${gwport}$webui/
-
+else
+echo api: http://${apihost}:${api_port}/webui/
+echo gw: http://${node_ip}:${gw_port}/ipns/$peerid/
 fi
+echo webui: http://$gwhost:${gwport}$webui/
 
 # -------------------------------------------------------------
 echo "---"

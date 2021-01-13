@@ -55,9 +55,9 @@ fi
 ## update path if necessary 
 if ! echo $PATH | sed -e 's/:/\n/g' | grep -q -e $INSTALLDIR/bin; then
   cat >> $HOME/.profile <<EOT
- 
-  # setup for $cli (${core}Tools) modified on $(date +%D) by $0
-  export PATH=$PATH:$INSTALLDIR/bin 
+
+# setup for $cli (${core}Tools) modified on $(date +%D) by $0
+export PATH=$PATH:$INSTALLDIR/bin 
 
 EOT
 fi
