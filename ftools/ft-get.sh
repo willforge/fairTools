@@ -43,8 +43,9 @@ parent=$(dirname ${TOOLKIT_PATH})
 if [ ! -d $TOOLKIT_PATH ]; then
   mkdir -p $parent
   cd $parent
-  git config pull.rebase false
   git clone --branch dbug $git_url
+  cd "$TOOLKIT_PATH"
+  git config pull.rebase false
 else
   cd "$TOOLKIT_PATH"
   git pull origin dbug
