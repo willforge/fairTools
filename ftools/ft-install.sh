@@ -5,7 +5,10 @@ intent="install a soft link ft in the bin directory"
 fname="${0##*/}"
 prefix=${fname%%-*}
 self=$(readlink -f "$0")
-BINDIR=$(dirname $self); export PATH=$PATH:$BINDIR;
+CALLINGDIR=$(dirname $self);
+FAIRTOOLS_PATH=${FAIRTOOLS_PATH:-$(readlink -m "$CALLINGDIR/..")}
+PROVIDEDIR=$FAIRTOOLS_PATH/provides
+# export PATH=$PATH:$CALLINGDIR; # DO NOT put CALLINGDIR befor INSTALLDIR
 
 # deps:
 # - readlink,sudo
@@ -42,7 +45,7 @@ if [ -w $INSTALLDIR/bin ]; then
  echo ln -s $BINDIR/$cli $INSTALLDIR/bin/$cli
  ln -s $BINDIR/$cli $INSTALLDIR/bin/$cli
 else
- sh $(which ${prefix}-provide.sudo.sh)
+ sh $PROVIDEDIR/${prefix}-provide.sudo.sh
  #install -p -m 0755 ft /usr/local/bin
  sudo rm -f $INSTALLDIR/bin/$cli
  echo sudo ln -s $BINDIR/$cli $INSTALLDIR/bin/$cli
