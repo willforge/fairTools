@@ -175,6 +175,8 @@ docker stop $IPFS_CONTAINER
 echo -n "docker: ${yellow}removing${nc} "
 docker rm $IPFS_CONTAINER
 set -x
+uid=$(id -u)
+gid=$(id -g)
 # allow docker to access fairTools folder
 docker run -d --name $IPFS_CONTAINER \
   -v $IPFS_STAGING:/export -v $IPFS_PATH:/data/ipfs -w /export \
@@ -189,7 +191,8 @@ set +x
 docker logs --until 59s $IPFS_CONTAINER
 
 docker ps -a -f name=$IPFS_CONTAINER
-
+ 
+echo "api: |-\n curl -s -X POST http://${dockerip}:${api_port}/api/v0/id | json_xs"
 echo api: http://${dockerip}:${api_port}/webui/
 echo gw: http://${dockerip}:${gw_port}/ipns/$peerid/
 else
