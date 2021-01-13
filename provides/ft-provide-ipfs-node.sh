@@ -31,6 +31,7 @@ if test ! -d $IPFS_STAGING; then mkdir -p $IPFS_STAGING; fi
 if grep -qa /docker /proc/1/cgroup; then
 
 # ------------------------------------------------------------------------------------
+# within docker ...
 sh $(which ft-provide-ipfs.sh)
 sh $(which ft-ipfs-native-run.sh)
 # ------------------------------------------------------------------------------------
@@ -42,6 +43,7 @@ export IPFS_CONTAINER=${IPFS_CONTAINER:-ipfs-node}
 echo "export IPFS_CONTAINER=$IPFS_CONTAINER" >> $CLIDIR/ft-envrc.sh
 
 # ------------------------------------------------------------------------------------
+# outside docker ...
 sh $(which ft-provide-docker.sh)
 sh $(which ft-ipfs-docker-run.sh)
 

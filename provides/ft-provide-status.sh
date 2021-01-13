@@ -1,4 +1,4 @@
-#
+status=$?;
 
 intent="report install status"
 
@@ -7,21 +7,24 @@ red=$(echo -n "\e[31m")
 green=$(echo -n "\e[1;32m")
 nc=$(echo -n "\e[0m")
 
-true;
-
 fname=${0##*/}
+prefix=${fname%%-*}
 echo "---"
 rname=${fname%%.*}
 what=${rname#*provide-}
 
+if [ $status -eq 0 ]; then
+  echo "$what: ${green}ok${nc}"
+  echo "... # $fname"
+else
 if which $what >/dev/null; then
   echo "$what: ${green}provided${nc}"
-  echo "... # $fname"
-  return $?
+  echo "... # $prefix-provide-$what.sh"
 else
   echo "${red}Error: $what failed to install!${nc}"
-  echo "... # $fname 💣"
-  return $(expr $$ % 252)
+  status=$(expr $$ % 252)
+  echo "... # $prefix-provide-$what.sh 💣"
 fi
-
+fi
+return $status
 true;
