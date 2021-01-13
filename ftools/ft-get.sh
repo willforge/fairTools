@@ -15,7 +15,7 @@ ROOTDIR="${ROOTDIR:-$HOME/...}"
 TOOLKIT_PATH=${TOOLKIT_PATH:-${ROOTDIR}/opt/${toolkit}}
 echo TOOLKIT_PATH: $TOOLKIT_PATH
 core=${toolkit%%Tools}
-export PATH="$PATH:$TOOLKIT/ftools"
+#export PATH="$PATH:$TOOLKIT/ftools" # /!\ DO NO MESS W/ PATH !
 
 # -----------------------------------------------------
 # install deps: sudo, git
@@ -52,9 +52,7 @@ else
 fi
 cd $TOOLKIT_PATH
 . ./config.sh
-export PATH=$PATH:$TOOLKIT_PATH/ftools
-sh $(which ft-install.sh)
-#sh $TOOLKIT_PATH/ftools/ft-install.sh
+sh $TOOLKIT_PATH/ftools/ft-install.sh
 
 exit $?
 true

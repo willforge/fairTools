@@ -42,14 +42,14 @@ cli=$prefix
 #install -p -m 0755 ft $INSTALLDIR
 if [ -w $INSTALLDIR/bin ]; then
  rm -f $INSTALLDIR/bin/$cli
- echo ln -s $BINDIR/$cli $INSTALLDIR/bin/$cli
- ln -s $BINDIR/$cli $INSTALLDIR/bin/$cli
+ echo ln -s $CALLINGDIR/$cli $INSTALLDIR/bin/$cli
+ ln -s $CALLINGDIR/$cli $INSTALLDIR/bin/$cli
 else
  sh $PROVIDEDIR/${prefix}-provide.sudo.sh
  #install -p -m 0755 ft /usr/local/bin
  sudo rm -f $INSTALLDIR/bin/$cli
- echo sudo ln -s $BINDIR/$cli $INSTALLDIR/bin/$cli
- sudo ln -s $BINDIR/$cli $INSTALLDIR/bin/$cli
+ echo sudo ln -s $CALLINGDIR/$cli $INSTALLDIR/bin/$cli
+ sudo ln -s $CALLINGDIR/$cli $INSTALLDIR/bin/$cli
 fi 
 
 ## update path if necessary 
