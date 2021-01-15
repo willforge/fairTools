@@ -4,6 +4,12 @@ echo "--- # ${0##*/}"
 export IPFS_IMAGE=${IPFS_IMAGE:-ipfs/go-ipfs}
 export IPFS_CONTAINER=${IPFS_CONTAINER:-ipfs-node}
 
+if [ "?$IPFS_PATH" != '?' ]; then
+echo IPFS_PATH: $IPFS_PATH
+fi
+IPFS_PATH=${IPFS_PATH:-$HOME/.ipfs}
+
+
 red=$(echo -n "\e[31m")
 green=$(echo -n "\e[1;32m")
 nc=$(echo -n "\e[0m")

@@ -9,7 +9,7 @@ sudo apt-get install net-tools
 
 which ifconfig >/dev/null
 . $CALLINGDIR/ft-provide-status.sh
-fi
+f
 
 true;
 

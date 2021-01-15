@@ -5,6 +5,8 @@ lang: fr
 <!DOCTYPE html>
 <head>
 <meta charset="utf8"/>
+<script src=../js/config.js></script>
+
 <script src=../js/sha256.js></script>
 <script src=../js/essential.js></script>
 <script src=../js/ipfs.js></script>
@@ -104,7 +106,7 @@ let text = document.getElementsByName('complaint')[0].value;
 let payload = await ipfsAddTextContent(text);
 
 let qm = await ipfsLogAppend(logfile,`${tics}: ${payload} by ${author}\n`);
-document.getElementById('qm').innerHTML = `<a href=http://localhost:${gwport}/${qm}>/ipfs/${qm}</a>`;
+document.getElementById('qm').innerHTML = `<a href=http://localhost:${gwport}/ipfs/${qm}>/ipfs/${qm}</a>`;
 console.debug(callee+'.qm:',qm);
 
 // publish ...
@@ -118,23 +120,23 @@ console.debug(callee+'.ppath:',ppath);
 }
 
 async function notify(ev) {
+let [callee, caller] = functionNameJS();
 // 1.
-let editor_token = `I have submitted a proposal to ${PUBLICID}`;
-let hash = await ipfsAddTextContent(editor_token);
+let editor_label = `I have submitted a proposal to ${PUBLICID}`;
+let editor_token = getNid(`uri:text:${editor_label}`);
+let hash = await ipfsSetToken(editor_token);
     document.getElementById('token').innerHTML = `editor <span title=${hash}">token:${hash}</span>`;
 // 2.
 // mboxid: `urn:message:to:${PUBLICID}:from:${peerid}`
 let mboxid = getNid('urn:message:to:'+PUBLICID+':from:'+peerid);
 let uniq_message = `proposition soumise au public on ${today}, this message is intended for peerid ${PUBLICID}`;
 let uniq_content = getNid(sharedsecret + uniq_message);
-    hash = await ipfsAddTextContent(uniq_content);
+    hash = await ipfsSetToken(uniq_content);
     document.getElementById('uniq_content').innerHTML = `uniq: <span title=${hash}>${uniq_content}</span>`; // TODO: make token non-downloadable
 // 3. 
 let signature_token = `I have signed my text with my peerid: ${peerid}`;
-    hash = await ipfsAddTextContent(signature_token);
+    hash = await ipfsSetToken(signature_token);
     document.getElementById('signature').innerHTML = `signed by <a title=${hash} href=https://gateway.ipfs.io/ipns/${peerid}>${peerid}</a>`;
-
-  
   
 }
 

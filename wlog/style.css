@@ -4,6 +4,7 @@ body {
 }
 h1,h2,h3 {
   background-color: rgb(230, 220, 245);
+  padding: 0.3em;
 }
 
 .modal {
@@ -37,6 +38,13 @@ div#popup {
   opacity: 1.0;
   z-index: 3;
 }
+code, pre {
+  width: 80%;
+  margin: auto;
+  background-color: rgb(230, 220, 245);
+  color: #502060;
+}
+
 a.nodeco {
  text-decoration: none;
  color: #234;

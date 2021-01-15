@@ -2,28 +2,34 @@
 <script>
  const qm='QmSJf8QYV1hGHEnsVkdRDYaR5V7ze48FnJQfk8vsqs6Uxu';
 </script>
+<link rel=stylesheet href=style.css>
 <div class=md>
 # INSTALLATION GUIDE FOR FAIRTOOLS 
 
 
 1. open a command terminal
-2. install curl if you don't have it running the command :
+2. install [curl][1] if you don't have it; by running the command :
 
+  ```sh
   sudo apt-get update
-  <br>sudo apt-get -y install [curl][1]
+  sudo apt-get -y install curl
+  ```
 
-3. run the following command
+3. run the command below :
 
 
-  curl -L [https://ipfs.blockringtm.ml/ipfs/:qm/fairTools/ftools/ft-get.sh][2] | \<br>
-  sh -e /dev/stdin [https://github.com/willforge/fairTools.git][4]
+  ```sh
+  curl -L https://ipfs.blockringtm.ml/ipfs/:qm/fairTools/ftools/ft-get.sh | \
+  sh -e /dev/stdin https://github.com/willforge/fairTools.git
 
   ft provide ipfs-node
+  ```
 
+  (the [ft-get.sh][2] script, and git [repository][4] can be views [here][2] )
 
 [1]: https://duckduckgo.com/?q=curl+install+%21
 [2]: https://ipfs.blockringtm.ml/ipfs/:qm/fairTools/ftools/ft-get.sh
-[3]: https://ipfs.blockringtm.ml/ipfs/:qm/fairTools/bin/ft-install.sh 
+[3]: https://ipfs.blockringtm.ml/ipfs/:qm/
 [4]: https://github.com/willforge/fairTools.git
 
 <!--

@@ -192,10 +192,15 @@ docker logs --until 59s $IPFS_CONTAINER
 
 docker ps -a -f name=$IPFS_CONTAINER
  
-echo "api: |-\n curl -s -X POST http://${dockerip}:${api_port}/api/v0/id | json_xs"
+echo "cmd: |-"
+echo " export PERL5LIB=$PERL5LIB"
+echo " curl -s -X POST http://${dockerip}:${api_port}/api/v0/id | json_xs"
 echo api: http://${dockerip}:${api_port}/webui/
 echo gw: http://${dockerip}:${gw_port}/ipns/$peerid/
 else
+echo "cmd: |-"
+echo " export PERL5LIB=$PERL5LIB"
+echo " curl -s -X POST http://${apihost}:${api_port}/api/v0/id | $ROOTDIR/bin/json_xs"
 echo api: http://${apihost}:${api_port}/webui/
 echo gw: http://${node_ip}:${gw_port}/ipns/$peerid/
 fi

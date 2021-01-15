@@ -48,8 +48,7 @@ async function find_peers(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   // if (typeof(peerids) == 'undefined') {
     // let hash = await ipfsAddTextContent(editor_token);
-    //var editor_token_hash = await ipfsGetToken(editor_token);
-    var editor_token_hash = await ipfsGetToken(editor_label);
+    var editor_token_hash = await ipfsGetToken(editor_token);
     document.getElementById('token_hash').innerHTML=editor_token_hash;
     console.debug(callee+'.editor_token_hash:',editor_token_hash);
     display_status('pending');
