@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<meta charset="utf8"/>
+<script src=../js/config.js></script>
+
+<script src=../js/essential.js></script>
+<script src=../js/sha256.js></script>
+<script src=../js/ipfs.js></script>
+<script src=../js/functions.js></script>
+<!--
+  findprovs on editor_token
+ 
+  load all texts under each nid keys
+
+  /my/submission/complaints/title/a-specific-topic_history-nid.log
+  /public/./submission/complaints/title/a-specific-topic_history-nid.log
+
+-->
+
+<div class=content>
+peerid: <span id=peerid>:peerid</span>
+<br>token: <span id=token>:editor_token</span>
+<br>token_hash <span id=token_hash>:editor_token_hash</span>
+<br><button id=find-button onclick="find_peers(event);">find peers</button>
+<br>providers <span id=status></span>:
+<div id=peerids></div>
+</div>
+
+<script>
+var peerid;
+var peerids;
+// TODO have a registry to obtain public's private-key
+const PUBLICID = 'QmezgbyqFCEybpSxCtGNxfRD9uDxC53aNv5PfhB3fGUhJZ';
+const editor_label = `I have submitted a proposal to ${PUBLICID}`;
+const editor_token = getNid(`uri:text:${editor_label}`);
+document.getElementById('token').innerHTML=editor_token;
+console.debug('main.editor_token:',editor_token);
+
+main();
+async function main() {
+  peerid = await promisedPeerId;
+  document.getElementById('peerid').innerHTML = `<a href=${gw_url}/ipns/${peerid}>${peerid}</a>`;
+  
+}
+</script>
+
+<script>
+async function find_peers(ev) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  // if (typeof(peerids) == 'undefined') {
+    // let hash = await ipfsAddTextContent(editor_token);
+    //var editor_token_hash = await ipfsGetToken(editor_token);
+    var editor_token_hash = await ipfsGetToken(editor_label);
+    document.getElementById('token_hash').innerHTML=editor_token_hash;
+    console.debug(callee+'.editor_token_hash:',editor_token_hash);
+    display_status('pending');
+    peerids = await ipfsFindProvs(editor_token_hash);
+    display_status('ok');
+    display_provs(peerids);
+    
+  // }
+}
+
+function display_status(s) {
+  let imgs = { 'pending':'../img/spinner.gif', 'ok':'../img/check-mark.png' };
+  document.getElementById('status').innerHTML=`<img alt=${s} src=${imgs[s]} height="24">`;
+  if (s.match('pending')) {
+     document.getElementById('find-button').disabled=true
+  } else if (s.match('ok')) { 
+     document.getElementById('find-button').disabled=false
+  }
+}
+
+async function display_provs(peerids) {
+  let buf = '<ul>';
+  for (peer of peerids) {
+    buf += `<li><a target=_blank href=${gw_url}/ipns/${peer}/>${peer}</a></li>\n`
+  }
+  buf += "</ul>\n";
+  document.getElementById('peerids').innerHTML = buf;
+}
+</script>
