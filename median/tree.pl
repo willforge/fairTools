@@ -240,7 +240,7 @@ sub insert {
    $node->{n} = 1;
    do { $_->{n} = $_->{n} + 1 } for @{$node->{parents}};
 
-   # compate node w/ medians
+   # compare node w/ medians
    my $comp0 = &compare($node,$medianm);
    my $comp1 = &compare($node,$medianp);
    printf "median-comp0: %s <=> %s:%d = %s\n",$node->{id},$medianm->{id},$medianm->{val},$comp0;

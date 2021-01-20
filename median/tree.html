@@ -28,7 +28,7 @@ peerid: <span id=peerid><i>:peerid</i></span>
 <br>path: <input name=path value="/public/submission/proposal" placeholder="mutable path">
 <br>author: <input name=author placeholder="author">
 <br>stamp: <input name=ts value onmouseover="this.value=Date.now();">
-<br>node_id: <input name=node_nid value=":node_nid" disabled>
+<br>node_nid: <input name=node_nid value=":node_nid" disabled>
 <br>category: <input type=text name=category value='' placeholder="category">
 <br>subject: <input type=text name=subject value='' onchange="update_node_nid(event);" placeholder="subject">
 <br>date: <input type=date name=date value='' placeholder="date">
@@ -49,6 +49,8 @@ peerid: <span id=peerid><i>:peerid</i></span>
 </div>
 
 <script>
+const dbug = 0;
+var forest = {};
 const qmempty = 'QmbFMke1KXqnYyBBWxB74N4c5SBnJMVAiMNRcGu6x1AwQH';
 var tree_label = 'fairTree';
 var peerid;
@@ -88,106 +90,295 @@ async function main() {
 <script>
 async function create_node(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
-  let val = document.getElementsByName('value')[0].value;
+  let val = +(document.getElementsByName('value')[0].value);
   let buf = document.getElementsByName('node_text')[0].value;
   // let qmhash = await ipfsGetHashByContent(buf);
   let qmhash = await ipfsPostHashByContent(buf);
   console.debug(callee+'.qmhash:',qmhash);
   document.getElementById('qmhash').innerHTML = qmhash;
-  let node = { val:val, id:'root',n:0, payload: qmempty, median:0,addr:0,level:0,
+  let node_nid = getNid(`uri:ipfs:${qmhash}`);
+  document.getElementsByName('node_nid')[0].value = node_nid;
+  let node = { val:val, id:`n${sn}-${node_nid.substr(0,3)}`,n:0, payload: qmhash, median:0,addr:0,level:0,
                sum : 0, d_order : 0, u_order : 0, r_order : rank[sn++],
                children : [], medians : [], parents : [] };
+  console.debug(callee+'.node:',node);
   tree = insert_node(node,tree);
 }
 function insert_node(node,tree) {
+   let [callee, caller] = functionNameJS(); // logInfo("message !")
 
- let root = tree;
- if (typeof(root.children) == 'undefined') { // empty tree
-   node.sn = 1;
-   node.medians = [node,node];
-   node.median = node[val];
-   node.parents = [];
-   return node;
- }
- let pos = root; // tree current position
- let spot = undefined; // place where node is to be inserted;
- let medianm = root.medians[0];
- let medianp = root.medians[1];
-
- while (typeof(spot) == 'undefined') {
-   let comp = compare(node,pos);
-   console.debug(callee+'.comp:',`${node.id} <=> ${pos.id} = ${comp}`);
-   if (comp > 0) { // right insert
-     if ( typeof(pos.children[1]) == 'undefined' ) {
-       // attach node to tree (right branch)
-       pos.children[1] = node;
-       node.level = pos.level + 1;
-       node.addr = get_addr(pos.addr,1); // direction=1 i.e. right
-       spot = pos;
-     } else { // no splot available at this level : go down the right branch
-       pos = pos.children[1];
-     }
-     node.u_order = pos.u_order + 1;
-   } else if (comp < 0) { // left insert 
-      if ( typeof(pos.children[0]) == 'undefined' ) {
-        // attach node to tree (left branch)
-        pos.children[0] = node;
-        node.level = pos.level + 1;
-        node.addr = get_addr(pos.addr,0); //direction=0 i.e left
-        spot = pos;
-      } else { // no spot available at this level : go down the left branch
-        pos = pos.children[0];
-      }
-      node.d_order = pos.d_order + 1;
-   } else { // comp = 0
-     if ( typeof(pos.children[0]) == 'undefined' ) { // left branch prefered ...
-       // attach node to tree (left branch)
-       pos.children[0] = node;
-       node.level = pos.level + 1;
-       node.addr = get_addr(pos.addr,0);
-       comp = -1; // considering new node smaller than pos;
-       spot = pos;
-       console.debug(callee+".node inserted on the left side of %s:%d comp=%d\n",spot.id,spot.val,comp);
-     } else if ( typeof(pos.children[1]) == 'undefined' ){ 
-       // attach node to tree (right branch);
-       pos.children[1] = node;
-       node.level = pos.level + 1;
-       node.addr = get_addr(pos.addr,1);
-       comp = +1; // considering new node bigger than pos;
-       spot = pos;
-       console.debug(callee+".node inserted on the right side of %s:%d comp=%d\n",spot.id,spot.val,comp);
-     } else { // no spot available at this level : go down the any branch
-       let dir = Math.random() > 0.5 ? 1 : 0; // /!\ random walk !
-       console.debug(callee+".info: RANDOM bifurcation: %s !",dir?'right':'left');
-       console.debug(callee+".info: continue down the %s branch of %s",(dir?'right':'left'),pos.id);
-       comp = dir?1:-1;
-       pos = pos.children[dir];
-     }
+   console.debug(callee+'.info:  insert-node: %s:%d',node.id,node.val);
+   let root = tree;
+   if (typeof(root.children) == 'undefined') { // empty tree
+      node.sn = 1;
+      node.medians = [node,node];
+      node.median = 0.0 + node.val;
+      node.parents = [];
+      return node;
    }
- } // while
- if (spot) {
-   node.parents = node.parents.push(spot); // update parents list ...
-   console.debug(callee+".info: %s's parents: %s",node.id,node.parents.map( _ => { _.id }).join(','));
- }
- // update n
- node.sn = 1;
- for (let pn of node.parents) {
-   pn.sn = pn.sn + 1;
- }
- // compare node w/ medians
- let comp0 = compare(node,medianm);
- let comp1 = compare(node,medianp);
- console.debug(callee+".info: median-comp0: %s <=> %s:%d = %s",node.id,medianm.id,medianm.val,comp0);
- console.debug(callee+".info: median-comp1: %s <=> %s:%d = %s",node.id,medianp.id,medianp.val,comp1);
+   // start search at root:
+   let pos = root; // tree current position
+   let spot = undefined; // place where node is to be inserted;
+   let medianm = root.medians[0];
+   let medianp = root.medians[1];
 
-}
-function compare(a,b) {
-  return a > b ? -1 : 1; // TO BE CHANGED i.e. syntax test
-}
-function get_addr(addr,dir) {
- return addr+dir; // TO BE CHANGED i.e. syntax test
+   while (typeof(spot) == 'undefined') {
+      let comp = compare_by_val(node,pos);
+      console.debug(callee+'.comp:',`${node.id}:${node.val} <=> ${pos.id}:${pos.val} = ${comp}`);
+      if (comp > 0) { // right insert
+         if ( typeof(pos.children[1]) == 'undefined' ) {
+            // attach node to tree (right branch)
+            pos.children[1] = node;
+            node.level = pos.level + 1;
+            node.addr = get_addr(pos.addr,1); // direction=1 i.e. right
+            spot = pos;
+         } else { // no splot available at this level : go down the right branch
+            pos = pos.children[1];
+         }
+         node.u_order = pos.u_order + 1;
+      } else if (comp < 0) { // left insert 
+         if ( typeof(pos.children[0]) == 'undefined' ) {
+            // attach node to tree (left branch)
+            pos.children[0] = node;
+            node.level = pos.level + 1;
+            node.addr = get_addr(pos.addr,0); //direction=0 i.e left
+            spot = pos;
+         } else { // no spot available at this level : go down the left branch
+            pos = pos.children[0];
+         }
+         node.d_order = pos.d_order + 1;
+      } else { // comp = 0
+         if ( typeof(pos.children[0]) == 'undefined' ) { // left branch prefered ...
+            // attach node to tree (left branch)
+            pos.children[0] = node;
+            node.level = pos.level + 1;
+            node.addr = get_addr(pos.addr,0);
+            comp = -1; // considering new node smaller than pos;
+            spot = pos;
+            console.debug(callee+".node inserted on the left side of %s:%d comp=%d\n",spot.id,spot.val,comp);
+         } else if ( typeof(pos.children[1]) == 'undefined' ){ 
+            // attach node to tree (right branch);
+            pos.children[1] = node;
+            node.level = pos.level + 1;
+            node.addr = get_addr(pos.addr,1);
+            comp = +1; // considering new node bigger than pos;
+            spot = pos;
+            console.debug(callee+".node inserted on the right side of %s:%d comp=%d\n",spot.id,spot.val,comp);
+         } else { // no spot available at this level : go down the any branch
+            let dir = Math.random() > 0.5 ? 1 : 0; // /!\ random walk !
+            console.debug(callee+".info: RANDOM bifurcation: %s !",dir?'right':'left');
+            console.debug(callee+".info: continue down the %s branch of %s",(dir?'right':'left'),pos.id);
+            comp = dir?1:-1;
+            pos = pos.children[dir];
+         }
+      }
+   } // while
+   if (spot) {
+      console.debug(callee+'.spot:',spot);
+      node.parents.push(spot); // update parents list ...
+      console.debug(callee+".info: %s's parents: %s",node.id,node.parents.map( _ => { _.id }).join(','));
+   }
+   // update n
+   node.sn = 1;
+   for (let pn of node.parents) { pn.sn = pn.sn + 1; }
 
+   // compare node w/ medians
+   let comp0 = compare_by_val(node,medianm);
+   let comp1 = compare_by_val(node,medianp);
+   console.debug(callee+".info: median-comp0: %s <=> %s:%d = %s",node.id,medianm.id,medianm.val,comp0);
+   console.debug(callee+".info: median-comp1: %s <=> %s:%d = %s",node.id,medianp.id,medianp.val,comp1);
+   // update medians
+   if (comp1 > 0) {
+      console.debug(callee+".info: update(m+ < node) : %s:%d >= %s:%d",node.id,node.val,medianp.id,medianp.val);
+      if (medianm.id != medianp.id) { // 2 medians : was even so now it's odd
+         if(root.sn % 2 == 0) {
+            console.debug(callee+'.error: sn is even /w one median /!\\');
+         } else {
+            console.debug(callee+'.info: odd -> one median');
+         }
+         root.medians[0] = medianp; // insertion was on the right side !
+         console.debug(callee+".update-medianm: %s:%d",root.medians[0].id,root.medians[0].val);
+      } else { // even
+         if (root.sn % 2) {
+            console.debug(callee+'.error: sn is odd /w two medians /!\\');
+         } else {
+            console.debug(callee+'.info: even -> two medians');
+         }
+         root.medians[0] = medianp;
+         root.medians[1] = find_next(medianp);
+         console.debug(callee+".update-medianm: %s:%d",root.medians[0].id,root.medians[0].val);
+         console.debug(callee+".update-medianp: %s:%d",root.medians[1].id,root.medians[1].val);
+      }
+   } else if (comp0 < 0) {
+      console.debug(callee+".info: update(node < m-) : %s:%d >= %s:%d",node.id,node.val,medianm.id,medianm.val);
+      if (medianm.id != medianp.id) { // odd
+         if (root.sn % 2 == 0) {
+            console.debug(callee+'.error: sn is even w/ one median /!\\');
+         } else {
+            console.debug(callee+'.odd : one median');
+         }
+         root.medians[1] = medianm;
+         console.debug(callee+".update-medianp: %s:%d\n",root.medians[1].id,root.medians[1].val);
+         // root.median = medianm.val;
+         // console.debug(callee+".update-median: %.2f",root.median;
+      } else { // even
+         if (root.sn % 2) {
+            console.debug(callee+'.error: sn is odd w/ two median /!\\');
+         } else {
+            console.debug(callee+'.even : two medians');
+         }
+         root.medians[1] = medianm;
+         root.medians[0] = find_prev(medianm);
+         console.debug(callee+".update-medianm: %s:%d",root.medians[0].id,root.medians[0].val);
+         console.debug(callee+".update-medianp: %s:%d",root.medians[1].id,root.medians[1].val);
+      }
+   } else if (0 < comp0 && comp1 < 0) {
+      console.debug(callee+".info: update(m- < node < m+) : %s:%d < %s:%d < %s:%d",medianm.id,medianm.val,spot.id,spot.val,medianp.id,medianp.val);
+      if (root.sn % 2 == 0) {
+         console.error(callee+".error: n is even an val in between /!\\"); return 251;
+      }
+      root.medians[1] = node;
+      root.medians[0] = node;
+      console.debug(callee+".update-medianm: %s:%d",root.medians[0].id,root.medians[0].val);
+      console.debug(callee+".update-medianp: %s:%d",root.medians[1].id,root.medians[1].val);
+
+   } else if (comp0 == 0) {
+      console.error(callee+".ERROR: comp0 == 0"); return 251;
+   } else if (comp1 == 0) {
+      console.error(callee+".ERROR: comp1 == 0"); return 251;
+   } else {
+      console.error(callee+".ERROR !"); return 251;
+   }
+   root.median = ( (+(root.medians[1].val)) + (+(root.medians[0].val)) ) / 2;
+   console.debug(callee+".median-: %.2f",root.medians[0].val);
+   console.debug(callee+".median+: %.2f",root.medians[1].val);
+   console.debug(callee+".update-median: %.2f",root.median);
+
+   console.debug(callee+".info: root.sn: %d",root.sn);
+   // computes node's metrics
+   node.sum = spot.sum + node.val;
+   return root;
 }
+
+function get_addr(parent_addr,dir) {
+ // parent_addr : parent address
+ // dir : direction i.e. side (1:right or 0:left)
+ let addr = parent_addr<<1 | dir;
+ return addr;
+}
+
+// --------------------------------------------------------------
+function find_next(pos) {
+  // pos: position
+  // console.log("--- # %s: %s...\n",pos.id,Dump(parents));
+  // all nodes in right subtree are bigger
+  // next == smaller (redest) of bigger "right (blue)" branch ...
+  // or first parent who has a "left (red) edge"
+  let next = { "id":undefined };
+  if (typeof(pos.children[1]) != 'undefined') { // next is in blue(right) branch
+    next = pos.children[1];
+    while (typeof(next.children[0]) != 'undefined') { // if a red(left) branch exists
+      next = next.children[0];
+    }
+  } else { // next is in a parent subtree
+     if (typeof(pos.parents) == 'undefined') { 
+        return next;
+     } 
+     parents = pos.parents;
+     if (dbug) {
+        console.debug(callee+".dbug: find_next.pos: %s",pos.id);
+        console.debug(callee+".dbug: find_next.parents: [%s]",parents.map( _ => { _.id }).join(','));
+     }
+     let parent = pos;
+     for (let gdparent of parents.reverse()) {
+        if (typeof(gdparent.children[0]) != 'undefined') {
+           if (gdparent.children[0].id == parent.id) {
+              next = gdparent; break;
+           }
+        }
+        parent = gdparent;
+     }
+  }
+  if (dbug) {
+     if (typeof(next.id) != 'undefined') {
+        console.debug(callee+".dbug: next-to: %s:%d is %s:%d",pos.id,pos.val,next.id,next.val);
+     } else {
+        console.debug(callee+".dbug: no-next-to: %s:%d (undef)",pos.id,pos.val);
+     }
+  }
+  return next;
+}
+// --------------------------------------------------------------
+function find_prev(pos) {
+  // pos = shift;
+  // console.log("find_prev.pos: %s\n",pos.id);
+
+  let prev = { "id":undefined };
+  // lookup in the children tree
+  if (typeof(pos.children[0]) != 'undefined') { // prev is in red(left) branch
+     prev = pos.children[0];
+     while (typeof(prev.children[1]) != 'undefined') { // if blue(right) children then descend blue side;
+        prev = prev.children[1];
+     }
+  } else { // prev is in parent subtree
+     if (typeof(pos.parents) == 'undefined') {
+        return prev;
+     }
+     parents = pos.parents;
+     if (dbug) {
+        if (parents.length) {
+           console.debug(callee+".dbug: find_prev.parents: [%s]",parents.map( _ => { _.id }).join(','));
+        } else {
+           console.debug(callee+".dbug: find_prev.parents: [] (%s no parents)",pos.id);
+        }
+     }
+     parent = pos;
+     for(let gdparent of parents.reverse()) {
+        if (typeof(gdparent.children[1]) != 'undefined' && gdparent.children[1].id == parent.id) { // go up until blue
+           // console.debug("gdparent: %s:%d (is blue)",gdparent.id,gdparent.val);
+           prev = gdparent; break;
+        } else {
+           ; //console.debug("gdparent: %s:%d (is red)",gdparent.id,gdparent.val;
+        }
+        parent = gdparent;
+     }
+  }
+  if (dbug) {
+     if (typeof(prev.id) != 'undefined') {
+        console.debug(callee+".dbug: prev-to: %s:%d is %s:%d",pos.id,pos.val,prev.id,prev.val);
+     } else {
+        console.debug(callee+".dbug: no-prev-to: %s:%d (undef)",pos.id,pos.val);
+     }
+  }
+  return prev;
+}
+// --------------------------------------------------------------
+function compare_by_val(a,b) {
+    if (a.val > b.val) {
+       order = 1;
+    } else if (a.val < b.val) {
+       order = -1;
+    } else {
+       order = addr_compare(a,b);
+    }
+    return order;
+}
+
+function addr_compare(a,b) {
+  let fa = frac_addr(a.addr,a.level);
+  let fb = frac_addr(b.addr,b.level);
+  return compare (fa,fb);
+}
+
+function frac_addr(addr,level) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+ console.debug(callee+'.addr:',addr);
+ console.debug(callee+'.level:',level);
+ let frac = (addr + 0.5) / (2.0**level);
+ console.debug(callee+'.frac:',frac);
+ return (addr + 0.5) / (2.0**level);
+}
+
 function update_node_nid(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let subject = ev.target.value;
