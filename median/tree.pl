@@ -268,7 +268,7 @@ sub insert {
          printf "update-medianp: %s:%d\n",$root->{medians}[1]->{id},$root->{medians}[1]->{val};
       }
    } elsif ($comp0 < 0) {
-      printf "update(node < m-) : %s:%d >= %s:%d\n",$node->{id},$node->{val},$medianm->{id},$medianm->{val};
+      printf "update(node < m-) : %s:%d <= %s:%d\n",$node->{id},$node->{val},$medianm->{id},$medianm->{val};
       if ($medianm->{id} ne $medianp->{id}) { # odd
          if ($root->{n} % 2 == 0) {
            print "error: n is even w/ one median /!\\\n",

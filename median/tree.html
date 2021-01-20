@@ -21,16 +21,19 @@
 peerid: <span id=peerid><i>:peerid</i></span>
 <br>editor_token_nid: <span id=editor_token_nid><i>:editor_token_nid</i></span>
 <br>tree: <input name=treelabel placeholder="tree-label" onchange="update_label(event)">
-<button onclick="create_node(event);">create a node</button>
+<button onclick="node_create(event);">create a node</button>
+<button onclick="dot_create(event);">create a dot</button>
 <br>value: <span id=displayed_value></span>
 <input type="range" name="value" min="0" max="20" value="12" onchange="display_value(event);" class="slider">
+<br>score: <input type="integer" name="value" min="0" max="20" value="" onchange="node_create(event);" class="slider">
+<br><span id=qmdot>:qmdot</span>
 <div id=node style="display:;">
 <br>path: <input name=path value="/public/submission/proposal" placeholder="mutable path">
 <br>author: <input name=author placeholder="author">
 <br>stamp: <input name=ts value onmouseover="this.value=Date.now();">
 <br>node_nid: <input name=node_nid value=":node_nid" disabled>
 <br>category: <input type=text name=category value='' placeholder="category">
-<br>subject: <input type=text name=subject value='' onchange="update_node_nid(event);" placeholder="subject">
+<br>subject: <input type=text name=subject value='' onchange="node_nid_update(event);" placeholder="subject">
 <br>date: <input type=date name=date value='' placeholder="date">
 <script>
  document.getElementsByName('date')[0].valueAsDate = new Date();
@@ -49,7 +52,7 @@ peerid: <span id=peerid><i>:peerid</i></span>
 </div>
 
 <script>
-const dbug = 0;
+const dbug = 1;
 var forest = {};
 const qmempty = 'QmbFMke1KXqnYyBBWxB74N4c5SBnJMVAiMNRcGu6x1AwQH';
 var tree_label = 'fairTree';
@@ -88,7 +91,7 @@ async function main() {
 </script>
 
 <script>
-async function create_node(ev) {
+async function node_create(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let val = +(document.getElementsByName('value')[0].value);
   let buf = document.getElementsByName('node_text')[0].value;
@@ -98,19 +101,20 @@ async function create_node(ev) {
   document.getElementById('qmhash').innerHTML = qmhash;
   let node_nid = getNid(`uri:ipfs:${qmhash}`);
   document.getElementsByName('node_nid')[0].value = node_nid;
-  let node = { val:val, id:`n${sn}-${node_nid.substr(0,3)}`,n:0, payload: qmhash, median:0,addr:0,level:0,
+  let node = { val:val, id:`n${sn}-${node_nid.substr(0,3)}`,sn:0, payload: qmhash, median:0,addr:0,level:0,
                sum : 0, d_order : 0, u_order : 0, r_order : rank[sn++],
                children : [], medians : [], parents : [] };
   console.debug(callee+'.node:',node);
-  tree = insert_node(node,tree);
+  tree = node_insert(node,tree);
 }
-function insert_node(node,tree) {
+function node_insert(node,tree) {
    let [callee, caller] = functionNameJS(); // logInfo("message !")
 
-   console.debug(callee+'.info:  insert-node: %s:%d',node.id,node.val);
+   console.debug(callee+'.info: node-insert: %s:%d',node.id,node.val);
    let root = tree;
    if (typeof(root.children) == 'undefined') { // empty tree
       node.sn = 1;
+      node.addr = 0;
       node.medians = [node,node];
       node.median = 0.0 + node.val;
       node.parents = [];
@@ -127,7 +131,7 @@ function insert_node(node,tree) {
       console.debug(callee+'.comp:',`${node.id}:${node.val} <=> ${pos.id}:${pos.val} = ${comp}`);
       if (comp > 0) { // right insert
          if ( typeof(pos.children[1]) == 'undefined' ) {
-            // attach node to tree (right branch)
+            console.debug(callee+`.info: // attach node ${node.id} to tree (right branch)`);
             pos.children[1] = node;
             node.level = pos.level + 1;
             node.addr = get_addr(pos.addr,1); // direction=1 i.e. right
@@ -138,7 +142,7 @@ function insert_node(node,tree) {
          node.u_order = pos.u_order + 1;
       } else if (comp < 0) { // left insert 
          if ( typeof(pos.children[0]) == 'undefined' ) {
-            // attach node to tree (left branch)
+            console.debug(callee+`.info: // attach node ${node.id} to tree (left branch of ${pos.id})`);
             pos.children[0] = node;
             node.level = pos.level + 1;
             node.addr = get_addr(pos.addr,0); //direction=0 i.e left
@@ -149,7 +153,7 @@ function insert_node(node,tree) {
          node.d_order = pos.d_order + 1;
       } else { // comp = 0
          if ( typeof(pos.children[0]) == 'undefined' ) { // left branch prefered ...
-            // attach node to tree (left branch)
+            console.debug(callee+`.info: // attach node ${node.id} to tree (left branch of ${pos.id})`);
             pos.children[0] = node;
             node.level = pos.level + 1;
             node.addr = get_addr(pos.addr,0);
@@ -157,7 +161,7 @@ function insert_node(node,tree) {
             spot = pos;
             console.debug(callee+".node inserted on the left side of %s:%d comp=%d\n",spot.id,spot.val,comp);
          } else if ( typeof(pos.children[1]) == 'undefined' ){ 
-            // attach node to tree (right branch);
+            console.debug(callee+`.info: // attach node ${node.id} to tree (right branch of ${pos.id})`);
             pos.children[1] = node;
             node.level = pos.level + 1;
             node.addr = get_addr(pos.addr,1);
@@ -175,24 +179,26 @@ function insert_node(node,tree) {
    } // while
    if (spot) {
       console.debug(callee+'.spot:',spot);
-      node.parents.push(spot); // update parents list ...
-      console.debug(callee+".info: %s's parents: %s",node.id,node.parents.map( _ => { _.id }).join(','));
+      node.parents = [...spot.parents,spot]; // update parents list ...
+      console.debug(callee+".info: %s's parents: %s",node.id,node.parents.map( _ => { return _.id; }).join(','));
    }
    // update n
    node.sn = 1;
+   console.debug(callee+'.node.parents: ',node.parents.map( _ => { return _.id; }))
    for (let pn of node.parents) { pn.sn = pn.sn + 1; }
+   console.debug(callee+'.root.sn: %d (%d)',root.sn,root.id);
 
    // compare node w/ medians
    let comp0 = compare_by_val(node,medianm);
    let comp1 = compare_by_val(node,medianp);
-   console.debug(callee+".info: median-comp0: %s <=> %s:%d = %s",node.id,medianm.id,medianm.val,comp0);
-   console.debug(callee+".info: median-comp1: %s <=> %s:%d = %s",node.id,medianp.id,medianp.val,comp1);
+   console.debug(callee+".info: median-comp0: %s:%d <=> %s:%d = %s",node.id,node.val,medianm.id,medianm.val,comp0);
+   console.debug(callee+".info: median-comp1: %s:%d <=> %s:%d = %s",node.id,node.val,medianp.id,medianp.val,comp1);
    // update medians
    if (comp1 > 0) {
       console.debug(callee+".info: update(m+ < node) : %s:%d >= %s:%d",node.id,node.val,medianp.id,medianp.val);
       if (medianm.id != medianp.id) { // 2 medians : was even so now it's odd
          if(root.sn % 2 == 0) {
-            console.debug(callee+'.error: sn is even /w one median /!\\');
+            console.error(callee+'.error: sn is even /w one median /!\\');
          } else {
             console.debug(callee+'.info: odd -> one median');
          }
@@ -200,7 +206,7 @@ function insert_node(node,tree) {
          console.debug(callee+".update-medianm: %s:%d",root.medians[0].id,root.medians[0].val);
       } else { // even
          if (root.sn % 2) {
-            console.debug(callee+'.error: sn is odd /w two medians /!\\');
+            console.error(callee+'.error: sn is odd /w two medians /!\\');
          } else {
             console.debug(callee+'.info: even -> two medians');
          }
@@ -210,10 +216,10 @@ function insert_node(node,tree) {
          console.debug(callee+".update-medianp: %s:%d",root.medians[1].id,root.medians[1].val);
       }
    } else if (comp0 < 0) {
-      console.debug(callee+".info: update(node < m-) : %s:%d >= %s:%d",node.id,node.val,medianm.id,medianm.val);
+      console.debug(callee+".info: update(node < m-) : %s:%d <= %s:%d",node.id,node.val,medianm.id,medianm.val);
       if (medianm.id != medianp.id) { // odd
          if (root.sn % 2 == 0) {
-            console.debug(callee+'.error: sn is even w/ one median /!\\');
+            console.error(callee+'.error: sn is even w/ one median /!\\');
          } else {
             console.debug(callee+'.odd : one median');
          }
@@ -223,7 +229,7 @@ function insert_node(node,tree) {
          // console.debug(callee+".update-median: %.2f",root.median;
       } else { // even
          if (root.sn % 2) {
-            console.debug(callee+'.error: sn is odd w/ two median /!\\');
+            console.error(callee+'.error: sn is odd w/ two median /!\\');
          } else {
             console.debug(callee+'.even : two medians');
          }
@@ -257,6 +263,8 @@ function insert_node(node,tree) {
    console.debug(callee+".info: root.sn: %d",root.sn);
    // computes node's metrics
    node.sum = spot.sum + node.val;
+
+   dot_create({});
    return root;
 }
 
@@ -269,6 +277,7 @@ function get_addr(parent_addr,dir) {
 
 // --------------------------------------------------------------
 function find_next(pos) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
   // pos: position
   // console.log("--- # %s: %s...\n",pos.id,Dump(parents));
   // all nodes in right subtree are bigger
@@ -287,10 +296,11 @@ function find_next(pos) {
      parents = pos.parents;
      if (dbug) {
         console.debug(callee+".dbug: find_next.pos: %s",pos.id);
-        console.debug(callee+".dbug: find_next.parents: [%s]",parents.map( _ => { _.id }).join(','));
+        console.debug(callee+".dbug: find_next.parents: [%s]",parents.map( _ => { return _.id; }).join(','));
      }
      let parent = pos;
-     for (let gdparent of parents.reverse()) {
+     let path = [...parents];
+     for (let gdparent of path.reverse()) {
         if (typeof(gdparent.children[0]) != 'undefined') {
            if (gdparent.children[0].id == parent.id) {
               next = gdparent; break;
@@ -310,8 +320,9 @@ function find_next(pos) {
 }
 // --------------------------------------------------------------
 function find_prev(pos) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
   // pos = shift;
-  // console.log("find_prev.pos: %s\n",pos.id);
+  if (dbug) { console.log(callee+".pos: %s\n",pos.id); }
 
   let prev = { "id":undefined };
   // lookup in the children tree
@@ -322,23 +333,26 @@ function find_prev(pos) {
      }
   } else { // prev is in parent subtree
      if (typeof(pos.parents) == 'undefined') {
-        return prev;
-     }
+        return prev; // if no parent then prev = undefined !
+     }    
      parents = pos.parents;
      if (dbug) {
         if (parents.length) {
-           console.debug(callee+".dbug: find_prev.parents: [%s]",parents.map( _ => { _.id }).join(','));
+           console.debug(callee+".dbug: find_prev.parents: [%s]",parents.map( _ => { return _.id; }).join(','));
         } else {
            console.debug(callee+".dbug: find_prev.parents: [] (%s no parents)",pos.id);
         }
      }
      parent = pos;
-     for(let gdparent of parents.reverse()) {
+     // Careful: reverse is destructive -- it changes the original array.
+     let path = [...parents];
+     //const path = (parents);
+     for(let gdparent of path.reverse()) {
         if (typeof(gdparent.children[1]) != 'undefined' && gdparent.children[1].id == parent.id) { // go up until blue
-           // console.debug("gdparent: %s:%d (is blue)",gdparent.id,gdparent.val);
+           if (dbug) { console.debug("gdparent: %s:%d (is blue)",gdparent.id,gdparent.val); }
            prev = gdparent; break;
         } else {
-           ; //console.debug("gdparent: %s:%d (is red)",gdparent.id,gdparent.val;
+           if (dbug) { console.debug("gdparent: %s:%d (is red)",gdparent.id,gdparent.val); }
         }
         parent = gdparent;
      }
@@ -372,14 +386,68 @@ function addr_compare(a,b) {
 
 function frac_addr(addr,level) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
- console.debug(callee+'.addr:',addr);
- console.debug(callee+'.level:',level);
+ //console.debug(callee+'.addr:',addr);
+ //console.debug(callee+'.level:',level);
  let frac = (addr + 0.5) / (2.0**level);
- console.debug(callee+'.frac:',frac);
+ //console.debug(callee+'.frac:',frac);
  return (addr + 0.5) / (2.0**level);
 }
 
-function update_node_nid(ev) {
+async function dot_create(ev) {
+  let dbug = 0;
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  let dot_buf = "digraph tree {\n";
+      dot_buf += `"median-" -> "${tree.medians[0].id}"\n`;
+      dot_buf += `"median+" -> "${tree.medians[1].id}"\n`;
+  let list = [tree];
+  while(list.length) {
+     if (dbug) {
+        console.debug(callee+'.while.list.length:',list.length)
+        console.debug(callee+'.while.list: ',list.map( _ => { return _.id; }))
+     }
+    let node = list.shift();
+    if (dbug) { console.debug(callee+'.while.node.id:',node.id); }
+    let children = node.children || [];
+    let faddr;
+    if (typeof(node.id) != 'undefined') {
+      let ismed = (tree.medians[0].id == node.id) ? 'm-' :
+                  (tree.medians[1].id == node.id) ? 'm+' : '';
+      faddr = frac_addr(node.addr,node.level);
+      dot_buf += `"${node.id}" [shape="record" label="${node.id}|`+
+                 `{{${node.d_order}|${node.r_order}|${node.u_order}|s=${node.sum}}|`+
+                 `{${faddr}|val=${node.val}|${ismed}|sn=${node.sn}}}" ];\n`;
+    }
+    if (children.length) {
+      if (dbug) { console.debug(callee+'.node.children:',children.map( _ => { return _.id; })); }
+      let filtered_child = children.filter( _ => { return (typeof(_) != 'undefined');});
+      if (dbug) { console.debug(callee+'.while.filtered_child: ',filtered_child.map( _ => { return _.id; })); }
+      list.push(...filtered_child)
+      if (dbug) { console.debug(callee+'.while.list.new: ',list.map( _ => { return _.id; })); }
+
+      if (typeof(children[0]) != 'undefined') { // left child (red edge)
+        dot_buf += ` "${node.id}" -> "${children[0].id}" [ color="red" ];\n`; 
+      } else {
+        if (dbug) { console.warn(callee+'.node.children[0]:',children[0]);}
+      }
+      if (typeof(children[1]) != 'undefined') { // right child (blue edge)
+        dot_buf += ` "${node.id}" -> "${children[1].id}" [ color="blue" ];\n`; 
+      } else {
+        if (dbug) { console.warn(callee+'.node.children[1]:',children[1]); }
+      }
+    }
+    if (typeof(node.id) != 'undefined') {
+      if (dbug) { console.debug(callee+`.info: node: ${node.id} @${faddr} val=${node.val}`); }
+    }
+    
+  }
+  dot_buf += "}\n";
+  let qmdot = await ipfsPostHashByContent(dot_buf);
+  //document.getElementById('qmdot').innerHTML = `<a href=${gw_url}/ipfs/${qmdot}>${qmdot}</a>`;
+  document.getElementById('qmdot').innerHTML = qmdot;
+  return qmdot;
+}
+
+function node_nid_update(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let subject = ev.target.value;
   console.debug(callee+'.subject:',subject);
