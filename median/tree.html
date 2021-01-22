@@ -23,9 +23,9 @@ peerid: <span id=peerid><i>:peerid</i></span>
 <br>tree: <input name=treelabel placeholder="tree-label" onchange="update_label(event)">
 <button onclick="node_create(event);">create a node</button>
 <button onclick="dot_create(event);">create a dot</button>
+<br>score: <input type="integer" name="value" min="0" max="20" value="" onchange="node_create(event);" class="slider">
 <br>value: <span id=displayed_value></span>
 <input type="range" name="value" min="0" max="20" value="12" onchange="display_value(event);" class="slider">
-<br>score: <input type="integer" name="value" min="0" max="20" value="" onchange="node_create(event);" class="slider">
 <br><span id=qmdot>:qmdot</span>
 <div id=node style="display:;">
 <br>path: <input name=path value="/public/submission/proposal" placeholder="mutable path">
@@ -299,8 +299,8 @@ function find_next(pos) {
         console.debug(callee+".dbug: find_next.parents: [%s]",parents.map( _ => { return _.id; }).join(','));
      }
      let parent = pos;
-     let path = [...parents];
-     for (let gdparent of path.reverse()) {
+     // /!\ .reverse() is destructive
+     for (let gdparent of ([...parents]).reverse()) {
         if (typeof(gdparent.children[0]) != 'undefined') {
            if (gdparent.children[0].id == parent.id) {
               next = gdparent; break;
@@ -345,9 +345,9 @@ function find_prev(pos) {
      }
      parent = pos;
      // Careful: reverse is destructive -- it changes the original array.
-     let path = [...parents];
+     //let path = [...parents];
      //const path = (parents);
-     for(let gdparent of path.reverse()) {
+     for(let gdparent of [...parents].reverse()) {
         if (typeof(gdparent.children[1]) != 'undefined' && gdparent.children[1].id == parent.id) { // go up until blue
            if (dbug) { console.debug("gdparent: %s:%d (is blue)",gdparent.id,gdparent.val); }
            prev = gdparent; break;

@@ -70,6 +70,7 @@ fi
 echo "gw: $gwhost:$gwport -> $gw_port"
 echo "api: $apihost:$apiport -> $api_port"
 
+
 echo -n "docker: stopping "
 docker stop $IPFS_CONTAINER
 echo -n "docker: removing "
@@ -85,7 +86,47 @@ docker run -d --name $IPFS_CONTAINER \
   -p $apihost:$apiport:$api_port \
   $IPFS_IMAGE daemon
 
+sleep 7
+set +x
 docker logs --until 59s $IPFS_CONTAINER
 
 docker ps -a -f name=$IPFS_CONTAINER
+
+#dockerip=$(docker exec ipfs-node grep $CONTAINER_ID /etc/hosts )
+dockerip=$(docker exec $IPFS_CONTAINER ifconfig eth0 | grep inet | sed -n -e 's/inet addr:/inet /' -e 's/^ *inet \([^ ]*\).*/\1/p;')
+# --------------------------------------------------------
+cat > ../js/config.js <<EOF
+/*
+ports and ip-address can be verified by the commands :
+\`\`\`
+docker start ipfs-node
+docker ps -f name=ipfs-node
+
+docker exec ipfs-node ifconfig eth0
+docker exec ipfs-node ipfs config Addresses.Gateway
+docker exec ipfs-node ipfs config Addresses.API
+docker exec ipfs-node ipfs swarm addrs local
+docker exec ipfs-node cat /etc/hosts
+\`\`\`
+
+/etc/hosts: 
+` docker exec ipfs-node cat /etc/hosts `
+
+*/
+window.config = {
+ 'pgw_url':
+   ["https://cloudflare-ipfs.com",
+    "https://dweb.link",
+    "https://gateway.ipfs.io"],
+
+ 'lgw_url': "http://$gwhost:$gwpost",
+ 'lapi_url': "http://$gwhost:$apiport/api/v0/",
+
+ 'gw_url': "http://$dockerip:$gw_port",
+ 'api_url': "http://$dockerip:$api_port/api/v0/"
+};
+EOF
+echo IPFS_PATH: $IPFS_PATH
+echo info: ../js/config.js generated
+# --------------------------------------------------------
 
