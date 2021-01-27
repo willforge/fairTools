@@ -17,27 +17,30 @@
 -->
 <style>i { color: grey; }</style>
 <div class=content>
-<h2>Median <span id=treename></span></h2>
+<h2>Median for a Label<span id=treename></span></h2>
 peerid: <span id=peerid><i>:peerid</i></span>
 <br>editor_token_nid: <span id=editor_token_nid><i>:editor_token_nid</i></span>
-<br>tree: <input name=treelabel placeholder="tree-label" onchange="update_label(event)">
-<br>qmhash: <input name=qmhash placeholder="node-hash" size=43>
+<br>tree_label: <input name=tree_label placeholder="tree-label" onchange="update_label(event)">
+<br>tree_token_label: <span id=tree_token_label><i>:tree_token_label</i></span>
+<br>tree_token_nid: <span id=tree_token_nid><i>:tree_token_nid</i></span>
+<br>tree_token_hash: <span id=tree_token_hash><i>:tree_token_hash</i></span>
+<br>tree_hash: <span id=tree_hash><i>:tree_hash</i></span>
+<br>root_hash: <span id=root_hash><i>:root_hash</i></span>
+<br><button id=find-button onclick="find_peers(event);">find peers on DHT</button>
+<br>discovery: search for token_hash: <span id=searched_token_hash><i>:searched_token_hash</i></span>
+<br>providers <span id=status></span>:
+<div id=peerids></div>
+
 <button onclick="node_create(event);">create a node</button>
-<hr>
-median: <span id=median><i>:median</i></span>
-<br>nb pers: <span id=sn><i>:sn</i></span>
-<br>score: <input type="number" name="score" min="0" max="20" value="12" onchange="update_value(event);">
-<input type="range" name="value" min="0" max="20" onchange="display_score(event);" class="slider">
-<br><button onclick="node_rank(event);">rank node</button>
-<button onclick="dot_create(event);">create a dot</button>
-<br>qmdot: <span id=qmdot><i>:qmdot</i></span>
+<br>qmhash: <input name=qmhash placeholder="node-hash" size=43>
 <div id=node style="display:none;">
 <hr width="60%">
-<br>path: <input name=path value="/public/submission/proposal" placeholder="mutable path">
+<br>node's tree: <input name=label value="" placeholder="tree's label to attached the text" disabled>
+<br>path: <input name=path value="/public/submission/proposal" placeholder="mutable path" required>*
 <br>author: <input name=author placeholder="author">
-<br>stamp: <input name=ts value onmouseover="this.value=Date.now();">
+<br>stamp: <input name=ts value onmouseover="this.value=Date.now();" required>*
 <br>node_nid: <input name=node_nid value=":node_nid" disabled>
-<br>category: <input type=text name=category value='' placeholder="category">
+<br>category: <input type=text name=category value='' placeholder="category" required>*
 <br>subject: <input type=text name=subject value='' onchange="node_nid_update(event);" placeholder="subject">
 <br>date: <input type=date name=date value='' placeholder="date">
 <script>
@@ -49,22 +52,26 @@ median: <span id=median><i>:median</i></span>
 <button onclick="node_close(event);">close</button>
 <hr width="60%">
 </div>
+<hr>
+median: <span id=median><i>:median</i></span>
+<br>nb pers: <span id=sn><i>:sn</i></span>
+<br>score: <input type="number" name="score" min="0" max="20" value="12" onchange="update_value(event);">
+<input type="range" name="value" min="0" max="20" onchange="display_score(event);" class="slider">
+<br><button onclick="node_rank(event);">rank node</button>
+<button onclick="dot_create(event);">create a dot</button>
+<br>qmdot: <span id=qmdot><i>:qmdot</i></span>
 <br>qmhash: <span id=qmhash><i>:qmhash</i></span>
-<br>tree_token_label: <span id=tree_token_label><i>:tree_token_label</i></span>
-<br>tree_token_nid: <span id=tree_token_nid><i>:tree_token_nid</i></span>
-<br><button id=find-button onclick="find_peers(event);">find peers on DHT</button>
-<br>discovery: search for token_hash: <span id=searched_token_hash><i>:searched_token_hash</i></span>
-<br>providers <span id=status></span>:
-<div id=peerids></div>
 </div>
 
 <script>
 const dbug = 1;
 var forest = {};
 const qmempty = 'QmbFMke1KXqnYyBBWxB74N4c5SBnJMVAiMNRcGu6x1AwQH';
-var tree_label = 'fairTree';
+var tree_label = 'fair Tree';
+var tree_labelp = 'fair-tree';
 var peerid;
 var peerids;
+var ipns_cache = {};
 
 let score = document.getElementsByName('score')[0].value;
 
@@ -90,9 +97,22 @@ const editor_token_nid = getNid(`uri:text:${editor_token_label}`);
 document.getElementById('editor_token_nid').innerHTML=editor_token_nid;
 
 var tree_token_label = editor_token_label + ' for ' + tree_label;
-var tree_token_nid = getNid(`uri:tree:${tree_token_label}`);
-document.getElementById('tree_token_label').innerHTML=tree_token_label;
-document.getElementById('tree_token_nid').innerHTML=tree_token_nid;
+update_label({});
+
+function update_label(ev) {
+  let label = document.getElementsByName('tree_label')[0].value;
+  if (typeof(label) != 'undefined' && label != '') {
+    tree_label = label;
+    tree_labelp = tree_label.toLowerCase().replace(/ +/g,'-');
+    tree_token_label = editor_token_label + ' for ' + tree_label;
+  }
+  console.log('update_label.tree_labelp:', tree_labelp);
+  var tree_token_nid = getNid(`uri:tree:${tree_token_label}`);
+  document.getElementById('tree_token_label').innerHTML=tree_token_label;
+  document.getElementById('tree_token_nid').innerHTML=tree_token_nid;
+  document.getElementsByName('label')[0].value = tree_label;
+
+}
 
 
 main();
@@ -113,12 +133,40 @@ async function node_close(ev) {
 }
 async function node_submit(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
-  let buf = document.getElementsByName('node_text')[0].value;
+  let subject = document.getElementsByName('subject')[0].value;
+  let buf = `Subject: ${subject}\n\n`
+      buf += document.getElementsByName('node_text')[0].value;
   // let qmhash = await ipfsGetHashByContent(buf);
   let qmhash = await ipfsPostHashByContent(buf);
   console.debug(callee+'.qmhash:',qmhash);
   document.getElementsByName('qmhash')[0].value = qmhash;
   document.getElementById('qmhash').innerHTML = qmhash;
+  let tree_log_path = `/public/logs/${tree_labelp}.log`
+  console.debug(callee+'.tree_log_path:',tree_log_path);
+  tree_add_qm(tree_log_path,qmhash);
+
+}
+async function tree_add_qm(path,qm) {
+  let ts = document.getElementsByName('ts')[0].value;
+  if (ts == '') {
+    ts = Date.now();
+  }
+  let author = document.getElementsByName('author')[0].value; 
+  let subject = document.getElementsByName('subject')[0].value; 
+  let category = document.getElementsByName('category')[0].value; 
+  let node_path = document.getElementsByName('path')[0].value; 
+  let subjectp = subject.replace(/ +/g,'-');
+  record = `${ts}: ${qm} ${peerid} ${author}:${subjectp} ${node_path}/${category}\n`
+  let qmtree = await ipfsLogAppend(path,record);
+  document.getElementById('tree_hash').innerHTML = `<a href=${gw_url}/ipfs/${qmtree}>${qmtree}</a>`;
+
+}
+async function notify(ev) {
+  document.getElementById('root_hash').innerHTML = '<img src="../img/spinner.gif" height="24">';
+  let root_hash = await publish_root()
+  document.getElementById('root_hash').innerHTML = `<a href=${gw_url}/ipfs/${root_hash}>${root_hash}</a>`;
+  let published_token = await ipfsSetToken(tree_token_nid);
+  document.getElementById('tree_token_hash').innerHTML = published_token;
 }
 async function node_rank(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
@@ -500,8 +548,56 @@ async function find_peers(ev) {
     peerids = await ipfsFindProvs(searched_token_hash);
     display_status('ok');
     display_provs(peerids);
+    let tree = await get_tree(peerids)
+    console.debug(callee+'.tree:',tree);
     
   // }
+}
+
+async function get_tree(peers) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  console.log(callee+'.tree_labelp:',tree_labelp);
+  let logs = '';
+  for(let peer of peers) {
+    let root_path = await ipfsNameResolve(peer);
+    let tree_log_path = `${root_path}/public/logs/${tree_labelp}.log`;
+    let buf = await ipfsGetContentByPath(tree_log_path);
+    console.log(callee+'.buf:',buf);
+    logs += buf;
+  } 
+  let data = load_sorted_log(logs);
+  return data
+}
+
+function load_sorted_log(log) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  let data = log.slice(0,-1).split('\n');
+  console.log(callee+'.data:',data);
+  let records = [];
+  for (let rec of data) {
+    let a_rec = rec.split(' ');
+    a_rec[0] = a_rec[0].slice(0,-1);
+    records.push(a_rec);
+  }
+  console.log(callee+'.records:',records);
+  let selected = {};
+  for (let rec of records.sort(by_stamp)) {
+    let [stamp,qm,peer,nodeid,nodepath] = rec;
+    console.log(callee+'.stamp: %s, nodeid: %s',stamp,nodeid);
+    selected[nodeid] = rec
+  }
+
+  let sorted_records = Object.keys(selected).sort( (a,b) => {
+    return compare(selected[a][0],selected[b][0]);
+  }).map( k => { return selected[k]; });
+
+  console.log(callee+'.sorted_records:',sorted_records);
+  return sorted_records;
+
+}
+
+function by_stamp(a,b) {
+ return compare(a[0],b[0]);
 }
 
 function display_status(s) {
