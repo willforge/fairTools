@@ -26,18 +26,26 @@ peerid: <span id=peerid><i>:peerid</i></span>
 <br>tree_token_hash: <span id=tree_token_hash><i>:tree_token_hash</i></span>
 <br>tree_hash: <span id=tree_hash><i>:tree_hash</i></span>
 <br>root_hash: <span id=root_hash><i>:root_hash</i></span>
+<br>webui: <a target=_blank name=webui href="webui:/#/files/public/logs/">/public/logs</a>
 <br><button id=find-button onclick="find_peers(event);">find peers on DHT</button>
 <br>discovery: search for token_hash: <span id=searched_token_hash><i>:searched_token_hash</i></span>
 <br>providers <span id=status></span>:
 <div id=peerids></div>
 
 <button onclick="node_create(event);">create a node</button>
-<br>qmhash: <input name=qmhash placeholder="node-hash" size=43>
+<br>qmhash: <input name=qminput placeholder="node-hash" onchange="update_qmhash_value(event);" size=43>
+<br>qmhash:
+<select name=qmhash onchange="update_qmhash(event);">
+<option value="typed">as above</option>
+<option value="1">option 1</option>
+<option value="2">option 2</option>
+<option value="3">option 3</option>
+</select>
 <div id=node style="display:none;">
 <hr width="60%">
 <br>node's tree: <input name=label value="" placeholder="tree's label to attached the text" disabled>
 <br>path: <input name=path value="/public/submission/proposal" placeholder="mutable path" required>*
-<br>author: <input name=author placeholder="author">
+<br>author: <input name=author value="anonymous" placeholder="author">
 <br>stamp: <input name=ts value onmouseover="this.value=Date.now();" required>*
 <br>node_nid: <input name=node_nid value=":node_nid" disabled>
 <br>category: <input type=text name=category value='' placeholder="category" required>*
@@ -67,11 +75,18 @@ median: <span id=median><i>:median</i></span>
 const dbug = 1;
 var forest = {};
 const qmempty = 'QmbFMke1KXqnYyBBWxB74N4c5SBnJMVAiMNRcGu6x1AwQH';
+const qmwebui='Qmb3cY3zFJ5isjJ5H9cP47Vfqa6pqNwypbuo2TiBGjUmLd';
+
 var tree_label = 'fair Tree';
 var tree_labelp = 'fair-tree';
 var peerid;
 var peerids;
 var ipns_cache = {};
+
+let webui_url = `${gw_url}/ipfs/${qmwebui}`;
+let webui_element = document.getElementsByName('webui')[0];
+    console.log('main.webui_url:',webui_url);
+    webui_element.href = webui_element.href.replace('webui:',webui_url);
 
 let score = document.getElementsByName('score')[0].value;
 
@@ -114,6 +129,19 @@ function update_label(ev) {
 
 }
 
+function update_qmhash_value(ev) {
+  let qmselect = document.getElementsByName('qmhash')[0];
+  let qmhash = ev.target.value;
+  qmselect.options[0].value = qmhash;
+  qmselect.options[0].text = `as above: ${shortqm(qmhash)}`;
+  return qmhash
+} 
+function update_qmhash(ev) {
+  let qmhash = document.getElementsByName('qmhash')[0].value;
+  document.getElementById('qmhash').innerHTML = `<a href=${gw_url}/ipfs/${qmhash}>${qmhash}</a>`;
+  return qmhash;
+}
+
 
 main();
 async function main() {
@@ -146,6 +174,7 @@ async function node_submit(ev) {
   tree_add_qm(tree_log_path,qmhash);
 
 }
+
 async function tree_add_qm(path,qm) {
   let ts = document.getElementsByName('ts')[0].value;
   if (ts == '') {
@@ -187,6 +216,7 @@ async function node_rank(ev) {
   tree = node_insert(node,tree);
   document.getElementById('median').innerHTML = tree.median;
   document.getElementById('sn').innerHTML = tree.sn;
+  console.debug(callee+'.tree:',tree);
 }
 function node_insert(node,tree) {
    let [callee, caller] = functionNameJS(); // logInfo("message !")
@@ -550,9 +580,28 @@ async function find_peers(ev) {
     display_provs(peerids);
     let tree = await get_tree(peerids)
     console.debug(callee+'.tree:',tree);
+    let qmselect = document.getElementsByName('qmhash')[0];
+    build_qmhash_select(qmselect, tree);
     
   // }
 }
+
+
+function build_qmhash_select(selid,tree) {
+  for ( let i=selid.length-1; i > 0; i-- ) {
+   selid.remove(i);
+  }
+  for (let record of tree) {
+     let option = document.createElement('option');
+     option.text = `${shortqm(record[1])} by ${record[3]}`;
+     option.value = `${record[1]}`;
+     selid.add(option);
+  }
+  return true;
+}
+
+
+
 
 async function get_tree(peers) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
@@ -565,6 +614,7 @@ async function get_tree(peers) {
     console.log(callee+'.buf:',buf);
     logs += buf;
   } 
+  console.log(callee+'.logs:',logs);
   let data = load_sorted_log(logs);
   return data
 }
