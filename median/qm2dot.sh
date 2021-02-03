@@ -10,7 +10,7 @@ ipfs() {
 
 fi
 
-echo please enter a qm ...
+echo please enter a qm value
 
 while true; do
 read url
@@ -21,6 +21,7 @@ curl -s -o jtree.dot http://127.0.0.1:8080/ipfs/$qmdot
 ls -l jtree.dot
 dot -Tpng jtree.dot -o jtree.png;
 echo eog jtree.png
+echo please enter a new qm
 done
 
 #eog jtree.png
