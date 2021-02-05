@@ -97,6 +97,7 @@ let webui_element = document.getElementsByName('webui')[0];
     webui_element.href = webui_element.href.replace('webui:',webui_url);
 
 let score = document.getElementsByName('score')[0].value;
+var node_json = {};
 
 function display_score(ev) {
  let value = ev.target.value;
@@ -157,18 +158,26 @@ function update_qmhash_value(ev) {
 } 
 function update_qmhash(ev) {
   let qmhash = document.getElementsByName('qmhash')[0].value;
-  node_meta_create(qmhash);
-
   document.getElementById('qmhash').innerHTML = `<a target="_blank" href=${gw_url}/ipfs/${qmhash}>${qmhash}</a>`;
 
-  let promise = ipfsGetContentByHash(qmhash)
+  // lookup median for the text qmhash ...
+  let promised_qmjson = node_meta_load(qmhash)
+  .then( async (qmjson) => {
+    let buf = await ipfsGetContenByHash(qmjson);
+    node_json = JSON.parse( buf ); // global
+    document.getElementById('median').innerHTML = `<a target="_blank" href=${gw_url}/ipfs/${qmjson}>${node_json.median}</a>`;
+    return qmjson;
+  })
+  .catch(console.error)
+
+  let promise_text = ipfsGetContentByHash(qmhash)
   .then( text => {
      let el = document.getElementById('selected_text').innerHTML = text;
      return text;
   })
   .catch(console.error)
 
-  return qmhash;
+  return promised_qmjson;
 }
 
 
@@ -204,35 +213,62 @@ async function node_submit(ev) {
 
 }
 
-
+async function node_meta_load(qm) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  let node_urn = getNid(`uri:ipfs:${qm}`);
+  let score_jsonf = `/public/share/${node_urn}-score.json`;
+  return getMFSFileHash(score_jsonf);
+  /*
+  node_json = JSON.parse( await ipfsGetContenByPath(score_jsonf) );
+  return node_json; 
+   */
+}
 async function node_meta_create(qm) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
+  /* node meta data initialization upon creation of node
+     the associated json file need to be
+     shared and replicated ... i.e. its qm needs to be published
+
   let list_token_hash = document.getElementById('list_token_hash').innerText;
   console.log(callee+'.token_hash:',list_token_hash);
+   */
+  // URN: Francois Colonna  (uniq name)
+  // URI: Francois C. #2425 + Paris 13 
+  // URL: Paris 13
+
+  //let node_urn = getNid(`urn:${author}:${subject}`);
+  let node_urn = getNid(`uri:ipfs:${qm}`);
+
   let ts = Date.now(); // timestamp
   let qmlog = 'Qm...';
-  let n = 0; // number of scores
-  let median = 12; // current median;
+  let n = 1; // number of scores
+  let grade = 12; // ranking at node's creation 
+  let median = grade; // current median;
   let allowed_grades = Array.from(Array(21).keys()); // [ 0 .. 20 ];
   console.log(callee+'.allowed_grades:',allowed_grades);
   let grades_weight = allowed_grades.map(() => 0 );
-      grades_weight[median] = 1;
+      grades_weight[grade] = 1;
   console.log(callee+'.grades_weight:',grades_weight);
   let score_db = { 
+    'n': n,
     'median': median,
-    'score': [ allowed_grades.map( grade => {
+    'score': allowed_grades.map( grade => {
        return [ts,grades_weight[grade],peerid];
-     }) ]
+     }) 
   }
   console.log(callee+'.score_db:',score_db);
-  /*
-    score_db saved in a json file 
-  */
+  // score_db saved in a json file 
+  let score_jsonf = `/public/share/${node_urn}-score.json`;
+  qmjson = await ipfsWriteJson(score_jsonf,score_db);
+  //mfsCopy(qmjson,score_jsonf);
 
+  let op = 'A';
+  let record = `${ts} ${op} ${peerid} ${grade},${median}`;
   // paper-trail (auditable) published under fixed label path
-  let record = 'ts,op,grade,peerid'
-
-
+  let paper_trailf = `/public/logs/${list_labelp}-score.log`;
+  let qmtrail = await ipfsLogAppend(paper_trailf,record+"\n");
+  console.log(callee+'.qmtrail:',qmtrail);
+  return qmtrail;
 }
 
 
@@ -262,9 +298,6 @@ async function node_rank(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let score = +(document.getElementsByName('score')[0].value);
   let qmhash = document.getElementsByName('qmhash')[0].value;
-  // URN: Francois Colonna  (uniq name)
-  // URI: Fancois + Paris 13 
-  // URL: Paris 13
   let node_nid = getNid(`urn:ipfs:${qmhash}`);
   let ranker_token_label = `I have ranked a proposal on ${node_nid}`;
   let ranker_nid = getNid(`urn:text:${ranker_token_label}`);
