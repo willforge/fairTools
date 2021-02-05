@@ -140,7 +140,7 @@ function update_qmhash_value(ev) {
 } 
 function update_qmhash(ev) {
   let qmhash = document.getElementsByName('qmhash')[0].value;
-  document.getElementById('qmhash').innerHTML = `<a href=${gw_url}/ipfs/${qmhash}>${qmhash}</a>`;
+  document.getElementById('qmhash').innerHTML = `<a target="_blank" href=${gw_url}/ipfs/${qmhash}>${qmhash}</a>`;
   return qmhash;
 }
 

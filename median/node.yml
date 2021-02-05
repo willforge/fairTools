@@ -1,0 +1,48 @@
+--- # score record  for text :
+# created on Mon Feb  1 04:21:28 PM CET 2021
+# there are 21 nodes in each text's tree.
+ownvote: 3 token self-signature
+voteconfirm:
+  - witness1-signature
+  - witness2-signature
+qmwitn: $non-bribabled-witness-public-key
+qmtree: z6CfPs8wSotPu5EHwTb8F2e5aShk9xEjcZ66Bw6bHXcF 
+qmtext: QmceXc9E8sWxoBPdFVdC2bGp4Sq3wkuEqZqAm9m3uhQx31
+qmlog: ...
+qmshard:
+ - hash(local-log-containing-self) # to store voting info stamp,score,token etc.
+ - hash(random-witness-shard) # to store voting info in case of audit
+ - hash(random-shard-of-bloom) # to check voting status
+ - hash(random-shard-of-validated-Identity) # Valid Identity in record...
+n: 5
+median: 5
+series: "3*1,4*1,5*2,20*1"
+# m-=:3,m+=:3 score:5
+#            V
+#        3,4,5,5,20
+score: 
+  0:
+   - 0
+   - bloom_string: []
+   - $epoch
+  3:
+   - 1
+   - bloom_string:
+     - emilea or token
+   - 1612196030
+  4:
+   - 1
+   - bloom_string:
+     - norbertu
+  5:
+   - 2
+   - bloom_string:
+     - michelc
+     - jaquesk
+   - 1612196001
+  20: 
+   - 1
+   - bloom_string:
+     - alainb
+   - 1612196250
+

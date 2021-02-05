@@ -1,0 +1,21 @@
+--- # log of casted ballots for one text (sharded)
+# this log is a sharded-merkle-dag !
+#
+# valid flag = signed id by some sort of "community" recognized authorities !
+# who distribute the right-to-vote (token)
+# how to communly certify the members list
+# how to trust a central organism who hold the list !
+# ID = ToFU 
+#
+# total size = 4GB = 50M * 80B
+# qmtext: ...
+# qmprev: ...
+# qmmut: ...
+1612176030: ea/emilea 12D3KooWHpj1ercuLscv78Ezz4TADdwSgNkmNmd4qH8dfCCcwZHX 3 valid
+1612188340: mc/michelc QmTeqJutKAtVyX39qvhAGfjQFesbubamN8dvVPMg5jYRwS 5 valid
+1612189011: ab/alainb 12D3KooWJDBrt6re8zveUPZKwC3QPBid4iCguyMVuWbKMXb5HeTa 20 valid
+1612195044: nu/norbertu  4 valid
+1612196001: jk/jaquesk 12D3KooWHpj1ercuLscv78Ezz4TADdwSgNkmNmd4qH8dfCCcwZHX 5 valid
+
+record-signature: ---michelc-sig
+public-key: ---michelc-pubkey

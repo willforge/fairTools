@@ -1,7 +1,20 @@
 # median algorythm
 
+object types:
+ editors ~ authors = peerids
+ rankers ~ peerids
+ node: 
+  - list-label (defined the purpose of the texts under its root)
+  - subject
+  - author
+  - text
+  - median
+  
+ tree ~ set of nodes (identified by author:subject)
+ score
+
  1. people (editors) submit text and leave a trail to the "wlog" hisotry
-    this log can grow to millions of text!!!
+    this log can grow to millions of texts!!!
 
  2. other (rankers) collect a list of text from the "presents" editors on the network
     (discovery w/ findprovs using editor_label_nid)

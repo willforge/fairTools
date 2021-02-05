@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<meta charset="utf8"/>
+<script src=../js/config.js></script>
+
+<script src=../js/essential.js></script>
+<script src=../js/sha256.js></script>
+<script src=../js/ipfs.js></script>
+<script src=../js/functions.js></script>
+<!--
+  findprovs on editor_token
+ 
+  load all texts under each nid keys
+
+  /my/submission/complaints/title/a-specific-topic_history-nid.log
+  /public/./submission/complaints/title/a-specific-topic_history-nid.log
+
+-->
+<style>i { color: grey; }</style>
+<div class=content>
+<h2>Median Sorted List from a Labeled Group<span id=listname></span></h2>
+peerid: <span id=peerid><i>:peerid</i></span>
+<br>editor_token_nid: <span id=editor_token_nid><i>:editor_token_nid</i></span>
+<br>editor_token_hash: <span id=editor_token_hash><i>:editor_token_hash</i></span>
+<br>list_label: <input name=list_label placeholder="list-label" onchange="update_label(event)"> (defined a group of texts)
+<br>list_token_label: <span id=list_token_label><i>:list_token_label</i></span>
+<br>list_token_nid: <span id=list_token_nid><i>:list_token_nid</i></span>
+<br>list_token_hash: <span id=list_token_hash><i>:list_token_hash</i></span>
+
+<br><button onclick="node_create(event);">create a node</button>
+<br>list_log_hash: <span id=list_log_hash><i>:list_log_hash</i></span> (published log after submit)
+<br>root_hash: <span id=root_hash><i>:root_hash</i></span>
+<br>webui: <a target=_blank name=webui href="webui:/#/files/public/logs/">/public/logs</a>
+
+
+<br><button id=find-button onclick="find_peers(event);">find peers on DHT</button>
+<br>discovery: search for token_hash: <span id=searched_token_hash><i>:searched_token_hash</i></span>
+<br>providers <span id=peers_status></span>:
+<div id=peerids></div>
+
+<br>qmhash: <input name=qminput placeholder="node-hash" onchange="update_qmhash_value(event);" size=43> (manual entry)
+<br>qmhash:
+<select name=qmhash onchange="update_qmhash(event);">
+<option value="typed">as above</option>
+<option value="1">option 1</option>
+<option value="2">option 2</option>
+<option value="3">option 3</option>
+</select>
+<span id=list_status></span>
+<div id=node style="display:none;">
+<hr width="60%">
+<br>node's list: <input name=label value="" placeholder="list's label to attached the text" disabled>
+<br>path: <input name=path value="/public/submission/proposal" placeholder="mutable path" required>*
+<br>author: <input name=author value="anonymous" placeholder="author">
+<br>stamp: <input name=ts value onmouseover="this.value=Date.now();" required>*
+<br>node_nid: <input name=node_nid value=":node_nid" disabled>
+<br>category: <input type=text name=category value='' placeholder="category" required>*
+<br>subject: <input type=text name=subject value='' onchange="node_nid_update(event);" placeholder="subject">
+<br>date: <input type=date name=date value='' placeholder="date">
+<script>
+ document.getElementsByName('date')[0].valueAsDate = new Date();
+</script>
+<br><textarea name=node_text rows=5 cols=80 required></textarea>
+<br><button onclick="node_submit(event);">submit</button>
+<button onclick="notify(event);">notify</button>
+<button onclick="node_close(event);">close</button>
+<hr width="60%">
+</div>
+<hr>
+<textarea id=selected_text></textarea>
+
+<br>median: <span id=median><i>:median</i></span>
+<br>nb pers: <span id=sn><i>:sn</i></span>
+<br>score: <input type="number" name="score" min="0" max="20" value="12" onchange="update_value(event);">
+<input type="range" name="value" min="0" max="20" onchange="display_score(event);" class="slider">
+<br><button onclick="node_rank(event);">rank node</button>
+<button onclick="dot_create(event);">create a dot</button>
+<br>qmdot: <span id=qmdot><i>:qmdot</i></span>
+<br>qmhash: <span id=qmhash><i>:qmhash</i></span>
+
+</div>
+
+<script>
+const dbug = 1;
+var forest = {};
+const qmempty = 'QmbFMke1KXqnYyBBWxB74N4c5SBnJMVAiMNRcGu6x1AwQH';
+const qmwebui='Qmb3cY3zFJ5isjJ5H9cP47Vfqa6pqNwypbuo2TiBGjUmLd';
+
+var list_label = 'Fair List';
+var list_labelp = 'fair-list';
+var peerid;
+var peerids;
+var ipns_cache = {};
+
+let webui_url = `${gw_url}/ipfs/${qmwebui}`;
+let webui_element = document.getElementsByName('webui')[0];
+    console.log('main.webui_url:',webui_url);
+    webui_element.href = webui_element.href.replace('webui:',webui_url);
+
+let score = document.getElementsByName('score')[0].value;
+
+function display_score(ev) {
+ let value = ev.target.value;
+ document.getElementsByName('score')[0].value= value;
+}
+function update_value(ev) {
+ let value = ev.target.value;
+ document.getElementsByName('value')[0].value= value;
+}
+
+
+var sn=0;
+var rank = [];
+
+
+// TODO have a registry to obtain public's private-key
+const PUBLICID = 'QmezgbyqFCEybpSxCtGNxfRD9uDxC53aNv5PfhB3fGUhJZ';
+const editor_token_label = `I have submitted a proposal to ${shortqm(PUBLICID)}`;
+const editor_token_nid = getNid(`uri:text:${editor_token_label}`);
+let promise = update_token_hash('editor_token_hash',editor_token_nid);
+document.getElementById('editor_token_nid').innerHTML=editor_token_nid;
+
+var list_token_label = editor_token_label + ' for ' + list_label;
+var list_token_nid;
+update_label({});
+
+
+function update_label(ev) {
+  let label = document.getElementsByName('list_label')[0].value;
+  if (typeof(label) != 'undefined' && label != '') {
+    list_label = label;
+    list_labelp = list_label.toLowerCase().replace(/ +/g,'-');
+    list_token_label = editor_token_label + ' for ' + list_label;
+
+  }
+  console.log('update_label.list_labelp:', list_labelp);
+  list_token_nid = getNid(`uri:tree:${list_token_label}`);
+  let promise = update_token_hash('list_token_hash',list_token_nid);
+  document.getElementById('list_token_label').innerHTML=list_token_label;
+  document.getElementById('list_token_nid').innerHTML=list_token_nid;
+  document.getElementsByName('label')[0].value = list_label;
+
+}
+async function update_token_hash(token_hash_id,nid) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  let token_hash = await ipfsGetToken(nid);
+  console.debug(callee+'.token_hash:',token_hash);
+  document.getElementById(token_hash_id).innerHTML=token_hash;
+}
+
+
+function update_qmhash_value(ev) {
+  let qmselect = document.getElementsByName('qmhash')[0];
+  let qmhash = ev.target.value;
+  qmselect.options[0].value = qmhash;
+  qmselect.options[0].text = `as above: ${shortqm(qmhash)}`;
+  return qmhash
+} 
+function update_qmhash(ev) {
+  let qmhash = document.getElementsByName('qmhash')[0].value;
+  node_meta_create(qmhash);
+
+  document.getElementById('qmhash').innerHTML = `<a target="_blank" href=${gw_url}/ipfs/${qmhash}>${qmhash}</a>`;
+
+  let promise = ipfsGetContentByHash(qmhash)
+  .then( text => {
+     let el = document.getElementById('selected_text').innerHTML = text;
+     return text;
+  })
+  .catch(console.error)
+
+  return qmhash;
+}
+
+
+main();
+async function main() {
+  display_score({ target: document.getElementsByName('score')[0] });
+  update_value({ target: document.getElementsByName('score')[0] });
+  peerid = await promisedPeerId;
+  document.getElementById('peerid').innerHTML = `<a href=${gw_url}/ipns/${peerid}>${peerid}</a>`;
+}
+</script>
+
+<script>
+function node_create(ev) {
+  document.getElementById('node').style.display = ''; // to display it w/o 'blocking'
+}
+async function node_close(ev) {
+  document.getElementById('node').style.display = 'none';
+}
+async function node_submit(ev) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  let subject = document.getElementsByName('subject')[0].value;
+  let buf = `Subject: ${subject}\n\n`
+      buf += document.getElementsByName('node_text')[0].value;
+  // let qmhash = await ipfsGetHashByContent(buf);
+  let qmhash = await ipfsPostHashByContent(buf);
+  console.debug(callee+'.qmhash:',qmhash);
+  document.getElementsByName('qmhash')[0].value = qmhash;
+  document.getElementById('qmhash').innerHTML = qmhash;
+  let list_log_path = `/public/logs/${list_labelp}.log`
+  console.debug(callee+'.list_log_path:',list_log_path);
+  list_add_qm(list_log_path,qmhash);
+
+}
+
+
+async function node_meta_create(qm) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  let list_token_hash = document.getElementById('list_token_hash').innerText;
+  console.log(callee+'.token_hash:',list_token_hash);
+  let ts = Date.now(); // timestamp
+  let qmlog = 'Qm...';
+  let n = 0; // number of scores
+  let median = 12; // current median;
+  let allowed_grades = Array.from(Array(21).keys()); // [ 0 .. 20 ];
+  console.log(callee+'.allowed_grades:',allowed_grades);
+  let grades_weight = allowed_grades.map(() => 0 );
+      grades_weight[median] = 1;
+  console.log(callee+'.grades_weight:',grades_weight);
+  let score_db = { 
+    'median': median,
+    'score': [ allowed_grades.map( grade => {
+       return [ts,grades_weight[grade],peerid];
+     }) ]
+  }
+  console.log(callee+'.score_db:',score_db);
+  /*
+    score_db saved in a json file 
+  */
+
+  // paper-trail (auditable) published under fixed label path
+  let record = 'ts,op,grade,peerid'
+
+
+}
+
+
+async function list_add_qm(path,qm) {
+  let ts = document.getElementsByName('ts')[0].value;
+  if (ts == '') {
+    ts = Date.now();
+  }
+  let author = document.getElementsByName('author')[0].value; 
+  let subject = document.getElementsByName('subject')[0].value; 
+  let category = document.getElementsByName('category')[0].value; 
+  let node_path = document.getElementsByName('path')[0].value; 
+  let subjectp = subject.replace(/ +/g,'-');
+  record = `${ts}: ${qm} ${peerid} ${author}:${subjectp} ${node_path}/${category}\n`
+  let qmlist = await ipfsLogAppend(path,record);
+  document.getElementById('list_log_hash').innerHTML = `<a href=${gw_url}/ipfs/${qmlist}>${qmlist}</a>`;
+
+}
+async function notify(ev) {
+  document.getElementById('root_hash').innerHTML = '<img src="../img/spinner.gif" height="24">';
+  let root_hash = await publish_root()
+  document.getElementById('root_hash').innerHTML = `<a href=${gw_url}/ipfs/${root_hash}>${root_hash}</a>`;
+  let published_token = await ipfsSetToken(list_token_nid);
+  document.getElementById('list_token_hash').innerHTML = published_token;
+}
+async function node_rank(ev) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  let score = +(document.getElementsByName('score')[0].value);
+  let qmhash = document.getElementsByName('qmhash')[0].value;
+  // URN: Francois Colonna  (uniq name)
+  // URI: Fancois + Paris 13 
+  // URL: Paris 13
+  let node_nid = getNid(`urn:ipfs:${qmhash}`);
+  let ranker_token_label = `I have ranked a proposal on ${node_nid}`;
+  let ranker_nid = getNid(`urn:text:${ranker_token_label}`);
+
+  document.getElementsByName('node_nid')[0].value = node_nid;
+  let node = { score:score, id:`n${sn}-${node_nid.substr(0,3)}`,sn:0, payload: qmhash, median:0,addr:0,level:0,
+               sum : 0, d_order : 0, u_order : 0, r_order : rank[sn++],
+               children : [], medians : [], parents : [] };
+  console.debug(callee+'.node:',node);
+  scores = node_insert(node,scores);
+  document.getElementById('median').innerHTML = scores.median;
+  document.getElementById('sn').innerHTML = scores.sn;
+  console.debug(callee+'.scores:',scores);
+}
+
+function node_nid_update(ev) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  let subject = ev.target.value;
+  console.debug(callee+'.subject:',subject);
+  var node_nid = getNid(`uri:list:node:${subject}`);
+  document.getElementsByName('node_nid')[0].value = node_nid;
+
+}
+async function find_peers(ev) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  // if (typeof(peerids) == 'undefined') {
+    // let hash = await ipfsAddTextContent(editor_token);
+    console.log(callee+'.list_token_nid:', list_token_nid);
+    var searched_token_hash = await ipfsGetToken(list_token_nid);
+
+    document.getElementById('searched_token_hash').innerHTML=shortqm(searched_token_hash);
+    console.debug(callee+'.searched_token_hash:',searched_token_hash);
+    display_status('pending');
+    peerids = await ipfsFindProvs(searched_token_hash);
+    display_status('ok');
+    display_provs(peerids);
+    document.getElementById('list_status').innerHTML='<font color=orange>busy</font>';
+    let list = await get_list(peerids)
+    console.debug(callee+'.list:',list);
+    let qmselect = document.getElementsByName('qmhash')[0];
+    build_qmhash_select(qmselect, list);
+    document.getElementById('list_status').innerHTML='<font color=green>OK</font>';
+    
+    
+  // }
+}
+
+
+function build_qmhash_select(selid,list) {
+  for ( let i=selid.length-1; i > 0; i-- ) {
+   selid.remove(i);
+  }
+  for (let record of list) {
+     let option = document.createElement('option');
+     option.text = `${shortqm(record[1])} by ${record[3]}`;
+     option.value = `${record[1]}`;
+     selid.add(option);
+  }
+  return true;
+}
+
+
+
+
+async function get_list(peers) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  console.log(callee+'.list_labelp:',list_labelp);
+  let logs = '';
+  for(let peer of peers) {
+    let root_path = await ipfsNameResolve(peer);
+    let list_log_path = `${root_path}/public/logs/${list_labelp}.log`;
+    let buf = await ipfsGetContentByPath(list_log_path);
+    console.log(callee+'.buf:',buf);
+    logs += buf;
+  } 
+  console.log(callee+'.logs:',logs);
+  let data = load_sorted_log(logs);
+  return data
+}
+
+function load_sorted_log(log) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  let data = log.slice(0,-1).split('\n');
+  console.log(callee+'.data:',data);
+  let records = [];
+  for (let rec of data) {
+    let a_rec = rec.split(' ');
+    a_rec[0] = a_rec[0].slice(0,-1);
+    records.push(a_rec);
+  }
+  console.log(callee+'.records:',records);
+  let selected = {};
+  for (let rec of records.sort(by_stamp)) {
+    let [stamp,qm,peer,nodeid,nodepath] = rec;
+    console.log(callee+'.stamp: %s, nodeid: %s',stamp,nodeid);
+    selected[nodeid] = rec
+  }
+
+  let sorted_records = Object.keys(selected).sort( (a,b) => {
+    return compare(selected[a][0],selected[b][0]);
+  }).map( k => { return selected[k]; });
+
+  console.log(callee+'.sorted_records:',sorted_records);
+  return sorted_records;
+
+}
+
+function by_stamp(a,b) {
+ return compare(a[0],b[0]);
+}
+
+function display_status(s) {
+  let imgs = { 'pending':'../img/spinner.gif', 'ok':'../img/check-mark.png' };
+  document.getElementById('peers_status').innerHTML=`<img alt=${s} src=${imgs[s]} height="24">`;
+  if (s.match('pending')) {
+     document.getElementById('find-button').disabled=true
+  } else if (s.match('ok')) { 
+     document.getElementById('find-button').disabled=false
+  }
+}
+
+async function display_provs(peerids) {
+  let buf = '<ul>';
+  for (peer of peerids) {
+    buf += `<li><a target=_blank href=${gw_url}/ipns/${peer}/>${peer}</a></li>\n`
+  }
+  buf += "</ul>\n";
+  document.getElementById('peerids').innerHTML = buf;
+}
+</script>
+<!-- vim: syntax=javascript
+-->
