@@ -369,18 +369,30 @@ async function node_rank(ev) {
     let nmm = Math.floor((n-1) / 2); // n-1 as we are referenced to 0
     let nmp = Math.ceil( (n-1) / 2);
   
-    console.info(callee+'.to(nmm):',typeof(nmm))
-
     console.log(callee+'.n:',n);
     console.log(callee+'.nmm:',nmm);
     console.log(callee+'.nmp:',nmp);
+
+    // ------------------------------------------------
+    let i = -1;
+    console.info(callee+'........................... list');
     let list = [];
+    for (let grade in Object.keys(score_db.score)) { 
+      let w = score_db.score[grade][1];
+      if (w != 0) {
+        for (let j of [...Array(w).keys()] ) {
+           list.push(parseInt(grade));
+        }
+      }
+    }
+    console.log(callee+'.list:',list);
+    console.log(callee+'.computed-medianm:',list[nmm]);
+    console.log(callee+'.computed-medianp:',list[nmp]);
+   
     let p = -1; // p starts w/ -1 because indices are referenced to 0
     let medianm = -1;
     let medianp = -1;
     console.info(callee+'........................... medianm');
-
-    console.info(callee+'.to(p):',typeof(p))
     // ------------------------------------------------
     for (let grade in Object.keys(score_db.score)) { 
       console.log(callee+`.grade[p:${p}[: ${grade} w:${score_db.score[grade][1]}`);
