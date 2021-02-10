@@ -364,78 +364,11 @@ async function node_rank(ev) {
     score_db.score[score][0] = ts;
     score_db.score[score][1] += 1;
     console.log(callee+`.score: ${score}; w:${score_db.score[score][1]}`)
-    // compute median at 50%
-    n = score_db.n;
-    let nmm = Math.floor((n-1) / 2); // n-1 as we are referenced to 0
-    let nmp = Math.ceil( (n-1) / 2);
-  
-    console.log(callee+'.n:',n);
-    console.log(callee+'.nmm:',nmm);
-    console.log(callee+'.nmp:',nmp);
 
-    // ------------------------------------------------
-    let i = -1;
-    console.info(callee+'........................... list');
-    let list = [];
-    for (let grade in Object.keys(score_db.score)) { 
-      let w = score_db.score[grade][1];
-      if (w != 0) {
-        for (let j of [...Array(w).keys()] ) {
-           list.push(parseInt(grade));
-        }
-      }
-    }
-    console.log(callee+'.list:',list);
-    console.log(callee+'.computed-medianm:',list[nmm]);
-    console.log(callee+'.computed-medianp:',list[nmp]);
-   
-    let p = -1; // p starts w/ -1 because indices are referenced to 0
-    let medianm = -1;
-    let medianp = -1;
-    console.info(callee+'........................... medianm & medianp');
-    // ------------------------------------------------
-    for (let grade in Object.keys(score_db.score)) { 
-       let w = score_db.score[grade][1];
-       if (w != 0) {
-          let log = `[p:${p+1}..${p+w}]: grade:${grade} w:${w}`;
-          let num_grade = parseInt(grade);
-          if (p < nmm) {
-             medianm = num_grade;
-             log +=` p:${p} <  nmm:${nmm} -> medianm: ${medianm}`;
-          } else {
-             log += ` p:${p} >= nmm:${nmm}`;
-          }
-          p += w;
-          /* }
-          //console.log(callee+'.p:',p);
-          //console.info(callee+'.medianm:',medianm);
-          // ------------------------------------------------
-          for (let grade in Object.keys(score_db.score)) { 
-          console.log(callee+`.grade[p:${p}[: ${grade} w:${score_db.score[grade][1]}`);
-          p += score_db.score[grade][1];
-          let num_grade = parseInt(grade);
-           */
-          if (p >= nmp) {
-             medianp = num_grade;
-             log += ` p:${p} >= nmp:${nmp} -> medianp: ${medianp}`;
-             console.log(callee+':',log);
-             break;
-          } else {
-             log += ` p:${p} < nmp:${nmp}`;
-             console.log(callee+':',log);
-          }
-       }
-    }
-    // ------------------------------------------------
-    //console.log(callee+'.p:',p);
-    //console.info(callee+'.medianp:',medianp);
-    median = (medianm + medianp)/2;
+    median = compute_median(score_db,0.6);
     score_db.median = median;
 
 
-    console.info(callee+'.medianm:',medianm);
-    console.info(callee+'.medianp:',medianp);
-    console.log(callee+'.median:',median);
     
   } else {
      console.log(callee+`.jsonf: ! -e ${jsonf}`);
@@ -464,6 +397,73 @@ async function node_rank(ev) {
   // score need to be publish ...
   // TODO : add a "sync_score" button
   return score_db;
+}
+
+function compute_median(db,thres) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+    // compute median at 50%
+    let n = db.n;
+    let nmm = Math.floor((n-1) * thres); // n-1 as we are referenced to 0
+    let nmp = Math.ceil( (n-1) * thres);
+  
+    console.log(callee+'.n:',n);
+    console.log(callee+'.nmm:',nmm);
+    console.log(callee+'.nmp:',nmp);
+
+    // ------------------------------------------------
+    let i = -1;
+    console.info(callee+'........................... list');
+    let list = [];
+    for (let grade in Object.keys(db.score)) { 
+      let w = db.score[grade][1];
+      if (w != 0) {
+        for (let j of [...Array(w).keys()] ) {
+           list.push(parseInt(grade));
+        }
+      }
+    }
+    console.log(callee+'.list:',list);
+    console.log(callee+'.computed-medianm:',list[nmm]);
+    console.log(callee+'.computed-medianp:',list[nmp]);
+   
+    let p = -1; // p starts w/ -1 because indices are referenced to 0
+    let medianm = -1;
+    let medianp = -1;
+    let wmm = 0;
+    let wmp = 0;
+    console.info(callee+'........................... medianm & medianp');
+    // ------------------------------------------------
+    for (let grade in Object.keys(db.score)) { 
+       let w = db.score[grade][1];
+       if (w != 0) {
+          let log = `[p:${p+1}..${p+w}]: grade:${grade} w:${w}`;
+          let num_grade = parseInt(grade);
+          if (p < nmm) {
+             medianm = num_grade;
+             wmm = w
+             log +=` p:${p} <  nmm:${nmm} -> medianm: ${medianm}`;
+          } else {
+             log += ` p:${p} >= nmm:${nmm}`;
+          }
+          p += w;
+          if (p >= nmp) {
+             medianp = num_grade;
+             wmp = w
+             log += ` p:${p} >= nmp:${nmp} -> medianp: ${medianp}`;
+             console.log(callee+':',log);
+             break;
+          } else {
+             log += ` p:${p} < nmp:${nmp}`;
+             console.log(callee+':',log);
+          }
+       }
+    }
+    // ------------------------------------------------
+    median = (medianm * wmm + medianp * wmp) / (wmm + wmp); // prop... is w big : stronger attractor
+    console.log(callee+'.medianm:',medianm,'w:',wmm);
+    console.log(callee+'.medianp:',medianp,'w:',wmp);
+    console.log(callee+'.median:',median);
+    return median;
 }
 
 function node_urn_update(ev) {
