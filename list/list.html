@@ -392,44 +392,49 @@ async function node_rank(ev) {
     let p = -1; // p starts w/ -1 because indices are referenced to 0
     let medianm = -1;
     let medianp = -1;
-    console.info(callee+'........................... medianm');
+    console.info(callee+'........................... medianm & medianp');
     // ------------------------------------------------
     for (let grade in Object.keys(score_db.score)) { 
-      console.log(callee+`.grade[p:${p}[: ${grade} w:${score_db.score[grade][1]}`);
-      let num_grade = parseInt(grade);
-      if (p < nmm) {
-         medianm = num_grade;
-         console.log(callee+`.p:${p} <  nmm:${nmm}`);
-         console.log(callee+'.medianm:',medianm)
-      } else {
-         console.log(callee+`.p:${p} >= nmm:${nmm}`);
-         break;
-      }
-      p += score_db.score[grade][1];
+       let w = score_db.score[grade][1];
+       if (w != 0) {
+          let log = `[p:${p+1}..${p+w}]: grade:${grade} w:${w}`;
+          let num_grade = parseInt(grade);
+          if (p < nmm) {
+             medianm = num_grade;
+             log +=` p:${p} <  nmm:${nmm} -> medianm: ${medianm}`;
+          } else {
+             log += ` p:${p} >= nmm:${nmm}`;
+          }
+          p += w;
+          /* }
+          //console.log(callee+'.p:',p);
+          //console.info(callee+'.medianm:',medianm);
+          // ------------------------------------------------
+          for (let grade in Object.keys(score_db.score)) { 
+          console.log(callee+`.grade[p:${p}[: ${grade} w:${score_db.score[grade][1]}`);
+          p += score_db.score[grade][1];
+          let num_grade = parseInt(grade);
+           */
+          if (p >= nmp) {
+             medianp = num_grade;
+             log += ` p:${p} >= nmp:${nmp} -> medianp: ${medianp}`;
+             console.log(callee+':',log);
+             break;
+          } else {
+             log += ` p:${p} < nmp:${nmp}`;
+             console.log(callee+':',log);
+          }
+       }
     }
-    console.log(callee+'.p:',p);
-    console.info(callee+'.medianm:',medianm);
     // ------------------------------------------------
-    p = -1; // p starts w/ -1 because indices are referenced to 0
-    console.info(callee+'........................... medianp');
-    for (let grade in Object.keys(score_db.score)) { 
-      console.log(callee+`.grade[p:${p}[: ${grade} w:${score_db.score[grade][1]}`);
-      p += score_db.score[grade][1];
-      let num_grade = parseInt(grade);
-      if (p >= nmp) {
-         medianp = num_grade;
-         console.log(callee+`.p:${p} >= nmp:${nmp}`);
-         console.log(callee+'.medianp:',medianp);
-         break;
-      } else {
-         console.log(callee+`.p:${p} < nmp:${nmp}`);
-      }
-    }
-    // ------------------------------------------------
-    console.log(callee+'.p:',p);
-    console.info(callee+'.medianp:',medianp);
+    //console.log(callee+'.p:',p);
+    //console.info(callee+'.medianp:',medianp);
     median = (medianm + medianp)/2;
     score_db.median = median;
+
+
+    console.info(callee+'.medianm:',medianm);
+    console.info(callee+'.medianp:',medianp);
     console.log(callee+'.median:',median);
     
   } else {
