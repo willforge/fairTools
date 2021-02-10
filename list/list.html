@@ -46,13 +46,15 @@ peerid: <span id=peerid><i>:peerid</i></span>
 <option value="3">option 3</option>
 </select>
 <span id=list_status></span>
+<br>node_urn: <input name=node_urn value=":node_urn" disabled>
+<br>ranker_nid: <input name=ranker_nid value=":ranker_nid" disabled>
+
 <div id=node style="display:none;">
 <hr width="60%">
 <br>node's list: <input name=label value="" placeholder="list's label to attached the text" disabled>
 <br>path: <input name=path value="/public/submission/proposal" placeholder="mutable path" required>*
 <br>author: <input name=author value="anonymous" placeholder="author">
 <br>stamp: <input name=ts value onmouseover="this.value=Date.now();" required>*
-<br>node_urn: <input name=node_urn value=":node_urn" disabled>
 <br>category: <input type=text name=category value='' placeholder="category" required>*
 <br>subject: <input type=text name=subject value='' onchange="node_urn_update(event);" placeholder="subject">
 <br>date: <input type=date name=date value='' placeholder="date">
@@ -70,7 +72,6 @@ peerid: <span id=peerid><i>:peerid</i></span>
 
 <br>median: <span id=median><i>:median</i></span>
 <br>nb pers: <span id=n><i>:n</i></span>
-<br>sn: <span id=sn><i>:sn</i></span>
 <br>score: <input type="number" name="score" min="0" max="20" value="12" onchange="update_value(event);">
 <input type="range" name="value" min="0" max="20" onchange="display_score(event);" class="slider">
 <br><button onclick="node_rank(event);">rank node</button>
@@ -275,6 +276,7 @@ async function node_meta_create(qm) {
 
   //let node_urn = getNid(`urn:${author}:${subject}`);
   let node_urn = getNid(`uri:ipfs:${qm}`);
+  console.log(callee+'.node_urn:',node_urn);
 
   let ts = Date.now(); // timestamp
   let qmlog = 'Qm...';
@@ -287,6 +289,7 @@ async function node_meta_create(qm) {
       grades_weight[grade] = 1;
   console.log(callee+'.grades_weight:',grades_weight);
   let score_db = { 
+    'qmtext':q, 
     'n': n,
     'median': median,
     'score': allowed_grades.map( grade => {
@@ -299,11 +302,16 @@ async function node_meta_create(qm) {
   qmjson = await ipfsWriteJson(score_jsonf,score_db);
   //mfsCopy(qmjson,score_jsonf);
 
+  let qmtrail;
   let op = 'A';
   let record = `${ts} ${op} ${peerid} ${grade},${median}`;
   // paper-trail (auditable) published under fixed label path
   let paper_trailf = `/public/logs/${node_urn}-score.log`;
-  let qmtrail = await ipfsLogAppend(paper_trailf,record+"\n");
+  if ((await mfsExists(paper_trailf))[0] ) {
+      qmtrail = await ipfsLogAppend(paper_trailf,record+"\n");
+  } else {
+      qmtrail = await ipfsLogAppend(paper_trailf,`# paper trail for ${node_urn}: ${qm} ts:${ts}, qmjson:${qmjson}\n${record}\n`);
+  }
   console.log(callee+'.qmtrail:',qmtrail);
   return qmtrail;
 }
@@ -342,38 +350,75 @@ async function node_rank(ev) {
   let ranker_nid = getNid(`urn:text:${ranker_token_label}`);
 
   document.getElementsByName('node_urn')[0].value = node_urn;
+  document.getElementsByName('ranker_nid')[0].value = ranker_nid;
   
   let score_db;
   let jsonf = `/public/share/${node_urn}-score.json`
   let n = 0;
   let median = 0;
+  console.log(callee+'.typeof(median):',typeof(median));
   if ( (await mfsExists(jsonf))[0] ) {
     console.log(callee+`.jsonf: -e ${jsonf}`);
     score_db = await getJsonByMFSPath(jsonf);
     score_db.n += 1;
     score_db.score[score][0] = ts;
     score_db.score[score][1] += 1;
+    console.log(callee+`.score: ${score}; w:${score_db.score[score][1]}`)
     // compute median at 50%
     n = score_db.n;
-    let nmm = Math.floor((n + 1)/ 2); 
-    let nmp = Math.ceil((n + 1) / 2);
+    let nmm = Math.floor((n-1) / 2); // n-1 as we are referenced to 0
+    let nmp = Math.ceil( (n-1) / 2);
+  
+    console.info(callee+'.to(nmm):',typeof(nmm))
 
     console.log(callee+'.n:',n);
     console.log(callee+'.nmm:',nmm);
     console.log(callee+'.nmp:',nmp);
-    let p = 0;
-    let medianm = 0;
-    let medianp = 0;
-    for (let grade in score_db.score) { 
-      if (p <= nmp) { medianm = grade; }
+    let list = [];
+    let p = -1; // p starts w/ -1 because indices are referenced to 0
+    let medianm = -1;
+    let medianp = -1;
+    console.info(callee+'........................... medianm');
+
+    console.info(callee+'.to(p):',typeof(p))
+    // ------------------------------------------------
+    for (let grade in Object.keys(score_db.score)) { 
+      console.log(callee+`.grade[p:${p}[: ${grade} w:${score_db.score[grade][1]}`);
+      let num_grade = parseInt(grade);
+      if (p < nmm) {
+         medianm = num_grade;
+         console.log(callee+`.p:${p} <  nmm:${nmm}`);
+         console.log(callee+'.medianm:',medianm)
+      } else {
+         console.log(callee+`.p:${p} >= nmm:${nmm}`);
+         break;
+      }
       p += score_db.score[grade][1];
-      if (p >= nmp) { medianp = grade; break; }
     }
     console.log(callee+'.p:',p);
-    console.log(callee+'.medianm:',medianm);
-    console.log(callee+'.medianp:',medianp);
+    console.info(callee+'.medianm:',medianm);
+    // ------------------------------------------------
+    p = -1; // p starts w/ -1 because indices are referenced to 0
+    console.info(callee+'........................... medianp');
+    for (let grade in Object.keys(score_db.score)) { 
+      console.log(callee+`.grade[p:${p}[: ${grade} w:${score_db.score[grade][1]}`);
+      p += score_db.score[grade][1];
+      let num_grade = parseInt(grade);
+      if (p >= nmp) {
+         medianp = num_grade;
+         console.log(callee+`.p:${p} >= nmp:${nmp}`);
+         console.log(callee+'.medianp:',medianp);
+         break;
+      } else {
+         console.log(callee+`.p:${p} < nmp:${nmp}`);
+      }
+    }
+    // ------------------------------------------------
+    console.log(callee+'.p:',p);
+    console.info(callee+'.medianp:',medianp);
     median = (medianm + medianp)/2;
     score_db.median = median;
+    console.log(callee+'.median:',median);
     
   } else {
      console.log(callee+`.jsonf: ! -e ${jsonf}`);
@@ -393,7 +438,9 @@ async function node_rank(ev) {
 
   }
   console.debug(callee+'.score_db:',score_db);
-  let promised = ipfsWriteJson(jsonf,score_db);
+  let promised = ipfsWriteJson(jsonf,score_db).then( qm => {
+    console.log(callee+'.qm:',qm); return qm;
+  })
 
   document.getElementById('median').innerHTML = median;
   document.getElementById('n').innerHTML = n;
