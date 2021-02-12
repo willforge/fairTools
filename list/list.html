@@ -424,6 +424,10 @@ async function node_rank(ev) {
    // paper-trail (auditable) published under fixed label path
    let promised_qmtrail = paper_trail(ts,qmhash,qmjson,record);
 
+
+   // announce score is cast ...
+   let promised_announce = ipfsSetToken(ranker_nid);
+
    return score_db;
 }
 
