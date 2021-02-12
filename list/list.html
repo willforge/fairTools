@@ -97,6 +97,7 @@ var peerid;
 var peerids;
 var ipns_cache = {};
 var score_db = {};
+var score_lock = false;
 
 let webui_url = `${gw_url}/ipfs/${qmwebui}`;
 let webui_element = document.getElementsByName('webui')[0];
@@ -203,15 +204,48 @@ async function score_sync() {
    let qm = document.getElementsByName('qmhash')[0].value;
    let node_urn = getNid(`uri:ipfs:${qm}`);
 
+   var queue = [];
+
    // get score providers (rankers)
    let peers = await find_rankers(qm);
    let randomized_rankers = peers.sort(randomly);
-   let promized_logs = [];
+   //let logsf = `/public/logs/${node_urn}-score.log`;
+   //let promized_logs = [];
    for (let ranker of randomized_rankers) {
-      let logsf = `/public/logs/${node_urn}-score.log`;
+      let ranker_path= await ipfsNameResolve(ranker);
       let jsonf = `/public/share/${node_urn}-score.json`;
-      let promised_json = null;
+      let promised_json = ipfsGetJsonByPath(`${ranker_path}${jsonf}`)
+      .then(trigger_score_update)
+      .catch(console.log);
    }
+}
+
+function trigger_score_update(json) {
+  var event = setInterval(function() => {
+     if (! score_lock ) {
+        score_lock = true;
+        update_score_db(json);
+      new_w = max(local_w, remote_w);
+
+        score_lock = false;
+        clearInterval(event);  
+     }
+  }, 100);
+  return score_lock;
+}
+
+function update_score_db(json) {
+  let n = score_db.n
+  for (let grade in Object.keys(score_db.score) {
+    let [remote_ts,remote_w,remote_peer] = json.score[grade]; // ipns
+    let [local_ts,local_w,local_peer] = score_db.score[grade]; // mfs
+
+    if (local_w != remote_w) {
+      new_w = max(local_w, remote_w);
+
+    }
+  }
+  return score_db;
 }
 
 
