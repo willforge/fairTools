@@ -326,7 +326,7 @@ async function paper_trail(ts,qm,qmjson, record) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let node_urn = getNid(`uri:ipfs:${qm}`);
 
-  let paper_trailf = `/public/logs/${node_urn}-score.log`;
+  let paper_trailf = `/public/logs/${node_urn}-score.txt`;
   if ((await mfsExists(paper_trailf))[0] ) {
       qmtrail = await ipfsLogAppend(paper_trailf,record+"\n");
   } else {
@@ -385,7 +385,7 @@ async function node_rank(ev) {
     score_db.score[score][1] += 1;
     console.log(callee+`.score: ${score}; w:${score_db.score[score][1]}`)
 
-    median = compute_median(score_db,0.6);
+    median = compute_median(score_db,0.5);
     score_db.median = median;
     
   } else {
