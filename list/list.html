@@ -27,16 +27,15 @@ peerid: <span id=peerid><i>:peerid</i></span>
 <br>list_token_hash: <span id=list_token_hash><i>:list_token_hash</i></span>
 
 <br><button onclick="node_create(event);">create a node</button>
+<button onclick="notify(event);">notify</button>
 <br>list_log_hash: <span id=list_log_hash><i>:list_log_hash</i></span> (published log after submit)
 <br>root_hash: <span id=root_hash><i>:root_hash</i></span>
 <br>webui: <a target=_blank name=webui href="webui:/#/files/public/logs/">/public/logs</a>
-
 
 <br><button id=find-button onclick="find_peers(event);">find peers on DHT</button>
 <br>discovery: search for token_hash: <span id=searched_token_hash><i>:searched_token_hash</i></span>
 <br>providers <span id=peers_status></span>:
 <div id=peerids></div>
-
 <br>qmhash: <input name=qminput placeholder="node-hash" onchange="update_qmhash_value(event);" size=43> (manual entry)
 <br>qmhash:
 <select name=qmhash onchange="update_qmhash(event);">
@@ -46,8 +45,11 @@ peerid: <span id=peerid><i>:peerid</i></span>
 <option value="3">option 3</option>
 </select>
 <span id=list_status></span>
+<br>node_hash: <span id=node_hash>:node_hash</span>
 <br>node_urn: <input name=node_urn value=":node_urn" disabled>
+<br>node_token: <input name=node_token_hash value=":node_token_hash" size=43 disabled>
 <br>ranker_nid: <input name=ranker_nid value=":ranker_nid" disabled>
+<br>ranker_token: <input name=ranker_token_hash value=":ranker_token_hash" size=43 disabled>
 
 <div id=node style="display:none;">
 <hr width="60%">
@@ -75,6 +77,7 @@ peerid: <span id=peerid><i>:peerid</i></span>
 <br>score: <input type="number" name="score" min="0" max="20" value="12" onchange="update_value(event);">
 <input type="range" name="value" min="0" max="20" onchange="display_score(event);" class="slider">
 <br><button onclick="node_rank(event);">rank node</button>
+<button onclick="score_sync(event);">sync score</button>
 <button onclick="dot_create(event);">create a dot</button>
 <br>qmdot: <span id=qmdot><i>:qmdot</i></span>
 <br>qmhash: <span id=qmhash><i>:qmhash</i></span>
@@ -87,11 +90,13 @@ var forest = {};
 const qmempty = 'QmbFMke1KXqnYyBBWxB74N4c5SBnJMVAiMNRcGu6x1AwQH';
 const qmwebui='Qmb3cY3zFJ5isjJ5H9cP47Vfqa6pqNwypbuo2TiBGjUmLd';
 
+// globals :
 var list_label = 'Fair List';
 var list_labelp = 'fair-list';
 var peerid;
 var peerids;
 var ipns_cache = {};
+var score_db = {};
 
 let webui_url = `${gw_url}/ipfs/${qmwebui}`;
 let webui_element = document.getElementsByName('webui')[0];
@@ -161,6 +166,7 @@ function update_qmhash(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let qmhash = document.getElementsByName('qmhash')[0].value;
   document.getElementById('qmhash').innerHTML = `<a target="_blank" href=${gw_url}/ipfs/${qmhash}>${qmhash}</a>`;
+  document.getElementById('node_hash').innerHTML = qmhash;
 
   let promise_text = ipfsGetContentByHash(qmhash)
   .then( text => {
@@ -169,7 +175,7 @@ function update_qmhash(ev) {
   })
   .catch(console.error)
   
-  // lookup median for the text qmhash ...
+  // lookup (local) median for the text qmhash ...
   let promised_qmjson = node_meta_load(qmhash)
   .then( async (qmjson) => {
     console.log(callee+'.qmjson:',qmjson);
@@ -192,26 +198,20 @@ function update_qmhash(ev) {
 }
 
 
-function sync_scores() {
+async function score_sync() {
 
-  // get text providers
-  let node_urn = getNid(`uri:ipfs:${qmhash}`);
-  let ranker_token_label = `I have ranked a proposal on ${node_urn}`;
-  let ranker_nid = getNid(`urn:text:${ranker_token_label}`);
+   let qm = document.getElementsByName('qmhash')[0].value;
+   let node_urn = getNid(`uri:ipfs:${qm}`);
 
-  let promised_token_hash = ipfsGetToken(ranker_nid)
-  .then( async (token_hash) => {
-    display_status('pending');
-    let peers = await ipfsFindProvs(token_hash);
-    display_status('ok');
-    let randomized_peers = peers.sort(randomly);
-    let promized_logs = [];
-    for (let peer of randomized_peers) {
-       let promised_json = null;
-    }
-  })
-  .catch(console.error)
-
+   // get score providers (rankers)
+   let peers = await find_rankers(qm);
+   let randomized_rankers = peers.sort(randomly);
+   let promized_logs = [];
+   for (let ranker of randomized_rankers) {
+      let logsf = `/public/logs/${node_urn}-score.log`;
+      let jsonf = `/public/share/${node_urn}-score.json`;
+      let promised_json = null;
+   }
 }
 
 
@@ -246,9 +246,24 @@ async function node_submit(ev) {
   document.getElementById('qmhash').innerHTML = qmhash;
   let list_log_path = `/public/logs/${list_labelp}.log`
   console.debug(callee+'.list_log_path:',list_log_path);
-  list_add_qm(list_log_path,qmhash);
+  list_add_node(list_log_path,qmhash);
   node_meta_create(qmhash);
 
+}
+
+async function find_rankers(qm) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  let node_urn = getNid(`uri:ipfs:${qm}`);
+  let ranker_token_label = `I have ranked a proposal on ${node_urn}`;
+  let ranker_nid = getNid(`urn:text:${ranker_token_label}`);
+
+  let ranker_token_hash = await ipfsGetToken(ranker_nid);
+  document.getElementsByName('ranker_token_hash')[0].value=ranker_token_hash;
+    display_status('pending');
+  let rankers = await ipfsFindProvs(ranker_token_hash);
+    display_status('ok');
+  console.log(callee+'.rankers:',rankers);
+  return rankers
 }
 
 async function node_meta_load(qm) {
@@ -256,10 +271,6 @@ async function node_meta_load(qm) {
   let node_urn = getNid(`uri:ipfs:${qm}`);
   let score_jsonf = `/public/share/${node_urn}-score.json`;
   return getMFSFileHash(score_jsonf);
-  /*
-  node_json = JSON.parse( await ipfsGetContenByPath(score_jsonf) );
-  return node_json; 
-   */
 }
 async function node_meta_create(qm) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
@@ -289,7 +300,8 @@ async function node_meta_create(qm) {
       grades_weight[grade] = 1;
   console.log(callee+'.grades_weight:',grades_weight);
   let score_db = { 
-    'qmtext':q, 
+    'qmtext':qm, 
+    'node_urn':node_urn, 
     'n': n,
     'median': median,
     'score': allowed_grades.map( grade => {
@@ -302,10 +314,18 @@ async function node_meta_create(qm) {
   qmjson = await ipfsWriteJson(score_jsonf,score_db);
   //mfsCopy(qmjson,score_jsonf);
 
-  let qmtrail;
-  let op = 'A';
+  
+  let op = 'I';
   let record = `${ts} ${op} ${peerid} ${grade},${median}`;
   // paper-trail (auditable) published under fixed label path
+  let qmtrail = await paper_trail(ts,qm,qmjson,record);
+  return qmtrail;
+}
+
+async function paper_trail(ts,qm,qmjson, record) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  let node_urn = getNid(`uri:ipfs:${qm}`);
+
   let paper_trailf = `/public/logs/${node_urn}-score.log`;
   if ((await mfsExists(paper_trailf))[0] ) {
       qmtrail = await ipfsLogAppend(paper_trailf,record+"\n");
@@ -317,7 +337,7 @@ async function node_meta_create(qm) {
 }
 
 
-async function list_add_qm(path,qm) {
+async function list_add_node(path,qm) {
   let ts = document.getElementsByName('ts')[0].value;
   if (ts == '') {
     ts = Date.now();
@@ -332,6 +352,7 @@ async function list_add_qm(path,qm) {
   document.getElementById('list_log_hash').innerHTML = `<a href=${gw_url}/ipfs/${qmlist}>${qmlist}</a>`;
 
 }
+
 async function notify(ev) {
   document.getElementById('root_hash').innerHTML = '<img src="../img/spinner.gif" height="24">';
   let root_hash = await publish_root()
@@ -342,7 +363,7 @@ async function notify(ev) {
 async function node_rank(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let ts = Date.now(); // timestamp
-  let score = +(document.getElementsByName('score')[0].value);
+  let score = document.getElementsByName('score')[0].value;
   let qmhash = document.getElementsByName('qmhash')[0].value;
   let node_urn = getNid(`uri:ipfs:${qmhash}`);
 
@@ -352,11 +373,10 @@ async function node_rank(ev) {
   document.getElementsByName('node_urn')[0].value = node_urn;
   document.getElementsByName('ranker_nid')[0].value = ranker_nid;
   
-  let score_db;
+  /* var score_db; // global */
   let jsonf = `/public/share/${node_urn}-score.json`
   let n = 0;
   let median = 0;
-  console.log(callee+'.typeof(median):',typeof(median));
   if ( (await mfsExists(jsonf))[0] ) {
     console.log(callee+`.jsonf: -e ${jsonf}`);
     score_db = await getJsonByMFSPath(jsonf);
@@ -367,13 +387,11 @@ async function node_rank(ev) {
 
     median = compute_median(score_db,0.6);
     score_db.median = median;
-
-
     
   } else {
      console.log(callee+`.jsonf: ! -e ${jsonf}`);
      n = 1;
-     median = score;
+     median = parseInt(score);
      let allowed_grades = Array.from(Array(21).keys()); // [ 0 .. 20 ];
      let grades_weight = allowed_grades.map(() => 0 );
      grades_weight[score] = 1;
@@ -388,15 +406,25 @@ async function node_rank(ev) {
 
   }
   console.debug(callee+'.score_db:',score_db);
-  let promised = ipfsWriteJson(jsonf,score_db).then( qm => {
-    console.log(callee+'.qm:',qm); return qm;
-  })
+  let qmjson = await ipfsWriteJson(jsonf,score_db)
+  console.log(callee+'.qmjson:',qmjson);
 
   document.getElementById('median').innerHTML = median;
   document.getElementById('n').innerHTML = n;
   // score need to be publish ...
-  // TODO : add a "sync_score" button
-  return score_db;
+  let promised_root_hash = publish_root().then(
+   root_hash => {
+       document.getElementById('root_hash').innerHTML = `<a href=${gw_url}/ipfs/${root_hash}>${root_hash}</a>`;
+       return root_hash;
+   }).catch(console.error);
+
+   // add paper trail
+   let op = 'A';
+   let record = `${ts} ${op} ${peerid} ${score},${median}`;
+   // paper-trail (auditable) published under fixed label path
+   let promised_qmtrail = paper_trail(ts,qmhash,qmjson,record);
+
+   return score_db;
 }
 
 function compute_median(db,thres) {
