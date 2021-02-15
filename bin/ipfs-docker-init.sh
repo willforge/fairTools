@@ -26,8 +26,16 @@ if ! docker ps -f name=$IPFS_CONTAINER | grep -q -w $IPFS_CONTAINER; then
   fi
   docker run -d --name $IPFS_CONTAINER --user $uid:$gid \
              -v $IPFS_PATH:/data/ipfs -w /export $IPFS_IMAGE daemon
-  sleep 7
+  sleep 5
   docker logs $IPFS_CONTAINER
+  while true; do
+   if docker logs $IPFS_CONTAINER | grep -q 'ready'; then
+     break;
+   fi
+   sleep 2
+   echo -n .
+  done
+  echo ''
 fi
 
 docker ps -a -f name=$IPFS_CONTAINER

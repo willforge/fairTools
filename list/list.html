@@ -221,7 +221,7 @@ async function score_sync() {
 }
 
 function trigger_score_update(json) {
-  var event = setInterval(function() => {
+  var event = setInterval(function() {
      if (! score_lock ) {
         score_lock = true;
         update_score_db(json);
@@ -236,7 +236,7 @@ function trigger_score_update(json) {
 
 function update_score_db(json) {
   let n = score_db.n
-  for (let grade in Object.keys(score_db.score) {
+  for (let grade in Object.keys(score_db.score)) {
     let [remote_ts,remote_w,remote_peer] = json.score[grade]; // ipns
     let [local_ts,local_w,local_peer] = score_db.score[grade]; // mfs
 
