@@ -58,7 +58,7 @@ peerid: <span id=peerid><i>:peerid</i></span>
 <br>path: <input name=path value="/public/submission/proposal" placeholder="mutable path" required>*
 <br>author: <input name=author value="anonymous" placeholder="author">
 <br>stamp: <input name=ts value onmouseover="this.value=Date.now();" required>*
-<br>title: <input title="this title charaterizs the text" type=text name=title value='' onchange="node_urn_update(event);" placeholder="title for your text" required>*
+<br>title: <input title="this title charaterizes the text" type=text name=title value='' onchange="node_urn_update(event);" placeholder="title for your text" required>*
 <br>date: <input type=date name=date value='' placeholder="date">
 <script>
  document.getElementsByName('date')[0].valueAsDate = new Date();
@@ -70,7 +70,7 @@ peerid: <span id=peerid><i>:peerid</i></span>
 <hr width="60%">
 </div>
 <hr>
-<textarea id=selected_text></textarea>
+<textarea id=selected_text disabled></textarea>
 
 <br>median: <span id=median><i>:median</i></span>
 <br>nb pers: <span id=n><i>:n</i></span>
@@ -95,7 +95,7 @@ var list_label = 'Fair List';
 var list_labelp = 'fair-list';
 var peerid;
 var peerids;
-var ipns_cache = {};
+//var ipns_cache = {};
 var score_db = {};
 var score_lock = false;
 
@@ -166,12 +166,16 @@ function update_qmhash_value(ev) {
 function update_qmhash(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let qmhash = document.getElementsByName('qmhash')[0].value;
+  let node_urn = getNid(`uri:ipfs:${qmhash}`);
+  console.log(callee+'.qmhash:',qmhash);
   document.getElementById('qmhash').innerHTML = `<a target="_blank" href=${gw_url}/ipfs/${qmhash}>${qmhash}</a>`;
   document.getElementById('node_hash').innerHTML = qmhash;
+  document.getElementsByName('node_urn')[0].value = node_urn;
 
   let promise_text = ipfsGetContentByHash(qmhash)
   .then( text => {
-     let el = document.getElementById('selected_text').innerHTML = text;
+     console.log(callee+'.text:',text);
+     document.getElementById('selected_text').innerHTML = text;
      return text;
   })
   .catch(console.error)
@@ -586,6 +590,7 @@ async function get_list(peers) {
   console.log(callee+'.list_labelp:',list_labelp);
   let logs = '';
   for(let peer of peers) {
+    //if (peer == '12D3KooWJDBrt6re8zveUPZKwC3QPBid4iCguyMVuWbKMXb5HeTa') { continue; }
     let root_path = await ipfsNameResolve(peer);
     let list_log_path = `${root_path}/public/logs/${list_labelp}.log`;
     let buf = await ipfsGetContentByPath(list_log_path);
