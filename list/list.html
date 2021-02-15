@@ -54,11 +54,11 @@ peerid: <span id=peerid><i>:peerid</i></span>
 <div id=node style="display:none;">
 <hr width="60%">
 <br>node's list: <input name=label value="" placeholder="list's label to attached the text" disabled>
+<br>category: <input type=text name=category value='' placeholder="category">
 <br>path: <input name=path value="/public/submission/proposal" placeholder="mutable path" required>*
 <br>author: <input name=author value="anonymous" placeholder="author">
 <br>stamp: <input name=ts value onmouseover="this.value=Date.now();" required>*
-<br>category: <input type=text name=category value='' placeholder="category" required>*
-<br>subject: <input type=text name=subject value='' onchange="node_urn_update(event);" placeholder="subject">
+<br>title: <input title="this title charaterizs the text" type=text name=title value='' onchange="node_urn_update(event);" placeholder="title for your text" required>*
 <br>date: <input type=date name=date value='' placeholder="date">
 <script>
  document.getElementsByName('date')[0].valueAsDate = new Date();
@@ -270,8 +270,8 @@ async function node_close(ev) {
 }
 async function node_submit(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
-  let subject = document.getElementsByName('subject')[0].value;
-  let buf = `Subject: ${subject}\n\n`
+  let title = document.getElementsByName('title')[0].value;
+  let buf = `Title: ${title} (subject)\n\n`
       buf += document.getElementsByName('node_text')[0].value;
   // let qmhash = await ipfsGetHashByContent(buf);
   let qmhash = await ipfsPostHashByContent(buf);
@@ -319,7 +319,7 @@ async function node_meta_create(qm) {
   // URI: Francois C. #2425 + Paris 13 
   // URL: Paris 13
 
-  //let node_urn = getNid(`urn:${author}:${subject}`);
+  //let node_urn = getNid(`urn:${author}:${title}`);
   let node_urn = getNid(`uri:ipfs:${qm}`);
   console.log(callee+'.node_urn:',node_urn);
 
@@ -377,11 +377,11 @@ async function list_add_node(path,qm) {
     ts = Date.now();
   }
   let author = document.getElementsByName('author')[0].value; 
-  let subject = document.getElementsByName('subject')[0].value; 
+  let title = document.getElementsByName('title')[0].value; 
   let category = document.getElementsByName('category')[0].value; 
   let node_path = document.getElementsByName('path')[0].value; 
-  let subjectp = subject.replace(/ +/g,'-');
-  record = `${ts}: ${qm} ${peerid} ${author}:${subjectp} ${node_path}/${category}\n`
+  let titlep = title.replace(/ +/g,'-');
+  record = `${ts}: ${qm} ${peerid} ${author}:${titlep} ${node_path}/${category}\n`
   let qmlist = await ipfsLogAppend(path,record);
   document.getElementById('list_log_hash').innerHTML = `<a href=${gw_url}/ipfs/${qmlist}>${qmlist}</a>`;
 
@@ -534,9 +534,9 @@ function compute_median(db,thres) {
 
 function node_urn_update(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
-  let subject = ev.target.value;
-  console.debug(callee+'.subject:',subject);
-  var node_urn = getNid(`uri:list:node:${subject}`);
+  let title = ev.target.value;
+  console.debug(callee+'.title:',title);
+  var node_urn = getNid(`uri:list:node:${title}`);
   document.getElementsByName('node_urn')[0].value = node_urn;
 
 }
