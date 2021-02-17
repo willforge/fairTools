@@ -12,7 +12,7 @@ qmlog: ...
 qmshard:
  - hash(local-log-containing-self) # to store voting info stamp,score,token etc.
  - hash(random-witness-shard) # to store voting info in case of audit
- - hash(random-shard-of-bloom) # to check voting status
+ - hash(random-shard-of-bloom) # 27MB to check voting status (https://hur.st/bloomfilter/?n=10M&p=1.0E-4&m=&k=7)
  - hash(random-shard-of-validated-Identity) # Valid Identity in record...
 n: 5
 median: 5

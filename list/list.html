@@ -1,11 +1,8 @@
 <!DOCTYPE html>
 <meta charset="utf8"/>
 <script src=../js/config.js></script>
-
 <script src=../js/essential.js></script>
 <script src=../js/sha256.js></script>
-<script src=../js/ipfs.js></script>
-<script src=../js/functions.js></script>
 <!--
   findprovs on editor_token
  
@@ -18,7 +15,8 @@
 <style>i { color: grey; }</style>
 <div class=content>
 <h2>Median Sorted List from a Labeled Group<span id=listname></span></h2>
-peerid: <span id=peerid><i>:peerid</i></span>
+api url: <input name=api_url placeholder="api url" onchange="update_api_url(event)">
+<br>peerid: <span id=peerid><i>:peerid</i></span>
 <br>editor_token_nid: <span id=editor_token_nid><i>:editor_token_nid</i></span>
 <br>editor_token_hash: <span id=editor_token_hash><i>:editor_token_hash</i></span>
 <br>list_label: <input name=list_label placeholder="list-label" onchange="update_label(event)"> (defined a group of texts)
@@ -27,15 +25,17 @@ peerid: <span id=peerid><i>:peerid</i></span>
 <br>list_token_hash: <span id=list_token_hash><i>:list_token_hash</i></span>
 
 <br><button onclick="node_create(event);">create a node</button>
-<button onclick="notify(event);">notify</button>
+<button title="publish_root+set_token" onclick="notify(event);">notify</button> <i>(/root create &amp; publish; setToken for list)</i>
 <br>list_log_hash: <span id=list_log_hash><i>:list_log_hash</i></span> (published log after submit)
 <br>root_hash: <span id=root_hash><i>:root_hash</i></span>
 <br>webui: <a target=_blank name=webui href="webui:/#/files/public/logs/">/public/logs</a>
 
-<br><button id=find-button onclick="find_peers(event);">find peers on DHT</button>
+<br><button id=providers-button onclick="find_peers(event);">find peers on DHT</button>
 <br>discovery: search for token_hash: <span id=searched_token_hash><i>:searched_token_hash</i></span>
-<br>providers <span id=peers_status></span>:
+<br>providers <span id=providers_status></span>:
 <div id=peerids></div>
+<br>rankers <span id=rankers_status></span>:
+<div id=rankers></div>
 <br>qmhash: <input name=qminput placeholder="node-hash" onchange="update_qmhash_value(event);" size=43> (manual entry)
 <br>qmhash:
 <select name=qmhash onchange="update_qmhash(event);">
@@ -45,7 +45,7 @@ peerid: <span id=peerid><i>:peerid</i></span>
 <option value="3">option 3</option>
 </select>
 <span id=list_status></span>
-<br>node_hash: <span id=node_hash>:node_hash</span>
+<br>node_hash: <span id=node_hash><i>:node_hash</i></span>
 <br>node_urn: <input name=node_urn value=":node_urn" disabled>
 <br>node_token: <input name=node_token_hash value=":node_token_hash" size=43 disabled>
 <br>ranker_nid: <input name=ranker_nid value=":ranker_nid" disabled>
@@ -70,20 +70,26 @@ peerid: <span id=peerid><i>:peerid</i></span>
 <hr width="60%">
 </div>
 <hr>
-<textarea id=selected_text disabled></textarea>
+<textarea id=selected_text cols=76 rows=5 disabled></textarea>
 
 <br>median: <span id=median><i>:median</i></span>
 <br>nb pers: <span id=n><i>:n</i></span>
 <br>score: <input type="number" name="score" min="0" max="20" value="12" onchange="update_value(event);">
 <input type="range" name="value" min="0" max="20" onchange="display_score(event);" class="slider">
+<span id=score_lock_status>#</span>
 <br><button onclick="node_rank(event);">rank node</button>
-<button onclick="score_sync(event);">sync score</button>
+<button onclick="score_sync(event);" id="rankers-button">sync score</button>
 <button onclick="dot_create(event);">create a dot</button>
-<br>qmdot: <span id=qmdot><i>:qmdot</i></span>
+<br>qmjson: <span id=qmjson><i>:qmjson</i></span>
 <br>qmhash: <span id=qmhash><i>:qmhash</i></span>
 
 </div>
 
+<script src=../js/ipns_cache.js></script>
+
+<script src=../js/api_config.js></script>
+<script src=../js/ipfs.js></script>
+<script src=../js/functions.js></script>
 <script>
 const dbug = 1;
 var forest = {};
@@ -95,6 +101,7 @@ var list_label = 'Fair List';
 var list_labelp = 'fair-list';
 var peerid;
 var peerids;
+var rankers;
 //var ipns_cache = {};
 var score_db = {};
 var score_lock = false;
@@ -102,7 +109,10 @@ var score_lock = false;
 let webui_url = `${gw_url}/ipfs/${qmwebui}`;
 let webui_element = document.getElementsByName('webui')[0];
     console.log('main.webui_url:',webui_url);
-    webui_element.href = webui_element.href.replace('webui:',webui_url);
+    if (typeof(webui_element.template) == 'undefined') {
+       webui_element.template = webui_element.href;
+    }
+    webui_element.href = webui_element.template.replace('webui:',webui_url);
 
 let score = document.getElementsByName('score')[0].value;
 var node_json = {};
@@ -137,7 +147,7 @@ function update_label(ev) {
   let label = document.getElementsByName('list_label')[0].value;
   if (typeof(label) != 'undefined' && label != '') {
     list_label = label;
-    list_labelp = list_label.toLowerCase().replace(/ +/g,'-');
+    list_labelp = slugify(list_label)
     list_token_label = editor_token_label + ' for ' + list_label;
 
   }
@@ -189,12 +199,13 @@ function update_qmhash(ev) {
       if (typeof(buf.median) != 'undefined') {
         node_json = buf;
       } else {
-        return {'median': -1 };
+        return 'Qmajqtcsfew6yqbC2cB4A1gJEwH5SzpxRgrhKyxsugXxZb'; // {'median': -1 };
       }
       document.getElementById('median').innerHTML = `<a target="_blank" href=${gw_url}/ipfs/${qmjson}>${node_json.median}</a>`;
+      document.getElementById('n').innerHTML = node_json.n;
       return qmjson;
     } else {
-      return {'median': -2 };
+      return 'QmfNus1rPpKRdyHPUqY18z5MRUQPkWP7drGqszXTNUXMCU'; // {'median': -2 };
     }
   })
   .catch(console.error)
@@ -225,29 +236,51 @@ async function score_sync() {
 }
 
 function trigger_score_update(json) {
-  var event = setInterval(function() {
-     if (! score_lock ) {
-        score_lock = true;
-        update_score_db(json);
-      new_w = max(local_w, remote_w);
-
-        score_lock = false;
-        clearInterval(event);  
-     }
-  }, 100);
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+   if (typeof(json) != 'undefined') {
+      console.log(callee+'.ranker:',json.peerid);
+      var event = setInterval(function() {
+         if (! score_lock ) {
+            score_lock = true;
+            display_status('score_lock','locked');
+            //console.log(callee+'.json:',json);
+            update_score_db(json);
+            score_lock = false;
+            display_status('score_lock','unlocked');
+            clearInterval(event);  
+         } else {
+           console.log(callee+'.score_lock:',score_lock);
+         }
+      }, 100);
+   }
   return score_lock;
 }
+function max(a,b) {
+  if (a > b) { return a; } else { return b };
+}
 
-function update_score_db(json) {
-  let n = score_db.n
-  for (let grade in Object.keys(score_db.score)) {
-    let [remote_ts,remote_w,remote_peer] = json.score[grade]; // ipns
-    let [local_ts,local_w,local_peer] = score_db.score[grade]; // mfs
+function update_score_db(remote_score) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  console.log(callee+'.remote_score:',remote_score);
+  if (typeof(score_db.score) == 'undefined') {
+    score_db = remote_score;
+  } else {
+     let new_n = 0
+     for (let grade in Object.keys(score_db.score)) {
+        let [remote_ts,remote_w,remote_peer] = remote_score.score[grade]; // ipns
+        let [local_ts,local_w,local_peer] = score_db.score[grade]; // mfs
 
-    if (local_w != remote_w) {
-      new_w = max(local_w, remote_w);
-
-    }
+        if (remote_w > local_w) {
+           score_db.n += remote_w - local_w;
+           score_db.score[grade][1] = remote_w;
+            console.log(callee+'.grade:',grade,'weight:',remote_w);
+           
+        }
+        new_n += score_db.score[grade][1];
+     }
+     console.log(callee+'.n:',score_db.n)
+     console.log(callee+'.new_n:',new_n)
+     score_db.n = new_n;
   }
   return score_db;
 }
@@ -283,9 +316,8 @@ async function node_submit(ev) {
   document.getElementsByName('qmhash')[0].value = qmhash;
   document.getElementById('qmhash').innerHTML = qmhash;
   let list_log_path = `/public/logs/${list_labelp}.log`
-  console.debug(callee+'.list_log_path:',list_log_path);
   list_add_node(list_log_path,qmhash);
-  node_meta_create(qmhash);
+  /* node_meta_create(qmhash); */
 
 }
 
@@ -297,9 +329,10 @@ async function find_rankers(qm) {
 
   let ranker_token_hash = await ipfsGetToken(ranker_nid);
   document.getElementsByName('ranker_token_hash')[0].value=ranker_token_hash;
-    display_status('pending');
-  let rankers = await ipfsFindProvs(ranker_token_hash);
-    display_status('ok');
+  display_status('rankers','pending');
+  rankers = await ipfsFindProvs(ranker_token_hash);
+  display_status('rankers','ok');
+  display_rankers(rankers);
   console.log(callee+'.rankers:',rankers);
   return rankers
 }
@@ -308,7 +341,10 @@ async function node_meta_load(qm) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let node_urn = getNid(`uri:ipfs:${qm}`);
   let score_jsonf = `/public/logs/${node_urn}-state.json`;
-  return getMFSFileHash(score_jsonf);
+  return mfsExists(score_jsonf).then( a =>
+    { let [exists,qmjson] = a; return (exists) ? qmjson : undefined; })
+  .catch(console.error);
+  // getMFSFileHash(score_jsonf);
 }
 async function node_meta_create(qm) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
@@ -323,14 +359,14 @@ async function node_meta_create(qm) {
   // URI: Francois C. #2425 + Paris 13 
   // URL: Paris 13
 
-  //let node_urn = getNid(`urn:${author}:${title}`);
+  //let node_urn = getNid(`urn:${authorp}:${titlep}`);
   let node_urn = getNid(`uri:ipfs:${qm}`);
   console.log(callee+'.node_urn:',node_urn);
 
   let ts = Date.now(); // timestamp
   let qmlog = 'Qm...';
   let n = 1; // number of scores
-  let grade = 12; // ranking at node's creation 
+  let grade = document.getElementsByName('score')[0].value; // ranking at node's creation 
   let median = grade; // current median;
   let allowed_grades = Array.from(Array(21).keys()); // [ 0 .. 20 ];
   console.log(callee+'.allowed_grades:',allowed_grades);
@@ -338,6 +374,8 @@ async function node_meta_create(qm) {
       grades_weight[grade] = 1;
   console.log(callee+'.grades_weight:',grades_weight);
   let score_db = { 
+    'tic': ts,
+    'peerid': peerid,
     'qmtext':qm, 
     'node_urn':node_urn, 
     'n': n,
@@ -376,19 +414,28 @@ async function paper_trail(ts,qm,qmjson, record) {
 
 
 async function list_add_node(path,qm) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
   let ts = document.getElementsByName('ts')[0].value;
   if (ts == '') {
     ts = Date.now();
   }
+  console.debug(callee+'.path:',path);
   let author = document.getElementsByName('author')[0].value; 
+  let authorp = slugify(author);
   let title = document.getElementsByName('title')[0].value; 
   let category = document.getElementsByName('category')[0].value; 
   let node_path = document.getElementsByName('path')[0].value; 
-  let titlep = title.replace(/ +/g,'-');
-  record = `${ts}: ${qm} ${peerid} ${author}:${titlep} ${node_path}/${category}\n`
+  let categoryp = slugify(category)
+  let titlep = slugify(title)
+  record = `${ts}: ${qm} ${peerid} ${authorp}:${titlep} ${node_path}/${categoryp}\n`
   let qmlist = await ipfsLogAppend(path,record);
   document.getElementById('list_log_hash').innerHTML = `<a href=${gw_url}/ipfs/${qmlist}>${qmlist}</a>`;
 
+}
+
+function slugify(s) {
+ let slug =  s.toLowerCase().replace(/[^a-z0-9]+/g,'-');
+ return slug;
 }
 
 async function notify(ev) {
@@ -418,7 +465,9 @@ async function node_rank(ev) {
   if ( (await mfsExists(jsonf))[0] ) {
     console.log(callee+`.jsonf: -e ${jsonf}`);
     score_db = await getJsonByMFSPath(jsonf);
-    score_db.n += 1;
+    n = score_db.n + 1;
+    score_db.peerid = peerid;
+    score_db.n = n;
     score_db.score[score][0] = ts;
     score_db.score[score][1] += 1;
     console.log(callee+`.score: ${score}; w:${score_db.score[score][1]}`)
@@ -434,6 +483,11 @@ async function node_rank(ev) {
      let grades_weight = allowed_grades.map(() => 0 );
      grades_weight[score] = 1;
      score_db = {
+        'tic':ts, 
+        'peerid':peerid, 
+        'qmtext':qmhash, 
+        'node_urn':node_urn, 
+        'ranker_nid':ranker_nid, 
         'n': n,
         'median': median,
         'score': allowed_grades.map( grade => {
@@ -447,6 +501,7 @@ async function node_rank(ev) {
   let qmjson = await ipfsWriteJson(jsonf,score_db)
   console.log(callee+'.qmjson:',qmjson);
 
+  document.getElementById('qmjson').innerHTML = `<a href="${gw_url}/ipfs/${qmjson}">${qmjson}</a>`;
   document.getElementById('median').innerHTML = median;
   document.getElementById('n').innerHTML = n;
   // score need to be publish ...
@@ -553,9 +608,9 @@ async function find_peers(ev) {
 
     document.getElementById('searched_token_hash').innerHTML=shortqm(searched_token_hash);
     console.debug(callee+'.searched_token_hash:',searched_token_hash);
-    display_status('pending');
+    display_status('providers','pending');
     peerids = await ipfsFindProvs(searched_token_hash);
-    display_status('ok');
+    display_status('providers','ok');
     display_provs(peerids);
     document.getElementById('list_status').innerHTML='<font color=orange>busy</font>';
     let list = await get_list(peerids)
@@ -633,13 +688,18 @@ function by_stamp(a,b) {
  return compare(a[0],b[0]);
 }
 
-function display_status(s) {
-  let imgs = { 'pending':'../img/spinner.gif', 'ok':'../img/check-mark.png' };
-  document.getElementById('peers_status').innerHTML=`<img alt=${s} src=${imgs[s]} height="24">`;
+function display_status(id,s) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  console.info(callee+'.'+id+':',s);
+  let imgs = {
+    'pending':'../img/spinner.gif', 'ok':'../img/check-mark.png',
+    'locked':'../img/pad-ring.gif', 'unlocked':'../img/unlocked.png'
+   };
+  document.getElementById(id+'_status').innerHTML=`<img alt=${s} src=${imgs[s]} height="24">`;
   if (s.match('pending')) {
-     document.getElementById('find-button').disabled=true
+     document.getElementById(id+'-button').disabled=true
   } else if (s.match('ok')) { 
-     document.getElementById('find-button').disabled=false
+     document.getElementById(id+'-button').disabled=false
   }
 }
 
@@ -651,6 +711,15 @@ async function display_provs(peerids) {
   buf += "</ul>\n";
   document.getElementById('peerids').innerHTML = buf;
 }
+async function display_rankers(rankers) {
+  let buf = '<ul>';
+  for (peer of rankers) {
+    buf += `<li><a target=_blank href=${gw_url}/ipns/${peer}/>${peer}</a></li>\n`
+  }
+  buf += "</ul>\n";
+  document.getElementById('rankers').innerHTML = buf;
+}
+
 </script>
 <!-- vim: syntax=javascript
 -->
