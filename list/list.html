@@ -222,6 +222,7 @@ async function history_pull(ev) {
    let qm = document.getElementsByName('qmhash')[0].value;
    let node_urn = getNid(`uri:ipfs:${qm}`);
 
+   let promised_merges = [];
    // get score providers (rankers)
    let rankers = await find_rankers(qm);
    for (let ranker of rankers) {
@@ -232,7 +233,19 @@ async function history_pull(ev) {
       let promised_histo = ipfsGetContentByPath(`${ranker_path}${historyf}`)
       .then(trigger_history_merge)
       .catch(console.log);
+      promised_merges.push(promised_histo);
    }
+   Promise.all(promised_merges)
+   .then(update_score_state)
+   .catch(console.error);
+
+}
+
+
+function update_score_state(merged_history) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  console.log(callee+'.merged_history:',merged_history)
+  return true;
 }
 
 function trigger_history_merge(hist) {
@@ -243,7 +256,7 @@ function trigger_history_merge(hist) {
          if (! history_lock ) {
             history_lock = true;
             display_status('history_lock','locked');
-            console.log(callee+'.history_lock:','locked');
+            //console.log(callee+'.history_lock:','locked');
             //console.log(callee+'.hist:',hist);
             try { if ( ! merge_history(hist) ) { throw "failed merge" }; }
             catch(err) { history_lock = false }
@@ -273,11 +286,13 @@ function merge_history(remote_hist) {
          history_db[key] = incoming_grades[key];
      } 
   }
+  console.log(callee+'.history_db:',history_db);
+  return history_db;
 }
 
 function history_read(hist) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
-  let lines = hist.split('\n');
+  let lines = hist.split(/\r?\n/);
   let db = {};
   for (let line of lines) {
     let [ key,op,peer,grade_n_median ] = line.split(' ')
