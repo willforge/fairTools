@@ -15,7 +15,7 @@
 <style>i { color: grey; }</style>
 <div class=content>
 <h2>Median Sorted List from a Labeled Group<span id=listname></span></h2>
-api url: <input name=api_url placeholder="api url" onchange="update_api_url(event)">
+api url: <input name=api_url placeholder="api url" size="32" onchange="update_api_url(event)">
 <br>peerid: <span id=peerid><i>:peerid</i></span>
 <br>editor_token_nid: <span id=editor_token_nid><i>:editor_token_nid</i></span>
 <br>editor_token_hash: <span id=editor_token_hash><i>:editor_token_hash</i></span>
@@ -29,6 +29,7 @@ api url: <input name=api_url placeholder="api url" onchange="update_api_url(even
 <br>list_log_hash: <span id=list_log_hash><i>:list_log_hash</i></span> (published log after submit)
 <br>root_hash: <span id=root_hash><i>:root_hash</i></span>
 <br>webui: <a target=_blank name=webui href="webui:/#/files/public/logs/">/public/logs</a>
+<br>ipns: <span id=ipns_status></span>
 
 <br><button id=providers-button onclick="find_peers(event);">find peers on DHT</button>
 <br>discovery: search for token_hash: <span id=searched_token_hash><i>:searched_token_hash</i></span>
@@ -36,6 +37,7 @@ api url: <input name=api_url placeholder="api url" onchange="update_api_url(even
 <div id=peerids></div>
 <br>rankers <span id=rankers_status></span>:
 <div id=rankers></div>
+<br>history_lock: <span id=history_lock_status>?</span>
 <br>qmhash: <input name=qminput placeholder="node-hash" onchange="update_qmhash_value(event);" size=43> (manual entry)
 <br>qmhash:
 <select name=qmhash onchange="update_qmhash(event);">
@@ -76,17 +78,18 @@ api url: <input name=api_url placeholder="api url" onchange="update_api_url(even
 <br>nb pers: <span id=n><i>:n</i></span>
 <br>score: <input type="number" name="score" min="0" max="20" value="12" onchange="update_value(event);">
 <input type="range" name="value" min="0" max="20" onchange="display_score(event);" class="slider">
-<span id=score_lock_status>#</span>
+<br>score_lock: <span id=score_lock_status>?</span>
 <br><button onclick="node_rank(event);">rank node</button>
+<button onclick="history_pull(event);">pull history</button>
 <button onclick="score_sync(event);" id="rankers-button">sync score</button>
 <button onclick="dot_create(event);">create a dot</button>
 <br>qmjson: <span id=qmjson><i>:qmjson</i></span>
 <br>qmhash: <span id=qmhash><i>:qmhash</i></span>
+<br>qmresult: <span id=qmresult><i>:qmresult</i></span>
 
 </div>
 
 <script src=../js/ipns_cache.js></script>
-
 <script src=../js/api_config.js></script>
 <script src=../js/ipfs.js></script>
 <script src=../js/functions.js></script>
@@ -105,6 +108,7 @@ var rankers;
 //var ipns_cache = {};
 var score_db = {};
 var score_lock = false;
+var history_lock = false;
 
 let webui_url = `${gw_url}/ipfs/${qmwebui}`;
 let webui_element = document.getElementsByName('webui')[0];
@@ -129,7 +133,7 @@ function update_value(ev) {
 
 var sn=0;
 var rank = [];
-
+var history_db = {}; // 10M records !!!
 
 // TODO have a registry to obtain public's private-key
 const PUBLICID = 'QmezgbyqFCEybpSxCtGNxfRD9uDxC53aNv5PfhB3fGUhJZ';
@@ -214,12 +218,84 @@ function update_qmhash(ev) {
 }
 
 
-async function score_sync() {
-
+async function history_pull(ev) {
    let qm = document.getElementsByName('qmhash')[0].value;
    let node_urn = getNid(`uri:ipfs:${qm}`);
 
-   var queue = [];
+   // get score providers (rankers)
+   let rankers = await find_rankers(qm);
+   for (let ranker of rankers) {
+      document.getElementById('ipns_status').innerHTML = '<img src="../img/spinner.gif" height="24">';
+      let ranker_path= await ipfsNameResolve(ranker);
+      document.getElementById('ipns_status').innerHTML = '<img src="../img/check-mark.png" height="24">';
+      let historyf = `/public/logs/${node_urn}-history.txt`;
+      let promised_histo = ipfsGetContentByPath(`${ranker_path}${historyf}`)
+      .then(trigger_history_merge)
+      .catch(console.log);
+   }
+}
+
+function trigger_history_merge(hist) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+   if (typeof(hist) != 'undefined') {
+      console.log(callee+'.hist:',hist.substr(0,76)+'...');
+      var event = setInterval(function() {
+         if (! history_lock ) {
+            history_lock = true;
+            display_status('history_lock','locked');
+            console.log(callee+'.history_lock:','locked');
+            //console.log(callee+'.hist:',hist);
+            try { if ( ! merge_history(hist) ) { throw "failed merge" }; }
+            catch(err) { history_lock = false }
+
+            history_lock = false;
+            display_status('history_lock','unlocked');
+            clearInterval(event);  
+         } else {
+           console.log(callee+'.history_lock:',history_lock);
+         }
+      }, 1000);
+   } else {
+     console.log(callee+'.hist:',hist);
+   }
+  return history_lock;
+}
+
+
+// brute force approach do all 10M grades ...
+function merge_history(remote_hist) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  incoming_grades = history_read(remote_hist);
+  console.log(callee+'.incoming_grades:',incoming_grades);
+  sorted_keys =  Object.keys(incoming_grades).sort(by_keys)
+  for (key of sorted_keys) {
+     if (! history_db[key]) {
+         history_db[key] = incoming_grades[key];
+     } 
+  }
+}
+
+function history_read(hist) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  let lines = hist.split('\n');
+  let db = {};
+  for (let line of lines) {
+    let [ key,op,peer,grade_n_median ] = line.split(' ')
+    if (typeof(grade_n_median) != 'undefined' && grade_n_median.match(/^\d+,[\d\.]+/)) {
+       db[key]= [op,peer,...grade_n_median.split(',')];
+    }
+  }
+  return db;
+}
+
+function by_keys(a,b) {
+  return 1;
+}
+
+async function score_sync(ev) {
+
+   let qm = document.getElementsByName('qmhash')[0].value;
+   let node_urn = getNid(`uri:ipfs:${qm}`);
 
    // get score providers (rankers)
    let peers = await find_rankers(qm);
@@ -227,7 +303,9 @@ async function score_sync() {
    //let logsf = `/public/logs/${node_urn}-history.txt`;
    //let promized_logs = [];
    for (let ranker of randomized_rankers) {
+      document.getElementById('ipns_status').innerHTML = '<img src="../img/spinner.gif" height="24">';
       let ranker_path= await ipfsNameResolve(ranker);
+      document.getElementById('ipns_status').innerHTML = '<img src="../img/check-mark.png" height="24">';
       let jsonf = `/public/logs/${node_urn}-state.json`;
       let promised_json = ipfsGetJsonByPath(`${ranker_path}${jsonf}`)
       .then(trigger_score_update)
@@ -259,32 +337,52 @@ function max(a,b) {
   if (a > b) { return a; } else { return b };
 }
 
-function update_score_db(remote_score) {
+async function update_score_db(remote_score) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
+  console.log(callee+'.ranker_score.peerid:',remote_score.peerid);
   console.log(callee+'.remote_score:',remote_score);
   if (typeof(score_db.score) == 'undefined') {
     score_db = remote_score;
   } else {
      let new_n = 0
      for (let grade in Object.keys(score_db.score)) {
+        //           0        1           2
         let [remote_ts,remote_w,remote_peer] = remote_score.score[grade]; // ipns
         let [local_ts,local_w,local_peer] = score_db.score[grade]; // mfs
 
         if (remote_w > local_w) {
            score_db.n += remote_w - local_w;
            score_db.score[grade][1] = remote_w;
-            console.log(callee+'.grade:',grade,'weight:',remote_w);
-           
+           console.log(callee+'.grade:',grade,'weight:',remote_w);
+           // update other fields
+           score_db.score[grade][0] = remote_ts;
+           score_db.score[grade][2] = remote_peer;
+           if (typeof(remote_score.qmtext) != 'undefined') {
+             score_db.score.qmtext = remote_score.qmtext;
+           }
         }
         new_n += score_db.score[grade][1];
      }
+     // recompute median :
+     median = compute_median(score_db,0.5);
+     score_db.median = median;
+    
      console.log(callee+'.n:',score_db.n)
      console.log(callee+'.new_n:',new_n)
      score_db.n = new_n;
   }
+  document.getElementById('median').innerHTML = score_db.median;
+  document.getElementById('n').innerHTML = score_db.n;
+  let node_urn = getNid(`uri:ipfs:${score_db.qmtext}`);
+  let score_resultf = `/public/share/${node_urn}-result.json`;
+  let promised_qmresult = await ipfsWriteJson(score_resultf,score_db)
+  .then( qm => {
+      document.getElementById('qmresult').innerHTML = `<a href="${gw_url}/ipfs/${qm}">${qm}</a>`;
+      console.log(callee+'.qmresult:',qm);
+   })
+  .catch(console.error);
   return score_db;
 }
-
 
 main();
 async function main() {
@@ -505,6 +603,7 @@ async function node_rank(ev) {
   document.getElementById('median').innerHTML = median;
   document.getElementById('n').innerHTML = n;
   // score need to be publish ...
+  document.getElementById('root_hash').innerHTML = '<img src="../img/spinner.gif" height="24">';
   let promised_root_hash = publish_root().then(
    root_hash => {
        document.getElementById('root_hash').innerHTML = `<a href=${gw_url}/ipfs/${root_hash}>${root_hash}</a>`;
@@ -537,7 +636,7 @@ function compute_median(db,thres) {
 
     // ------------------------------------------------
     let i = -1;
-    console.info(callee+'........................... list');
+    console.info(callee+"...................... grades' list");
     let list = [];
     for (let grade in Object.keys(db.score)) { 
       let w = db.score[grade][1];
@@ -646,11 +745,16 @@ async function get_list(peers) {
   let logs = '';
   for(let peer of peers) {
     //if (peer == '12D3KooWJDBrt6re8zveUPZKwC3QPBid4iCguyMVuWbKMXb5HeTa') { continue; }
+
+    document.getElementById('ipns_status').innerHTML = '<img src="../img/spinner.gif" height="24">';
     let root_path = await ipfsNameResolve(peer);
-    let list_log_path = `${root_path}/public/logs/${list_labelp}.log`;
-    let buf = await ipfsGetContentByPath(list_log_path);
-    console.log(callee+'.buf:',buf);
-    logs += buf;
+    document.getElementById('ipns_status').innerHTML = '<img src="../img/check-mark.png" height="24">';
+    if (root_path != qmempty) {
+       let list_log_path = `${root_path}/public/logs/${list_labelp}.log`;
+       let buf = await ipfsGetContentByPath(list_log_path);
+       console.log(callee+'.buf:',buf);
+       logs += buf;
+    }
   } 
   console.log(callee+'.logs:',logs);
   let data = load_sorted_log(logs);
