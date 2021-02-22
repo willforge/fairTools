@@ -25,7 +25,7 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <br>list_token_hash: <span id=list_token_hash><i>:list_token_hash</i></span>
 
 <br><button onclick="node_create(event);">create a node</button>
-<button title="publish_root+set_token" onclick="notify(event);">notify</button> <i>(/root create &amp; publish; setToken for list)</i>
+<button title="publish_root+set_token" onclick="notify(event);">notify</button> <i>(setToken for list)</i>
 <br>list_log_hash: <span id=list_log_hash><i>:list_log_hash</i></span> (published log after submit)
 <br>root_hash: <span id=root_hash><i>:root_hash</i></span>
 <br>webui: <a target=_blank name=webui href="webui:/#/files/public/logs/">/public/logs</a>
@@ -217,48 +217,78 @@ function update_qmhash(ev) {
   return promised_qmjson;
 }
 
-
 async function history_pull(ev) {
    let qm = document.getElementsByName('qmhash')[0].value;
    let node_urn = getNid(`uri:ipfs:${qm}`);
 
-   let promised_merges = [];
+   let promised_concat_histories = [];
    // get score providers (rankers)
    let rankers = await find_rankers(qm);
    for (let ranker of rankers) {
       document.getElementById('ipns_status').innerHTML = '<img src="../img/spinner.gif" height="24">';
       let ranker_path= await ipfsNameResolve(ranker);
       document.getElementById('ipns_status').innerHTML = '<img src="../img/check-mark.png" height="24">';
-      let historyf = `/public/logs/${node_urn}-history.txt`;
+      let historyf = `/public/logs/${node_urn}-history.log`;
       let promised_histo = ipfsGetContentByPath(`${ranker_path}${historyf}`)
-      .then(trigger_history_merge)
+      .then(trigger_history_concat)
       .catch(console.log);
-      promised_merges.push(promised_histo);
+      promised_concat_histories.push(promised_histo);
    }
-   Promise.all(promised_merges)
-   .then(update_score_state)
-   .catch(console.error);
-
+   Promise.all(promised_concat_histories)
+   .then(console.log)
+   .catch(console.error)
+   .finally(score_db_update);
 }
 
-
-function update_score_state(merged_history) {
+function score_db_update(_) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
-  console.log(callee+'.merged_history:',merged_history)
-  return true;
+  console.log(callee+'.history_db:',history_db)
+  sorted_keys =  Object.keys(history_db).sort(by_keys)
+
+  let onevote = {};
+  for (key of sorted_keys) {
+    let [ts,peer] = key.split(',');
+    onevote[peer] = [ts,...history_db[key]]; // overwrite previous grades and keep the last one
+  }
+
+  // reset scores ...
+  score_db.tic = Date.now();
+  score_db.n = 0;
+  score_db.score = {}
+  // mymap.forEach( (k,v) => { console.log(callee+'.peer:',k); });
+
+  for (peer of Object.keys(onevote)) {
+      let [ts,op,grade,median] = onevote[peer];
+      if (op == 'A') {
+        score_db.n += 1
+        score_db.score[grade][0] = ts
+        score_db.score[grade][1] += 1
+        score_db.score[grade][2] = peer
+        seen[peer]++;
+      }
+  }
+  median = compute_median(score_db,0.5);
+  score_db.median = median;
+  console.log(callee+'.score_db:',score_db)
+  console.info(callee+'.median:',median)
+
+  document.getElementById('median').innerHTML = score_db.median;
+  document.getElementById('n').innerHTML = score_db.n;
+  return score_db;
 }
 
-function trigger_history_merge(hist) {
+function trigger_history_concat(hist) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
    if (typeof(hist) != 'undefined') {
-      console.log(callee+'.hist:',hist.substr(0,76)+'...');
+      console.log(callee+'.hist:',hist);
+      /* console.log(callee+'.hist:',hist.substr(0,76)+'...'); */
       var event = setInterval(function() {
          if (! history_lock ) {
             history_lock = true;
             display_status('history_lock','locked');
             //console.log(callee+'.history_lock:','locked');
             //console.log(callee+'.hist:',hist);
-            try { if ( ! merge_history(hist) ) { throw "failed merge" }; }
+            try { if ( ! history_concat(hist) ) { throw "failed merge" }; }
             catch(err) { history_lock = false }
 
             history_lock = false;
@@ -275,32 +305,22 @@ function trigger_history_merge(hist) {
 }
 
 
-// brute force approach do all 10M grades ...
-function merge_history(remote_hist) {
-  let [callee, caller] = functionNameJS(); // logInfo("message !")
-  incoming_grades = history_read(remote_hist);
-  console.log(callee+'.incoming_grades:',incoming_grades);
-  sorted_keys =  Object.keys(incoming_grades).sort(by_keys)
-  for (key of sorted_keys) {
-     if (! history_db[key]) {
-         history_db[key] = incoming_grades[key];
-     } 
-  }
-  console.log(callee+'.history_db:',history_db);
-  return history_db;
-}
-
-function history_read(hist) {
+function history_concat(hist) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let lines = hist.split(/\r?\n/);
-  let db = {};
   for (let line of lines) {
-    let [ key,op,peer,grade_n_median ] = line.split(' ')
-    if (typeof(grade_n_median) != 'undefined' && grade_n_median.match(/^\d+,[\d\.]+/)) {
-       db[key]= [op,peer,...grade_n_median.split(',')];
+    let [ key,op,peer,grade,median ] = line.split(' ')
+    if (grade.match(',')) { [grade,median] = grade.split(','); } // format migration
+    let uniq_key = `${key},${peer}`;
+    if (typeof(grade) != 'undefined') {
+       if (typeof(history_db[uniq_key]) != 'undefined') {
+         history_db[uniq_key] = [op,grade,median];
+       } else { // ?
+         throw " conflict of grade !";
+       }
     }
   }
-  return db;
+  return true;
 }
 
 function by_keys(a,b) {
@@ -315,7 +335,7 @@ async function score_sync(ev) {
    // get score providers (rankers)
    let peers = await find_rankers(qm);
    let randomized_rankers = peers.sort(randomly);
-   //let logsf = `/public/logs/${node_urn}-history.txt`;
+   //let logsf = `/public/logs/${node_urn}-history.log`;
    //let promized_logs = [];
    for (let ranker of randomized_rankers) {
       document.getElementById('ipns_status').innerHTML = '<img src="../img/spinner.gif" height="24">';
@@ -515,11 +535,11 @@ async function paper_trail(ts,qm,qmjson, record) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let node_urn = getNid(`uri:ipfs:${qm}`);
 
-  let paper_trailf = `/public/logs/${node_urn}-history.txt`;
+  let paper_trailf = `/public/logs/${node_urn}-history.log`;
   if ((await mfsExists(paper_trailf))[0] ) {
       qmtrail = await ipfsLogAppend(paper_trailf,record+"\n");
   } else {
-      qmtrail = await ipfsLogAppend(paper_trailf,`# paper trail for ${node_urn}: ${qm} ts:${ts}, qmjson:${qmjson}\n${record}\n`);
+      qmtrail = await ipfsLogAppend(paper_trailf,`# paper trail for ${node_urn}: ${qm} ts:${ts} qmjson:${qmjson}\n${record}\n`);
   }
   console.log(callee+'.qmtrail:',qmtrail);
   return qmtrail;
@@ -552,12 +572,20 @@ function slugify(s) {
 }
 
 async function notify(ev) {
-  document.getElementById('root_hash').innerHTML = '<img src="../img/spinner.gif" height="24">';
-  let root_hash = await publish_root()
-  document.getElementById('root_hash').innerHTML = `<a href=${gw_url}/ipfs/${root_hash}>${root_hash}</a>`;
   let published_token = await ipfsSetToken(list_token_nid);
   document.getElementById('list_token_hash').innerHTML = published_token;
+  return published_token;
 }
+
+async function publish_root() {
+  document.getElementById('root_hash').innerHTML = '<img src="../img/spinner.gif" height="24">';
+  let root_hash = await create_root_w_log();
+  document.getElementById('root_hash').innerHTML = `<a href=${gw_url}/ipfs/${root_hash}>${root_hash}</a>`;
+  //console.debug(callee+'.root_hash:',root_hash);
+  return ipfsNamePublish('self','/ipfs/'+root_hash);
+
+}
+
 async function node_rank(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let ts = Date.now(); // timestamp
@@ -627,7 +655,7 @@ async function node_rank(ev) {
 
    // add paper trail
    let op = 'A';
-   let record = `${ts} ${op} ${peerid} ${score},${median}`;
+   let record = `${ts} ${op} ${peerid} ${score} ${median}`;
    // paper-trail (auditable) published under fixed label path
    let promised_qmtrail = paper_trail(ts,qmhash,qmjson,record);
 
@@ -841,4 +869,4 @@ async function display_rankers(rankers) {
 
 </script>
 <!-- vim: syntax=javascript
--->
+->
