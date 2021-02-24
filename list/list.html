@@ -51,7 +51,7 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <br>node_urn: <input name=node_urn value=":node_urn" disabled>
 <br>node_token: <input name=node_token_hash value=":node_token_hash" size=43 disabled>
 <br>ranker_nid: <input name=ranker_nid value=":ranker_nid" disabled>
-<br>ranker_token: <input name=ranker_token_hash value=":ranker_token_hash" size=43 disabled>
+<br>ranker_token: <span id=ranker_token_hash><i>:ranker_token_hash</i></span>
 
 <div id=node style="display:none;">
 <hr width="60%">
@@ -249,6 +249,7 @@ function score_db_update(_) {
   for (key of sorted_keys) {
     let [ts,peer] = key.split(',');
     onevote[peer] = [ts,...history_db[key]]; // overwrite previous grades and keep the last one
+    console.log(callee+'.onevote[%s]=%o:',peer.substr(-4),history_db)
   }
 
   // reset scores ...
@@ -461,7 +462,7 @@ async function find_rankers(qm) {
   let ranker_nid = getNid(`urn:text:${ranker_token_label}`);
 
   let ranker_token_hash = await ipfsGetToken(ranker_nid);
-  document.getElementsByName('ranker_token_hash')[0].value=ranker_token_hash;
+  document.getElementById('ranker_token_hash').innerHTML=`<a href="${gw_url}/ipfs/${ranker_token_hash}" target="_blank">${ranker_token_hash}</a>`;
   display_status('rankers','pending');
   rankers = await ipfsFindProvs(ranker_token_hash);
   display_status('rankers','ok');
@@ -810,8 +811,9 @@ function load_sorted_log(log) {
   console.log(callee+'.data:',data);
   let records = [];
   for (let rec of data) {
+    if (rec.match(/^(?:---|#)/) ) { continue }
     let a_rec = rec.split(' ');
-    a_rec[0] = a_rec[0].slice(0,-1);
+    a_rec[0] = a_rec[0].slice(0,-1); // chomp
     records.push(a_rec);
   }
   console.log(callee+'.records:',records);
