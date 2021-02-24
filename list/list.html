@@ -96,6 +96,7 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <script>
 const dbug = 1;
 var forest = {};
+const qmipns = '/ipfs/QmTc2ZGJfPUocFXQ9euS9X7uHjW1CovasHTZGrUW4KPo8Y';
 const qmempty = 'QmbFMke1KXqnYyBBWxB74N4c5SBnJMVAiMNRcGu6x1AwQH';
 const qmwebui='Qmb3cY3zFJ5isjJ5H9cP47Vfqa6pqNwypbuo2TiBGjUmLd';
 
@@ -105,7 +106,6 @@ var list_labelp = 'fair-list';
 var peerid;
 var peerids;
 var rankers;
-//var ipns_cache = {};
 var score_db = {};
 var score_lock = false;
 var history_lock = false;
@@ -185,6 +185,7 @@ function update_qmhash(ev) {
   document.getElementById('qmhash').innerHTML = `<a target="_blank" href=${gw_url}/ipfs/${qmhash}>${qmhash}</a>`;
   document.getElementById('node_hash').innerHTML = qmhash;
   document.getElementsByName('node_urn')[0].value = node_urn;
+  update_root_hash();
 
   let promise_text = ipfsGetContentByHash(qmhash)
   .then( text => {
@@ -221,7 +222,7 @@ async function history_pull(ev) {
    let qm = document.getElementsByName('qmhash')[0].value;
    let node_urn = getNid(`uri:ipfs:${qm}`);
 
-   let promised_concat_histories = [];
+   let promised_trigger_histories = [];
    // get score providers (rankers)
    let rankers = await find_rankers(qm);
    for (let ranker of rankers) {
@@ -232,9 +233,9 @@ async function history_pull(ev) {
       let promised_histo = ipfsGetContentByPath(`${ranker_path}${historyf}`)
       .then(trigger_history_concat)
       .catch(console.log);
-      promised_concat_histories.push(promised_histo);
+      promised_trigger_histories.push(promised_histo);
    }
-   Promise.all(promised_concat_histories)
+   Promise.all(promised_trigger_histories)
    .then(console.log)
    .catch(console.error)
    .finally(score_db_update);
@@ -281,43 +282,55 @@ function score_db_update(_) {
 function trigger_history_concat(hist) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
    if (typeof(hist) != 'undefined') {
-      console.log(callee+'.hist:',hist);
       /* console.log(callee+'.hist:',hist.substr(0,76)+'...'); */
-      var event = setInterval(function() {
-         if (! history_lock ) {
-            history_lock = true;
-            display_status('history_lock','locked');
-            //console.log(callee+'.history_lock:','locked');
-            //console.log(callee+'.hist:',hist);
-            try { if ( ! history_concat(hist) ) { throw "failed merge" }; }
-            catch(err) { history_lock = false }
-
-            history_lock = false;
-            display_status('history_lock','unlocked');
-            clearInterval(event);  
-         } else {
-           console.log(callee+'.history_lock:',history_lock);
-         }
-      }, 1000);
+      return new Promise(function(resolve,reject) {
+         var event = setInterval(function() {
+             if (! history_lock ) {
+               history_lock = true;
+               display_status('history_lock','locked');
+               console.log(callee+'.hist:',hist);
+               resolve(hist);
+               history_lock = false;
+               display_status('history_lock','unlocked');
+               clearInterval(event);  
+             } else { 
+               console.log(callee+'.history_lock:',history_lock);
+             }
+         },1000)
+         // no reject: wait indefinetly ...
+         
+      }).then(hist => {
+        if ( ! history_concat(hist) ) { history_lock = false; }
+        /*
+        try { if ( ! history_concat(hist) ) { throw "failed merge" }; }
+        catch(err) { history_lock = false }
+         */
+         return true;
+      }).catch(console.error);
    } else {
      console.log(callee+'.hist:',hist);
+     return Promise.resolve(false);
    }
-  return history_lock;
 }
 
 
 function history_concat(hist) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
-  let lines = hist.split(/\r?\n/);
+  let lines = hist.slice(0,-1).split(/\r?\n/);
   for (let line of lines) {
+    if (line.match(/^#/)) { continue; }
+    console.log(callee+'.line:',line);
     let [ key,op,peer,grade,median ] = line.split(' ')
     if (grade.match(',')) { [grade,median] = grade.split(','); } // format migration
     let uniq_key = `${key},${peer}`;
+    // console.log(callee+'.uniq_key:',uniq_key);
     if (typeof(grade) != 'undefined') {
-       if (typeof(history_db[uniq_key]) != 'undefined') {
+       if (typeof(history_db[uniq_key]) == 'undefined') {
          history_db[uniq_key] = [op,grade,median];
        } else { // ?
-         throw " conflict of grade !";
+         console.warn(callee+".warning: duplicate  ... w/:",grade,uniq_key );
+         console.warn(callee+"history_db[%s]: %s",uniq_key,history_db[uniq_key] );
+         // throw " seen !";
        }
     }
   }
@@ -427,6 +440,14 @@ async function main() {
   peerid = await promisedPeerId;
   document.getElementById('peerid').innerHTML = `<a href=${gw_url}/ipns/${peerid}>${peerid}</a>`;
 }
+
+async function update_root_hash() {
+  document.getElementById('root_hash').innerHTML = '<img src="../img/spinner.gif" height="24">';
+  let root_hash = await create_root_nolog();
+  document.getElementById('root_hash').innerHTML = `<a href=${gw_url}/ipfs/${root_hash}>${root_hash}</a>`;
+  return root_hash;
+}
+
 </script>
 
 <script>
@@ -577,6 +598,7 @@ async function notify(ev) {
   document.getElementById('list_token_hash').innerHTML = published_token;
   return published_token;
 }
+
 
 async function publish_root() {
   document.getElementById('root_hash').innerHTML = '<img src="../img/spinner.gif" height="24">';
