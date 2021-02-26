@@ -312,7 +312,7 @@ function trigger_history_concat(hist) {
 
 function history_concat(hist) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
-  if (hist.match(/\r/)) { hist.replace(/\r/g,''); }
+  if (hist.match(/\r/)) { hist = hist.replace(/\r/g,''); }
   let lines = hist.slice(0,-1).split(/\n/);
   for (let line of lines) {
     if (line.match(/^#/)) { continue; }
