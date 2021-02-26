@@ -110,13 +110,6 @@ var score_db = {};
 var score_lock = false;
 var history_lock = false;
 
-let webui_url = `${gw_url}/ipfs/${qmwebui}`;
-let webui_element = document.getElementsByName('webui')[0];
-    console.log('main.webui_url:',webui_url);
-    if (typeof(webui_element.template) == 'undefined') {
-       webui_element.template = webui_element.href;
-    }
-    webui_element.href = webui_element.template.replace('webui:',webui_url);
 
 let score = document.getElementsByName('score')[0].value;
 var node_json = {};
@@ -319,7 +312,7 @@ function history_concat(hist) {
   let lines = hist.slice(0,-1).split(/\r?\n/);
   for (let line of lines) {
     if (line.match(/^#/)) { continue; }
-    console.log(callee+'.line:',line);
+    console.log(callee+'.line: "%s"',line);
     let [ key,op,peer,grade,median ] = line.split(' ')
     if (grade.match(',')) { [grade,median] = grade.split(','); } // format migration
     let uniq_key = `${key},${peer}`;
@@ -438,6 +431,16 @@ async function main() {
   display_score({ target: document.getElementsByName('score')[0] });
   update_value({ target: document.getElementsByName('score')[0] });
   peerid = await promisedPeerId;
+  gw_url = await promisedGW;
+
+  console.log('main.gw_url:',gw_url);
+  let webui_url = `${gw_url}/ipfs/${qmwebui}`;
+  let webui_element = document.getElementsByName('webui')[0];
+  console.log('main.webui_url:',webui_url);
+  if (typeof(webui_element.template) == 'undefined') {
+     webui_element.template = webui_element.href;
+  }
+  webui_element.href = webui_element.template.replace('webui:',webui_url);
   document.getElementById('peerid').innerHTML = `<a href=${gw_url}/ipns/${peerid}>${peerid}</a>`;
 }
 
