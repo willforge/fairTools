@@ -220,6 +220,7 @@ async function history_pull(ev) {
    let rankers = await find_rankers(qm);
    for (let ranker of rankers) {
       document.getElementById('ipns_status').innerHTML = '<img src="../img/spinner.gif" height="24">';
+      let promisedPing= ipfsPing(ranker);
       let ranker_path= await ipfsNameResolve(ranker);
       document.getElementById('ipns_status').innerHTML = '<img src="../img/check-mark.png" height="24">';
       let historyf = `/public/logs/${node_urn}-history.log`;
