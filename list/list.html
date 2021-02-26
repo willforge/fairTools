@@ -35,8 +35,6 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <br>discovery: search for token_hash: <span id=searched_token_hash><i>:searched_token_hash</i></span>
 <br>providers <span id=providers_status></span>:
 <div id=peerids></div>
-<br>rankers <span id=rankers_status></span>:
-<div id=rankers></div>
 <br>history_lock: <span id=history_lock_status>?</span>
 <br>qmhash: <input name=qminput placeholder="node-hash" onchange="update_qmhash_value(event);" size=43> (manual entry)
 <br>qmhash:
@@ -50,7 +48,11 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <br>node_hash: <span id=node_hash><i>:node_hash</i></span>
 <br>node_urn: <input name=node_urn value=":node_urn" disabled>
 <br>node_token: <input name=node_token_hash value=":node_token_hash" size=43 disabled>
+
 <br>ranker_nid: <input name=ranker_nid value=":ranker_nid" disabled>
+<br><button id=rankers-button onclick="find_rankers(event);">find rankers on DHT</button>
+<br>rankers <span id=rankers_status></span>:
+<div id=rankers></div>
 <br>ranker_token: <span id=ranker_token_hash><i>:ranker_token_hash</i></span>
 
 <div id=node style="display:none;">
@@ -81,7 +83,7 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <br>score_lock: <span id=score_lock_status>?</span>
 <br><button onclick="node_rank(event);">rank node</button>
 <button onclick="history_pull(event);">pull history</button>
-<button onclick="score_sync(event);" id="rankers-button">sync score</button>
+<button onclick="score_sync(event);" id="score-sync-button">sync score</button>
 <button onclick="dot_create(event);">create a dot</button>
 <br>qmjson: <span id=qmjson><i>:qmjson</i></span>
 <br>qmhash: <span id=qmhash><i>:qmhash</i></span>
@@ -211,14 +213,20 @@ function update_qmhash(ev) {
   return promised_qmjson;
 }
 
+async function find_rankers(ev) {
+      let qmhash = document.getElementsByName('qmhash')[0].value;
+      return get_rankers_by_qm(qmhash);
+}
+
 async function history_pull(ev) {
-   let qm = document.getElementsByName('qmhash')[0].value;
-   let node_urn = getNid(`uri:ipfs:${qm}`);
+   let [callee, caller] = functionNameJS(); // logInfo("message !")
+   let qmhash = document.getElementsByName('qmhash')[0].value;
+   let node_urn = getNid(`uri:ipfs:${qmhash}`);
 
    let promised_trigger_histories = [];
-   // get score providers (rankers)
-   let rankers = await find_rankers(qm);
    for (let ranker of rankers) {
+      let checked = document.getElementsByName('x'+ranker)[0].checked;
+      if (! checked) { console.info(callee+'.ranker.skipped:',ranker); continue; }
       document.getElementById('ipns_status').innerHTML = '<img src="../img/spinner.gif" height="24">';
       if (ranker != peerid) {
         let promisedPing = ipfsPing(ranker);
@@ -241,13 +249,15 @@ function score_db_update(_) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   console.log(callee+'.history_db:',history_db)
   sorted_keys =  Object.keys(history_db).sort(by_keys)
+  console.log(callee+'.sorted_keys:',sorted_keys)
 
   let onevote = {};
   for (key of sorted_keys) {
     let [ts,peer] = key.split(',');
     onevote[peer] = [ts,...history_db[key]]; // overwrite previous grades and keep the last one
-    console.log(callee+'.onevote[%s]=%o:',peer.substr(-4),history_db)
+    console.log(callee+'.onevote[%s]=%o:',peer.substr(-4),history_db[key])
   }
+  console.log(callee+'.onevote:',onevote);
 
   // reset scores ...
   score_db.tic = Date.now();
@@ -344,7 +354,7 @@ async function score_sync(ev) {
    let node_urn = getNid(`uri:ipfs:${qm}`);
 
    // get score providers (rankers)
-   let peers = await find_rankers(qm);
+   let peers = await get_rankers_by_qm(qm);
    let randomized_rankers = peers.sort(randomly);
    //let logsf = `/public/logs/${node_urn}-history.log`;
    //let promized_logs = [];
@@ -483,7 +493,7 @@ async function node_submit(ev) {
 
 }
 
-async function find_rankers(qm) {
+async function get_rankers_by_qm(qm) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let node_urn = getNid(`uri:ipfs:${qm}`);
   let ranker_token_label = `I have ranked a proposal on ${node_urn}`;
@@ -887,7 +897,7 @@ async function display_provs(peerids) {
 async function display_rankers(rankers) {
   let buf = '<ul>';
   for (peer of rankers) {
-    buf += `<li><a target=_new href=${gw_url}/ipns/${peer}/>${peer}</a></li>\n`
+    buf += `<li><input type=checkbox name="x${peer}" checked><a target=_new href=${gw_url}/ipns/${peer}/>${peer}</a></li>\n`
   }
   buf += "</ul>\n";
   document.getElementById('rankers').innerHTML = buf;
