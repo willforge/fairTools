@@ -224,6 +224,7 @@ async function history_pull(ev) {
    let [callee, caller] = functionNameJS(); // logInfo("message !")
    let qmhash = document.getElementsByName('qmhash')[0].value;
    let node_urn = getNid(`uri:ipfs:${qmhash}`);
+   let historyf = `/public/logs/${node_urn}-history.log`;
    document.getElementById('history_status').innerHTML='<font color=orange>busy</font>';
 
    let promised_trigger_histories = [];
@@ -240,7 +241,6 @@ async function history_pull(ev) {
          document.getElementById('x'+ranker+'_ipns_status').innerHTML = `<img title="${p}" src="../img/check-mark.png" height="24">`;
       };
       let ranker_path= await ipfsNameResolve(ranker,cb);
-      let historyf = `/public/logs/${node_urn}-history.log`;
       let promised_histo = ipfsGetContentByPath(`${ranker_path}${historyf}`)
       .then(trigger_history_concat)
       .catch(console.log);
@@ -248,10 +248,14 @@ async function history_pull(ev) {
    }
    Promise.all(promised_trigger_histories)
    .then( _ => { 
-      document.getElementById('history_status').innerHTML = '<img src="../img/check-mark.png" height="24">';
-      return callee;
+      return map_db_write(historyf,history_db)
+      .then( qm => {
+        document.getElementById('history_status').innerHTML = `<img title="${qm}" src="../img/check-mark.png" height="24">`;
+        return qm;
+      })
+      .catch(console.error);
    })
-   .catch(err => { console.error(callee+'.err:',err); return callee; })
+   .catch(err => { console.trace(callee+'.err:',err); return err; })
    .finally(score_db_update);
 }
 
@@ -261,14 +265,18 @@ function score_db_update(_) {
   console.log(callee+'.caller:',caller)
 
   console.log(callee+'.history_db:',history_db)
-  sorted_keys =  Object.keys(history_db).sort(by_keys)
+  sorted_keys =  Object.keys(history_db).sort(alphabetically)
   console.log(callee+'.sorted_keys:',sorted_keys)
 
   let onevote = {};
   for (key of sorted_keys) {
+    /* old format ... *
     let [ts,peer] = key.split(',');
-    onevote[peer] = [ts,...history_db[key]]; // overwrite previous grades and keep the last one
+    onevote[peer] = [ts,...history_db[key]];
     console.log(callee+'.onevote[%s]=%o ts:%s',peer.substr(-4),history_db[key],ts)
+    */
+    let peer = history_db[key][2];
+    onevote[peer] = history_db[key]; // overwrite previous grades and keep the last one
   }
   console.log(callee+'.onevote:',onevote);
 
@@ -278,8 +286,8 @@ function score_db_update(_) {
   score_db.score = {}
   // mymap.forEach( (k,v) => { console.log(callee+'.peer:',k); });
 
-  for (peer of Object.keys(onevote)) {
-      let [ts,op,grade,median] = onevote[peer];
+  for (key of Object.keys(onevote)) {
+      let [ts,op,peer,grade,median] = onevote[key];
       if (op == 'A') {
         score_db.n += 1
         if (typeof(score_db.score[grade]) == 'undefined') {
@@ -345,13 +353,31 @@ function history_concat(hist) {
   for (let line of lines) {
     if (line.match(/^#/)) { continue; }
     console.log(callee+'.line: "%s"',line);
-    let [ key,op,peer,grade,median ] = line.split(' ')
-    if (grade.match(',')) { [grade,median] = grade.split(','); } // format migration
-    let uniq_key = `${key},${peer}`;
-    // console.log(callee+'.uniq_key:',uniq_key);
+    
+    let fields = line.split(' ');
+    let uniq_key,ts,op,peer,grade,median;
+    console.info(callee+'.fields:',fields);
+    console.info(callee+'.fields.length:',fields.length);
+    /* -------------------------------------------- */
+    // format migration !
+    if (fields.length <= 5) { // old format
+      console.warn(callee+'.hist: is in old format');
+      let key;
+      [ key,op,peer,grade,median ] = fields;
+      uniq_key = `${key},${peer}`;
+      ts = key;
+      console.debug(callee+'.uniq_key: %s',uniq_key);
+      if (grade.match(',')) { [grade,median] = grade.split(','); } // format migration
+    } else { // new format 6 elements
+      [ uniq_key,ts,op,peer,grade,median ] = fields;
+    }
+    /* -------------------------------------------- */
+    uniq_key = ts + ':' + shortqm(peer);
+
     if (typeof(grade) != 'undefined') {
+       console.warn(callee+".history_db[%s]: %s",uniq_key,history_db[uniq_key] );
        if (typeof(history_db[uniq_key]) == 'undefined') {
-         history_db[uniq_key] = [op,grade,median];
+         history_db[uniq_key] = [ts,op,peer,grade,median];
        } else { // ?
          console.warn(callee+".warning: duplicate  ... w/:",grade,uniq_key );
          console.warn(callee+".history_db[%s]: %s",uniq_key,history_db[uniq_key] );
@@ -362,11 +388,12 @@ function history_concat(hist) {
   return true;
 }
 
-function by_keys(a,b) {
+function alphabetically(a,b) {
   /* return -1; // -1 as is ; 1 ack as a reverse; */
-  /* alphabetical sort */
   return ( a > b ) ? 1 : (a < b) ? -1 : 0; // alphabetic !
-  /* return a-b ; // numerical sort ! */
+}
+function numerically(a,b) {
+ return a-b ; // numerical sort !
 }
 
 async function score_sync(ev) {
@@ -589,6 +616,15 @@ async function node_meta_create(qm) {
   // paper-trail (auditable) published under fixed label path
   let qmtrail = await paper_trail(ts,qm,qmjson,record);
   return qmtrail;
+}
+
+async function map_db_write(file, db) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  let buf = ''
+  for (let key of Object.keys(db)) {
+    buf +=  `${key} ${db[key].join(' ')}\n`;
+  }
+  return ipfsWriteText(file,buf);
 }
 
 async function paper_trail(ts,qm,qmjson, record) {
