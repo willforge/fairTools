@@ -35,6 +35,8 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <br>discovery: search for token_hash: <span id=searched_token_hash><i>:searched_token_hash</i></span>
 <br>providers <span id=providers_status></span>:
 <div id=peerids></div>
+<br><button id=list-button onclick="get_list(event);">get node list</button>
+<span id=list_status></span>
 <br>history_lock: <span id=history_lock_status>?</span>
 <br>qmhash: <input name=qminput placeholder="node-hash" onchange="update_qmhash_value(event);" size=43> (manual entry)
 <br>qmhash:
@@ -44,7 +46,6 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <option value="2">option 2</option>
 <option value="3">option 3</option>
 </select>
-<span id=list_status></span>
 <br>node_hash: <span id=node_hash><i>:node_hash</i></span>
 <br>node_urn: <input name=node_urn value=":node_urn" disabled>
 <br>node_token: <input name=node_token_hash value=":node_token_hash" size=43 disabled>
@@ -796,15 +797,9 @@ async function find_peers(ev) {
     peerids = await ipfsFindProvs(searched_token_hash);
     display_status('providers','ok');
     display_provs(peerids);
-    document.getElementById('list_status').innerHTML='<font color=orange>busy</font>';
-    let list = await get_list(peerids)
-    console.debug(callee+'.list:',list);
-    let qmselect = document.getElementsByName('qmhash')[0];
-    build_qmhash_select(qmselect, list);
-    document.getElementById('list_status').innerHTML='<font color=green>OK</font>';
-    
     
   // }
+  return peerids;
 }
 
 
@@ -821,25 +816,37 @@ function build_qmhash_select(selid,list) {
   return true;
 }
 
+async function get_list(ev) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+   document.getElementById('list_status').innerHTML='<font color=orange>busy</font>';
+    let list = await node_list(peerids)
+    console.debug(callee+'.list:',list);
+    let qmselect = document.getElementsByName('qmhash')[0];
+    build_qmhash_select(qmselect, list);
+    document.getElementById('list_status').innerHTML='<font color=green>OK</font>';
+  return list;
+}
 
 
 
-async function get_list(peers) {
+async function node_list(peers) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   console.log(callee+'.list_labelp:',list_labelp);
   let logs = '';
   for(let peer of peers) {
-    //if (peer == '12D3KooWJDBrt6re8zveUPZKwC3QPBid4iCguyMVuWbKMXb5HeTa') { continue; }
-
-    document.getElementById('ipns_status').innerHTML = '<img src="../img/spinner.gif" height="24">';
-    let root_path = await ipfsNameResolve(peer);
-    document.getElementById('ipns_status').innerHTML = '<img src="../img/check-mark.png" height="24">';
-    if (root_path != qmempty) {
-       let list_log_path = `${root_path}/public/logs/${list_labelp}.log`;
-       let buf = await ipfsGetContentByPath(list_log_path);
-       console.log(callee+'.buf:',buf);
-       logs += buf;
-    }
+     //if (peer == '12D3KooWJDBrt6re8zveUPZKwC3QPBid4iCguyMVuWbKMXb5HeTa') { continue; }
+     let checked = document.getElementsByName('p'+peer)[0].checked;
+     if (! checked) { console.info(callee+'.peer.skipped:',peer); continue; }
+ 
+     document.getElementById('ipns_status').innerHTML = '<img src="../img/spinner.gif" height="24">';
+     let root_path = await ipfsNameResolve(peer);
+     document.getElementById('ipns_status').innerHTML = '<img src="../img/check-mark.png" height="24">';
+     if (root_path != qmempty) {
+        let list_log_path = `${root_path}/public/logs/${list_labelp}.log`;
+        let buf = await ipfsGetContentByPath(list_log_path);
+        console.log(callee+'.buf:',buf);
+        logs += buf;
+     }
   } 
   console.log(callee+'.logs:',logs);
   let data = load_sorted_log(logs);
@@ -896,7 +903,7 @@ function display_status(id,s) {
 async function display_provs(peerids) {
   let buf = '<ul>';
   for (peer of peerids) {
-    buf += `<li><a target=_new href=${gw_url}/ipns/${peer}/>${peer}</a></li>\n`
+    buf += `<li><input type=checkbox name="p${peer}" checked><a target=_new href="${gw_url}/ipns/${peer}"/>${peer}</a>'s <a target="_new" href="${gw_url}/ipns/${peer}/public/logs/${list_labelp}.log">${list_labelp}.log</a></li>\n`
   }
   buf += "</ul>\n";
   document.getElementById('peerids').innerHTML = buf;
@@ -904,7 +911,7 @@ async function display_provs(peerids) {
 async function display_rankers(rankers) {
   let buf = '<ul>';
   for (peer of rankers) {
-    buf += `<li><input type=checkbox name="x${peer}" checked><a target=_new href=${gw_url}/ipns/${peer}/>${peer}</a></li>\n`
+    buf += `<li><input type=checkbox name="x${peer}" checked><a target=_new href=${gw_url}/ipns/${peer}/public/logs>${peer}</a></li>\n`
   }
   buf += "</ul>\n";
   document.getElementById('rankers').innerHTML = buf;
