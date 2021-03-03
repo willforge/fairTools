@@ -548,6 +548,7 @@ async function get_rankers_by_qm(qm) {
   let node_urn = getNid(`uri:ipfs:${qm}`);
   let ranker_token_label = `I have ranked a proposal on ${node_urn}`;
   let ranker_nid = getNid(`urn:text:${ranker_token_label}`);
+  console.log(callee+'.ranker_nid:',ranker_nid);
 
   let ranker_token_hash = await ipfsGetToken(ranker_nid);
   document.getElementById('ranker_token_hash').innerHTML=`<a href="${gw_url}/ipfs/${ranker_token_hash}" target="_new">${ranker_token_hash}</a>`;
@@ -969,13 +970,22 @@ async function display_provs(peerids) {
   document.getElementById('peerids').innerHTML = buf;
 }
 async function display_rankers(rankers) {
+  let node_urn = document.getElementsByName('node_urn')[0].value;
   let buf = '<ul>';
   for (peer of rankers) {
     buf += `<li><input type=checkbox name="x${peer}" checked><a target=_new href=${gw_url}/ipns/${peer}/public/logs>${peer}</a>`
     buf += `<span id="x${peer}_ipns_status"></span></li>\n`;
+    promised_history_prefetch(`${gw_url}/ipns/${peer}/public/logs/${node_urn}-history.log`);
   }
   buf += "</ul>\n";
   document.getElementById('rankers').innerHTML = buf;
+}
+
+function promised_history_prefetch(url) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+   return fetch(url,{ method:'HEAD', mode:'cors' })
+   .then(resp => { console.log(callee+'.url: %s (fetched)',url); return resp; })
+   .catch(console.info);
 }
 
 </script>
