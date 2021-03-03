@@ -28,7 +28,7 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <button title="set_token" onclick="notify(event);">notify</button> <i>(setToken for list)</i>
 <br>list_log_hash: <span id=list_log_hash><i>:list_log_hash</i></span> (published log after submit)
 <br>root_hash: <span id=root_hash><i>:root_hash</i></span>
-<br>webui: <a target=_new name=webui href="webui:/#/files/public/logs/">/public/logs</a>
+<br>webui: <a target=_new class=webui href="webui:/#/files/public/logs/">/public/logs</a>
 
 <br><button id=providers-button onclick="find_peers(event);">find peers on DHT</button>
 <br>discovery: search for token_hash: <span id=searched_token_hash><i>:searched_token_hash</i></span>
@@ -37,12 +37,13 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <br><button id=list-button onclick="get_list(event);">get node list</button>
 <span id=list_status></span>
 <br>history_lock: <span id=history_lock_status>?</span>
+<a id=history_link class="webui node_urn" href="webui:/#/files/public/logs/:node_urn-history.log"><i>:node_urn</i>-history.log</a>
 <br>qmhash: <input name=qminput placeholder="node-hash" onchange="update_qmhash_value(event);" size=43> (manual entry)
 <br>qmhash:
 <select name=qmhash onchange="update_qmhash(event);">
 <option value="typed">as above</option>
 <option value="1">option 1</option>
-<option value="2">option 2</option>
+<option value="2">optioclass 2</option>
 <option value="3">option 3</option>
 </select>
 <br>node_hash: <span id=node_hash><i>:node_hash</i></span>
@@ -53,7 +54,7 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <br>rankers <span id=rankers_status></span>:
 <div id=rankers></div>
 <br>ranker_nid: <input name=ranker_nid value=":ranker_nid" disabled>
-<br>ranker_token: <span id=ranker_token_hash><i>:ranker_token_hash</i></span>
+<br>ranker_token: <span id=ranker_token_hash><i>:ranker_token_hash</i></span> <input type=checkbox name=ranker_token_pin onchange="update_ranker_token_pin(event)">
 
 <div id=node style="display:none;">
 <hr width="60%">
@@ -180,6 +181,24 @@ function update_qmhash(ev) {
   console.log(callee+'.qmhash:',qmhash);
   document.getElementById('qmhash').innerHTML = `<a target="_new" href=${gw_url}/ipfs/${qmhash}>${qmhash}</a>`;
   document.getElementById('node_hash').innerHTML = qmhash;
+  document.getElementsByName('node_urn')[0].value = node_urn;
+  let node_urn_elements = document.getElementsByClassName('node_urn');
+  for (node_urn_element of node_urn_elements) {
+     if (typeof(node_urn_element.template) == 'undefined') {
+        node_urn_element.template = { 'href':undefined,'info':undefined};
+        console.log(callee+'.node_urn_element.template:',node_url_element.template);
+     }
+     if (typeof(node_urn_element.template.link) == 'undefined') {
+        console.log(callee+'.node_urn_element.href:',node_urn_element.href);
+        node_urn_element.template.link = node_urn_element.href;
+        console.log(callee+'.node_urn_element.template.link:',node_urn_element.template.link);
+     }
+     if (typeof(node_urn_element.template.info) == 'undefined') {
+        node_urn_element.template.info = node_urn_element.innerHTML;
+     }
+     node_urn_element.href = node_urn_element.template.link.replace(':node_urn',node_urn);
+     node_urn_element.innerHTML = node_urn_element.template.info.replace(':node_urn',node_urn);
+  }
   document.getElementsByName('node_urn')[0].value = node_urn;
   //update_root_hash();  {/... /etc /my /public} saved in /.../published
 
@@ -499,12 +518,18 @@ async function main() {
 
   console.log('main.gw_url:',gw_url);
   let webui_url = `${gw_url}/ipfs/${qmwebui}`;
-  let webui_element = document.getElementsByName('webui')[0];
   console.log('main.webui_url:',webui_url);
-  if (typeof(webui_element.template) == 'undefined') {
-     webui_element.template = webui_element.href;
+  
+  let webui_elements = document.getElementsByClassName('webui');
+  for (webui_element of webui_elements) {
+     if (typeof(webui_element.template) == 'undefined') {
+        webui_element.template = {};
+     }
+     if (typeof(webui_element.template.webui) == 'undefined') {
+        webui_element.template.webui = webui_element.href;
+     }
+     webui_element.href = webui_element.template.webui.replace('webui:',webui_url);
   }
-  webui_element.href = webui_element.template.replace('webui:',webui_url);
   document.getElementById('peerid').innerHTML = `<a href=${gw_url}/ipns/${peerid}>${peerid}</a>`;
 }
 
@@ -558,6 +583,12 @@ async function get_rankers_by_qm(qm) {
   display_rankers(rankers);
   console.log(callee+'.rankers:',rankers);
   return rankers
+}
+function update_ranker_token_pin(ev) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  let pin_state = ev.target.checked;
+  console.log(callee+'.pin_state:',pin_state);
+  // TODO ...
 }
 
 async function node_meta_load(qm) {
