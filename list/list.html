@@ -228,6 +228,7 @@ async function history_pull(ev) {
    document.getElementById('history_status').innerHTML='<font color=orange>busy</font>';
 
    let promised_trigger_histories = [];
+   if (rankers.length > 1) {
    for (let ranker of rankers) {
       let checked = document.getElementsByName('x'+ranker)[0].checked;
       if (! checked) { console.info(callee+'.ranker.skipped:',ranker); continue; }
@@ -241,6 +242,7 @@ async function history_pull(ev) {
          document.getElementById('x'+ranker+'_ipns_status').innerHTML = `<img title="${p}" src="../img/check-mark.png" height="24">`;
       };
       let ranker_path= await ipfsNameResolve(ranker,cb);
+      // if (! await mfsSilentExists(`${ranker_path}${historyf}`)) { continue; }
       let promised_histo = ipfsGetContentByPath(`${ranker_path}${historyf}`)
       .then(trigger_history_concat)
       .catch(console.log);
@@ -257,6 +259,7 @@ async function history_pull(ev) {
    })
    .catch(err => { console.trace(callee+'.err:',err); return err; })
    .finally(score_db_update);
+   }
 }
 
 function score_db_update(_) {
@@ -340,7 +343,7 @@ function trigger_history_concat(hist) {
          return true;
       }).catch(console.error);
    } else {
-     console.log(callee+'.hist:',hist);
+     console.trace(callee+'.hist:',hist);
      return Promise.resolve(false);
    }
 }
@@ -356,8 +359,7 @@ function history_concat(hist) {
     
     let fields = line.split(' ');
     let uniq_key,ts,op,peer,grade,median;
-    console.info(callee+'.fields:',fields);
-    console.info(callee+'.fields.length:',fields.length);
+    console.debug(callee+'.fields:',fields);
     /* -------------------------------------------- */
     // format migration !
     if (fields.length <= 5) { // old format
@@ -366,13 +368,13 @@ function history_concat(hist) {
       [ key,op,peer,grade,median ] = fields;
       uniq_key = `${key},${peer}`;
       ts = key;
-      console.debug(callee+'.uniq_key: %s',uniq_key);
       if (grade.match(',')) { [grade,median] = grade.split(','); } // format migration
     } else { // new format 6 elements
       [ uniq_key,ts,op,peer,grade,median ] = fields;
     }
     /* -------------------------------------------- */
     uniq_key = ts + ':' + shortqm(peer);
+    console.debug(callee+'.uniq_key: %s',uniq_key);
 
     if (typeof(grade) != 'undefined') {
        console.warn(callee+".history_db[%s]: %s",uniq_key,history_db[uniq_key] );
