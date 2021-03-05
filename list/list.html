@@ -38,13 +38,11 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <span id=list_status></span>
 <br>history_lock: <span id=history_lock_status>?</span>
 <a id=history_link class="webui node_urn" href="webui:/#/files/public/logs/:node_urn-history.log"><i>:node_urn</i>-history.log</a>
-<br>qmhash: <input name=qminput placeholder="node-hash" onchange="update_qmhash_value(event);" size=43> (manual entry)
+<!-- br>qmhash: <input name=qminput placeholder="node-hash" onchange="update_qmhash_value(event);" size=43> (manual entry) -->
 <br>qmhash:
 <select name=qmhash onchange="update_qmhash(event);">
-<option value="typed">as above</option>
-<option value="1">option 1</option>
-<option value="2">optioclass 2</option>
-<option value="3">option 3</option>
+<option label="Please select a qmhash">Please select a hash</option>
+<option value="QmbFMke1KXqnYyBBWxB74N4c5SBnJMVAiMNRcGu6x1AwQH">QMFMke...: no nodes found</option>
 </select>
 <br>node_hash: <span id=node_hash><i>:node_hash</i></span>
 <br>node_urn: <input name=node_urn value=":node_urn" disabled>
@@ -70,7 +68,7 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 </script>
 <br><textarea name=node_text rows=5 cols=80 required></textarea>
 <br><button onclick="node_submit(event);">submit</button>
-<button onclick="notify(event);">notify</button>
+<button onclick="publish_and_notify(event);">notify</button> // ICI
 <button onclick="node_close(event);">close</button>
 <hr width="60%">
 </div>
@@ -143,6 +141,10 @@ var list_token_label = editor_token_label + ' for ' + list_label;
 var list_token_nid;
 update_label({});
 
+function slugify(s) {
+ let slug =  s.toLowerCase().replace(/[^a-z0-9]+/g,'-');
+ return slug;
+}
 
 function update_label(ev) {
   let label = document.getElementsByName('list_label')[0].value;
@@ -531,6 +533,18 @@ async function main() {
      webui_element.href = webui_element.template.webui.replace('webui:',webui_url);
   }
   document.getElementById('peerid').innerHTML = `<a href=${gw_url}/ipns/${peerid}>${peerid}</a>`;
+
+  /* TEST AREA ... */
+  /*
+  let isqm1 = await isRawLeaf('QmXqJAkSdP8eSTSXEeSRKoDYa7G1vZwaFJGiKgNFWxpUZo');
+  console.log('main.isqm1:',isqm1)
+  // let isqm2 = await isRawLeaf('bafkreifqrk6to5j4bi42g5skjun4rmwodetvdxuwcfqbids4ljtofv5pxa');
+  let isqm2 = await isRawLeaf('QmQ9PDcjM2ueswPgsRRoGb9j868VrTmSm1NqHzomZy6a6e');
+  console.log('main.isqm2:',isqm2)
+
+  window.stop();
+  */
+
 }
 
 async function update_root_hash() {
@@ -696,9 +710,9 @@ async function list_add_node(path,qm) {
 
 }
 
-function slugify(s) {
- let slug =  s.toLowerCase().replace(/[^a-z0-9]+/g,'-');
- return slug;
+function publish_and_notify(ev) {
+ let promises = [ notify({}), publish_root({}) ];
+ return Promise.all(promises);
 }
 
 async function notify(ev) {
