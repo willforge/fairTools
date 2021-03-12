@@ -11,8 +11,13 @@
   /my/submission/complaints/title/a-specific-topic_history-nid.log
   /public/./submission/complaints/title/a-specific-topic_history-nid.log
 
+
+ label -> token_label -> token_urn -> token_nid -> token_hash
+ "fairnet" -> "I use fairnet" -> "uri:text:{label}" -> 35e0hagvp4p15 -> z83ajNoNw5p9R6fCe75mB3eqPw9NyPh2x
 -->
-<style>i { color: grey; }</style>
+<style>i { color: grey; }
+#rankers_token_pin_img { height: 24px; }
+</style>
 <div class=content>
 <h2>Median Sorted List from a Labeled Group<span id=listname></span></h2>
 api url: <input name=api_url placeholder="api url" size="32" onchange="update_api_url(event)">
@@ -29,6 +34,23 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <br>list_log_hash: <span id=list_log_hash><i>:list_log_hash</i></span> (published log after submit)
 <br>root_hash: <span id=root_hash><i>:root_hash</i></span>
 <br>webui: <a target=_new class=webui href="webui:/#/files/public/logs/">/public/logs</a>
+
+<div id=node style="display:none; border: 1px solid black; padding: 0.8rem">
+<br>node's list: <input name=label value="" placeholder="list's label to attached the text" disabled>
+<br>category: <input type=text name=category value='' placeholder="category">
+<br>path: <input name=path value="/public/submission/proposal" placeholder="mutable path" required>*
+<br>author: <input name=author value="anonymous" placeholder="author">
+<br>stamp: <input name=ts value onmouseover="this.value=Date.now();" required>*
+<br>title: <input title="this title charaterizes the text" type=text name=title value='' onchange="node_urn_update(event);" placeholder="title for your text" required>*
+<br>date: <input type=date name=date value='' placeholder="date">
+<script>
+ document.getElementsByName('date')[0].valueAsDate = new Date();
+</script>
+<br><textarea name=node_text rows=5 cols=80 required></textarea>
+<br><button onclick="node_submit(event);">submit</button>
+<button onclick="publish_and_notify(event);">notify</button>
+<button onclick="node_close(event);">close</button>
+</div>
 
 <br><button id=providers-button onclick="find_peers(event);">find peers on DHT</button>
 <br>discovery: search for token_hash: <span id=searched_token_hash><i>:searched_token_hash</i></span>
@@ -51,27 +73,9 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <br><button id=rankers-button onclick="find_rankers(event);">find rankers on DHT</button>
 <br>rankers <span id=rankers_status></span>:
 <div id=rankers></div>
-<br>ranker_nid: <input name=ranker_nid value=":ranker_nid" disabled>
-<br>ranker_token: <span id=ranker_token_hash><i>:ranker_token_hash</i></span> <input type=checkbox name=ranker_token_pin onchange="update_ranker_token_pin(event)">
+<br>rankers_nid: <input name=rankers_nid value=":rankers_nid" disabled>
+<br>rankers_token: <span id=rankers_token_hash><i>:rankers_token_hash</i></span><img id="rankers_token_pin_img"> <input type=checkbox name=rankers_token_pin onchange="update_rankers_token_pin(event)">
 
-<div id=node style="display:none;">
-<hr width="60%">
-<br>node's list: <input name=label value="" placeholder="list's label to attached the text" disabled>
-<br>category: <input type=text name=category value='' placeholder="category">
-<br>path: <input name=path value="/public/submission/proposal" placeholder="mutable path" required>*
-<br>author: <input name=author value="anonymous" placeholder="author">
-<br>stamp: <input name=ts value onmouseover="this.value=Date.now();" required>*
-<br>title: <input title="this title charaterizes the text" type=text name=title value='' onchange="node_urn_update(event);" placeholder="title for your text" required>*
-<br>date: <input type=date name=date value='' placeholder="date">
-<script>
- document.getElementsByName('date')[0].valueAsDate = new Date();
-</script>
-<br><textarea name=node_text rows=5 cols=80 required></textarea>
-<br><button onclick="node_submit(event);">submit</button>
-<button onclick="publish_and_notify(event);">notify</button> // ICI
-<button onclick="node_close(event);">close</button>
-<hr width="60%">
-</div>
 <hr>
 <textarea id=selected_text cols=76 rows=5 disabled></textarea>
 
@@ -95,6 +99,8 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <script src=../js/api_config.js></script>
 <script src=../js/ipfs.js></script>
 <script src=../js/functions.js></script>
+<script src=../js/BaseN.js></script>
+<script src=../js/Base32.js></script>
 <script>
 const dbug = 1;
 var forest = {};
@@ -130,6 +136,8 @@ var sn=0;
 var rank = [];
 var history_db = {}; // 10M records !!!
 
+// -----------------------------------------------------------------------------
+/// GLOBAL DEFINITONS ...
 // TODO have a registry to obtain public's private-key
 const PUBLICID = 'QmezgbyqFCEybpSxCtGNxfRD9uDxC53aNv5PfhB3fGUhJZ';
 const editor_token_label = `I have submitted a proposal to ${shortqm(PUBLICID)}`;
@@ -140,6 +148,9 @@ document.getElementById('editor_token_nid').innerHTML=editor_token_nid;
 var list_token_label = editor_token_label + ' for ' + list_label;
 var list_token_nid;
 update_label({});
+
+var rankers_token_hash; 
+// -----------------------------------------------------------------------------
 
 function slugify(s) {
  let slug =  s.toLowerCase().replace(/[^a-z0-9]+/g,'-');
@@ -556,7 +567,7 @@ async function update_root_hash() {
 
 </script>
 
-<script>
+<script>/* below are the function usable after the page has loaded ! */
 function randomly(a,b) {
   return Math.random(1.0) > 0.5 ? -1 : 1 ;
 }
@@ -585,25 +596,71 @@ async function node_submit(ev) {
 async function get_rankers_by_qm(qm) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let node_urn = getNid(`uri:ipfs:${qm}`);
-  let ranker_token_label = `I have ranked a proposal on ${node_urn}`;
-  let ranker_nid = getNid(`urn:text:${ranker_token_label}`);
-  console.log(callee+'.ranker_nid:',ranker_nid);
+  let rankers_token_label = `I have ranked a proposal on ${node_urn}`;
+  let rankers_nid = getNid(`urn:text:${rankers_token_label}`);
+  console.log(callee+'.rankers_nid:',rankers_nid);
 
-  let ranker_token_hash = await ipfsGetToken(ranker_nid);
-  document.getElementById('ranker_token_hash').innerHTML=`<a href="${gw_url}/ipfs/${ranker_token_hash}" target="_new">${ranker_token_hash}</a>`;
+  rankers_token_hash = await ipfsGetToken(rankers_nid); // Global
+  document.getElementById('rankers_token_hash').innerHTML=`<a href="${gw_url}/ipfs/${rankers_token_hash}" target="_new">${rankers_token_hash}</a>`;
+  let pin_status = await getPinStatus(rankers_token_hash);
+  display_pin_image('rankers_token_pin',pin_status);
+
   display_status('rankers','pending');
-  rankers = await ipfsFindProvs(ranker_token_hash);
+  rankers = await ipfsFindProvs(rankers_token_hash);
   display_status('rankers','ok');
   display_rankers(rankers);
   console.log(callee+'.rankers:',rankers);
   return rankers
 }
-function update_ranker_token_pin(ev) {
+function update_rankers_token_pin(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let pin_state = ev.target.checked;
   console.log(callee+'.pin_state:',pin_state);
-  // TODO ...
+  if (pin_state) { 
+    return ipfsPinAdd(rankers_token_hash)
+     .then( json => {
+        console.log(callee+'.json:',json);
+        if (json.Pins[0]) {
+         return getPinStatus(rankers_token_hash)
+          .then( status => { display_pin_image('rankers_token_pin',status); return status; })
+         .catch(console.error)
+        } else {
+         return Promise.reject( false );
+        } 
+     })
+     .catch(console.warn);
+  } else {
+    return ipfsPinRm(rankers_token_hash)
+     .then( json => {
+        console.log(callee+'.json:',json);
+        return getPinStatus(rankers_token_hash)
+          .then( status => { display_pin_image('rankers_token_pin',status); return status; }
+          )
+         .catch(console.error)
+     })
+     .catch(console.log);
+  }
+  // TODO
 }
+
+function display_pin_image(name,status) { // output
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+    let img = document.getElementById(name+'_img');
+    img.src = '../img/pinned-'+status+'-200.png';
+    let box = document.getElementsByName(name)[0];
+    switch (true) {
+     case (status.match(/^direct/)):
+     case (status.match(/^recursive/)):
+        box.checked = true; break;
+     case (status.match('unpinned')):
+        box.checked = false; break;
+     default:
+        console.warn(callee+'.status:',status);
+    }
+
+    return true;
+}
+
 
 async function node_meta_load(qm) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
@@ -738,11 +795,11 @@ async function node_rank(ev) {
   let qmhash = document.getElementsByName('qmhash')[0].value;
   let node_urn = getNid(`uri:ipfs:${qmhash}`);
 
-  let ranker_token_label = `I have ranked a proposal on ${node_urn}`;
-  let ranker_nid = getNid(`urn:text:${ranker_token_label}`);
+  let rankers_token_label = `I have ranked a proposal on ${node_urn}`;
+  let rankers_nid = getNid(`urn:text:${rankers_token_label}`);
 
   document.getElementsByName('node_urn')[0].value = node_urn;
-  document.getElementsByName('ranker_nid')[0].value = ranker_nid;
+  document.getElementsByName('rankers_nid')[0].value = rankers_nid;
   
   /* var score_db; // global */
   let jsonf = `/public/logs/${node_urn}-state.json`
@@ -773,7 +830,7 @@ async function node_rank(ev) {
         'peerid':peerid, 
         'qmtext':qmhash, 
         'node_urn':node_urn, 
-        'ranker_nid':ranker_nid, 
+        'rankers_nid':rankers_nid, 
         'n': n,
         'median': median,
         'score': allowed_grades.map( grade => {
@@ -801,7 +858,7 @@ async function node_rank(ev) {
 
 
    // announce score is cast ...
-   let promised_announce = ipfsSetToken(ranker_nid);
+   let promised_announce = ipfsSetToken(rankers_nid);
 
    return score_db;
 }
