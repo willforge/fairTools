@@ -786,8 +786,13 @@ async function publish_root() {
   document.getElementById('root_hash').innerHTML = '<img src="../img/spinner.gif" height="24">';
   let root_hash = await create_root_w_log();
   document.getElementById('root_hash').innerHTML = `<a href=${gw_url}/ipfs/${root_hash}>${root_hash}</a>`;
+  if (typeof(root_hash) != 'undefined') {
   //console.debug(callee+'.root_hash:',root_hash);
   return ipfsNamePublish('self','/ipfs/'+root_hash);
+  } else {
+   console.error(callee+'.root_hash: %s /!\\ ',root_hash);
+   return root_hash;
+  }
 
 }
 
