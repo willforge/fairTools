@@ -32,7 +32,7 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <br><button onclick="node_create(event);">create a node</button>
 <button title="set_token" onclick="notify(event);">notify</button> <i>(setToken for list)</i>
 <br>list_log_hash: <span id=list_log_hash><i>:list_log_hash</i></span> (published log after submit)
-<br>root_hash: <span id=root_hash><i>:root_hash</i></span>
+<br>root_hash: <span id=root_hash><i>:root_hash</i></span> <button title="publish" onclick="publish(event);">publish</button>
 <br>webui: <a target=_new class=webui href="webui:/#/files/public/logs/">/public/logs</a>
 
 <div id=node style="display:none; border: 1px solid black; padding: 0.8rem">
@@ -48,7 +48,7 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 </script>
 <br><textarea name=node_text rows=5 cols=80 required></textarea>
 <br><button onclick="node_submit(event);">submit</button>
-<button onclick="publish_and_notify(event);">notify</button>
+<button onclick="publish_and_notify(event);">publish and notify</button>
 <button onclick="node_close(event);">close</button>
 </div>
 
@@ -603,6 +603,7 @@ async function get_rankers_by_qm(qm) {
   rankers_token_hash = await ipfsGetToken(rankers_nid); // Global
   document.getElementById('rankers_token_hash').innerHTML=`<a href="${gw_url}/ipfs/${rankers_token_hash}" target="_new">${rankers_token_hash}</a>`;
   let pin_status = await getPinStatus(rankers_token_hash);
+  console.log(callee+'.pin_status:',pin_status);
   display_pin_image('rankers_token_pin',pin_status);
 
   display_status('rankers','pending');
@@ -719,8 +720,8 @@ async function node_meta_create(qm) {
   let op = 'I';
   let record = `${ts} ${op} ${peerid} ${grade},${median}`;
   // paper-trail (auditable) published under fixed label path
-  let qmtrail = await paper_trail(ts,qm,qmjson,record);
-  return qmtrail;
+  let qmhistory = await history_append(ts,qm,qmjson,record);
+  return qmhistory;
 }
 
 async function map_db_write(file, db) {
@@ -732,18 +733,18 @@ async function map_db_write(file, db) {
   return ipfsWriteText(file,buf);
 }
 
-async function paper_trail(ts,qm,qmjson, record) {
+async function history_append(ts,qm,qmjson, record) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let node_urn = getNid(`uri:ipfs:${qm}`);
 
-  let paper_trailf = `/public/logs/${node_urn}-history.log`;
-  if ((await mfsExists(paper_trailf))[0] ) {
-      qmtrail = await ipfsLogAppend(paper_trailf,record+"\n");
+  let historyf = `/public/logs/${node_urn}-history.log`;
+  if ((await mfsExists(historyf))[0] ) {
+      qmhistory = await ipfsLogAppend(historyf,record+"\n");
   } else {
-      qmtrail = await ipfsLogAppend(paper_trailf,`# paper trail for ${node_urn}: ${qm} ts:${ts} qmjson:${qmjson}\n${record}\n`);
+      qmhistory = await ipfsLogAppend(historyf,`# paper trail for ${node_urn}: ${qm} ts:${ts} qmjson:${qmjson}\n${record}\n`);
   }
-  console.log(callee+'.qmtrail:',qmtrail);
-  return qmtrail;
+  console.log(callee+'.qmhistory:',qmhistory);
+  return qmhistory;
 }
 
 
@@ -767,15 +768,17 @@ async function list_add_node(path,qm) {
 
 }
 
-function publish_and_notify(ev) {
- let promises = [ notify({}), publish_root({}) ];
- return Promise.all(promises);
+function publish(ev) {
+  return publish_root();
 }
-
 async function notify(ev) {
   let published_token = await ipfsSetToken(list_token_nid);
   document.getElementById('list_token_hash').innerHTML = published_token;
   return published_token;
+}
+function publish_and_notify(ev) {
+ let promises = [ notify({}), publish_root({}) ];
+ return Promise.all(promises);
 }
 
 
@@ -850,11 +853,12 @@ async function node_rank(ev) {
   // score need to be publish ...
   let promised_root_hash = publish_root().catch(console.error);
 
-   // add paper trail
+   // add history trail
+   let key = `${ts}:${shortqm(peerid)}`;
    let op = 'A';
-   let record = `${ts} ${op} ${peerid} ${score} ${median}`;
+   let record = `${key} ${ts} ${op} ${peerid} ${score} ${median}`; /// !!!
    // paper-trail (auditable) published under fixed label path
-   let promised_qmtrail = paper_trail(ts,qmhash,qmjson,record);
+   let promised_qmhistory = history_append(ts,qmhash,qmjson,record);
 
 
    // announce score is cast ...
