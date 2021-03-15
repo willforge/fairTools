@@ -79,8 +79,10 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <hr>
 <textarea id=selected_text cols=76 rows=5 disabled></textarea>
 
+<br>survey: <span id=survey><i>:survey</i></span>
+<br>nb votes: <span id=nbv><i>:nbv</i></span>
 <br>median: <span id=median><i>:median</i></span>
-<br>nb pers: <span id=n><i>:n</i></span>
+<br>nb pers: <span id=nbp><i>:nbp</i></span>
 <br>score: <input type="number" name="score" min="0" max="20" value="12" onchange="update_value(event);">
 <input type="range" name="value" min="0" max="20" onchange="display_score(event);" class="slider">
 <br>score_lock: <span id=score_lock_status>?</span>
@@ -234,8 +236,8 @@ function update_qmhash(ev) {
       } else {
         return 'Qmajqtcsfew6yqbC2cB4A1gJEwH5SzpxRgrhKyxsugXxZb'; // {'median': -1 };
       }
-      document.getElementById('median').innerHTML = `<a target="_new" href=${gw_url}/ipfs/${qmjson}>${node_json.median}</a>`;
-      document.getElementById('n').innerHTML = node_json.n;
+      document.getElementById('survey').innerHTML = `<a target="_new" href=${gw_url}/ipfs/${qmjson}>${node_json.median}</a>`;
+      document.getElementById('nbv').innerHTML = node_json.n;
       return qmjson;
     } else {
       return 'QmfNus1rPpKRdyHPUqY18z5MRUQPkWP7drGqszXTNUXMCU'; // {'median': -2 };
@@ -342,7 +344,7 @@ function score_db_update(_) {
   console.info(callee+'.score_db.n:',score_db.n)
 
   document.getElementById('median').innerHTML = score_db.median;
-  document.getElementById('n').innerHTML = score_db.n;
+  document.getElementById('nbp').innerHTML = score_db.n;
   return score_db;
 }
 
