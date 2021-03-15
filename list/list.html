@@ -783,6 +783,7 @@ function publish_and_notify(ev) {
 
 
 async function publish_root() {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
   document.getElementById('root_hash').innerHTML = '<img src="../img/spinner.gif" height="24">';
   let root_hash = await create_root_w_log();
   document.getElementById('root_hash').innerHTML = `<a href=${gw_url}/ipfs/${root_hash}>${root_hash}</a>`;
