@@ -33,7 +33,7 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <button title="set_token" onclick="notify(event);">notify</button> <i>(setToken for list)</i>
 <br>list_log_hash: <span id=list_log_hash><i>:list_log_hash</i></span> (published log after submit)
 <br>root_hash: <span id=root_hash><i>:root_hash</i></span> <button title="publish" onclick="publish(event);">publish</button>
-<br>webui: <a target=_new class=webui href="webui:/#/files/public/logs/">/public/logs</a>
+<br>webui: <a target="_webui" class=webui href="webui:/#/files/public/logs/">/public/logs</a>
 
 <div id=node style="display:none; border: 1px solid black; padding: 0.8rem">
 <br>node's list: <input name=label value="" placeholder="list's label to attached the text" disabled>
@@ -59,7 +59,7 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <br><button id=list-button onclick="get_list(event);">get node list</button>
 <span id=list_status></span>
 <br>history_lock: <span id=history_lock_status>?</span>
-<a id=history_link class="webui node_urn" href="webui:/#/files/public/logs/:node_urn-history.log"><i>:node_urn</i>-history.log</a>
+<a id=history_link class="webui node_urn" target="_webui" href="webui:/#/files/public/logs/:node_urn-history.log"><i>:node_urn</i>-history.log</a>
 <!-- br>qmhash: <input name=qminput placeholder="node-hash" onchange="update_qmhash_value(event);" size=43> (manual entry) -->
 <br>qmhash:
 <select name=qmhash onchange="update_qmhash(event);">
@@ -543,7 +543,7 @@ async function main() {
      }
      webui_element.href = webui_element.template.webui.replace('webui:',webui_url);
   }
-  document.getElementById('peerid').innerHTML = `<a href=${gw_url}/ipns/${peerid}>${peerid}</a>`;
+  document.getElementById('peerid').innerHTML = `<a target="_ipns" href=${gw_url}/ipns/${peerid}>${peerid}</a>`;
 
   /* TEST AREA ... */
   /*
@@ -1069,7 +1069,7 @@ function display_status(id,s) {
 async function display_provs(peerids) {
   let buf = '<ul>';
   for (peer of peerids) {
-    buf += `<li><input type=checkbox name="p${peer}" checked><a target=_new href="${gw_url}/ipns/${peer}"/>${peer}</a>'s <a target="_new" href="${gw_url}/ipns/${peer}/public/logs/${list_labelp}.log">${list_labelp}.log</a>`
+    buf += `<li><input type=checkbox name="p${peer}" checked><a target="_ipns" href="${gw_url}/ipns/${peer}"/>${peer}</a>'s <a target="_ipns" href="${gw_url}/ipns/${peer}/public/logs/${list_labelp}.log">${list_labelp}.log</a>`
     buf += `<span id="p${peer}_ipns_status"></span></li>\n`;
   }
   buf += "</ul>\n";
@@ -1079,7 +1079,7 @@ async function display_rankers(rankers) {
   let node_urn = document.getElementsByName('node_urn')[0].value;
   let buf = '<ul>';
   for (peer of rankers) {
-    buf += `<li><input type=checkbox name="x${peer}" checked><a target=_new href=${gw_url}/ipns/${peer}/public/logs>${peer}</a>`
+    buf += `<li><input type=checkbox name="x${peer}" checked><a target="_ipns" href=${gw_url}/ipns/${peer}/public/logs>${peer}</a>'s <a target="_ipns" href="${gw_url}/ipns/${peer}/public/logs/${node_urn}-history.log">${node_urn}-history.log</a>`
     buf += `<span id="x${peer}_ipns_status"></span></li>\n`;
     promised_history_prefetch(`${gw_url}/ipns/${peer}/public/logs/${node_urn}-history.log`);
   }
