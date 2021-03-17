@@ -71,6 +71,7 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <br>node_token: <input name=node_token_hash value=":node_token_hash" size=43 disabled>
 <br>
 <br><button id=rankers-button onclick="find_rankers(event);">find rankers on DHT</button>
+<br>ipns: <span id=ipns_status><i>:status</i></span>
 <br>rankers <span id=rankers_status></span>:
 <div id=rankers></div>
 <br>rankers_nid: <input name=rankers_nid value=":rankers_nid" disabled>
@@ -79,9 +80,9 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <hr>
 <textarea id=selected_text cols=76 rows=5 disabled></textarea>
 
-<br>survey: <span id=survey><i>:survey</i></span>
+<br>survey: <span id=survey><i>:survey</i></span> <i>(median w/ score_db)</i>
 <br>nb votes: <span id=nbv><i>:nbv</i></span>
-<br>median: <span id=median><i>:median</i></span>
+<br>median: <span id=median><i>:median</i></span> <i>(median w/ history_db)</i>
 <br>nb pers: <span id=nbp><i>:nbp</i></span>
 <br>score: <input type="number" name="score" min="0" max="20" value="12" onchange="update_value(event);">
 <input type="range" name="value" min="0" max="20" onchange="display_score(event);" class="slider">
@@ -93,7 +94,7 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <button onclick="dot_create(event);">create a dot</button>
 <br>qmjson: <span id=qmjson><i>:qmjson</i></span>
 <br>qmhash: <span id=qmhash><i>:qmhash</i></span>
-<br>qmresult: <span id=qmresult><i>:qmresult</i></span>
+<br>qmresult: <span id=qmresult><i>:qmresult</i></span> (/public/share/\*-result.json)
 
 </div>
 
@@ -136,7 +137,7 @@ function update_value(ev) {
 
 var sn=0;
 var rank = [];
-var history_db = {}; // 10M records !!!
+var history_db = {}; // local database that holds all the votes w/ their metadata (10M records !!!)
 
 // -----------------------------------------------------------------------------
 /// GLOBAL DEFINITONS ...
@@ -275,7 +276,9 @@ async function history_pull(ev) {
          console.log(callee+'.cb.p:',p);
          document.getElementById('x'+ranker+'_ipns_status').innerHTML = `<img title="${p}" src="../img/check-mark.png" height="24">`;
       };
-      let ranker_path= await ipfsNameResolve(ranker,cb);
+      document.getElementById('ipns_status').innerHTML = '<img src="../img/spinner.gif" height="24">';
+      let ranker_path = await ipfsNameResolve(peer,cb);
+      document.getElementById('ipns_status').innerHTML = '<img src="../img/check-mark.png" height="24">';
       // if (! await mfsSilentExists(`${ranker_path}${historyf}`)) { continue; }
       let promised_histo = ipfsGetContentByPath(`${ranker_path}${historyf}`)
       .then(trigger_history_concat)
@@ -330,9 +333,9 @@ function score_db_update(_) {
         if (typeof(score_db.score[grade]) == 'undefined') {
            score_db.score[grade] = [ts,1,peer]; // create a new record !
         } else {
-           score_db.score[grade][0] = ts
-           score_db.score[grade][1] += 1
-           score_db.score[grade][2] = peer
+           score_db.score[grade][0] = ts // time at which the vote is casted
+           score_db.score[grade][1] += 1 // weight of the voted score
+           score_db.score[grade][2] = peer // peerkey who voted last
         }
       }
   }
@@ -511,8 +514,8 @@ async function update_score_db(remote_score) {
      console.log(callee+'.new_n:',new_n)
      score_db.n = new_n;
   }
-  document.getElementById('median').innerHTML = score_db.median;
-  document.getElementById('n').innerHTML = score_db.n;
+  document.getElementById('survey').innerHTML = score_db.median;
+  document.getElementById('nbv').innerHTML = score_db.n;
   let node_urn = getNid(`uri:ipfs:${score_db.qmtext}`);
   let score_resultf = `/public/share/${node_urn}-result.json`;
   let promised_qmresult = await ipfsWriteJson(score_resultf,score_db)
@@ -658,7 +661,7 @@ function display_pin_image(name,status) { // output
      case (status.match('unpinned')):
         box.checked = false; break;
      default:
-        console.warn(callee+'.status:',status);
+        console.warn(callee+'.status: "%s"',status);
     }
 
     return true;
@@ -720,7 +723,7 @@ async function node_meta_create(qm) {
 
   
   let op = 'I';
-  let record = `${ts} ${op} ${peerid} ${grade},${median}`;
+  let record = `${ts} ${op} ${peerid} ${grade},${median}`; // history record (w/ metadata)
   // paper-trail (auditable) published under fixed label path
   let qmhistory = await history_append(ts,qm,qmjson,record);
   return qmhistory;
@@ -856,8 +859,8 @@ async function node_rank(ev) {
   console.log(callee+'.qmjson:',qmjson);
 
   document.getElementById('qmjson').innerHTML = `<a href="${gw_url}/ipfs/${qmjson}">${qmjson}</a>`;
-  document.getElementById('median').innerHTML = median;
-  document.getElementById('n').innerHTML = n;
+  document.getElementById('survey').innerHTML = median;
+  document.getElementById('nbv').innerHTML = n;
   // score need to be publish ...
   let promised_root_hash = publish_root().catch(console.error);
 
@@ -1014,7 +1017,9 @@ async function node_list(peers) {
          console.log(callee+'.cb.p:',p);
          document.getElementById('p'+peer+'_ipns_status').innerHTML = `<img title="${p}" src="../img/check-mark.png" height="24">`;
       };
+     document.getElementById('ipns_status').innerHTML = '<img src="../img/spinner.gif" height="24">';
      let root_path = await ipfsNameResolve(peer,cb);
+     document.getElementById('ipns_status').innerHTML = '<img src="../img/check-mark.png" height="24">';
      if (root_path != qmempty) {
         let list_log_path = `${root_path}/public/logs/${list_labelp}.log`;
         let buf = await ipfsGetContentByPath(list_log_path);

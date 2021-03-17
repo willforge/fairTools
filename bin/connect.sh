@@ -8,6 +8,7 @@ marys=QmTeqJutKAtVyX39qvhAGfjQFesbubamN8dvVPMg5jYRwS
 
 case "$1" in 
  michel*) peerkey=$michelc;;
+ franc*) peerkey=$emilea;;
  emile*) peerkey=$emilea;;
  alain*) peerkey=$alainbr;;
  mary*) peerkey=$marys;;
@@ -15,6 +16,12 @@ case "$1" in
 esac
 
 # dockerized ipfs:
+fn=$(perl -S fullname.pl $peerkey)
+echo "$peerkey: $fn"
+
+ping -c 1 gateway.ipfs.io 1>/dev/null &
+ping -c 1 ipfs.blockringtm.ml
+
 export IPFS_CONTAINER=${IPFS_CONTAINER:-ipfs-node}
 export IPFS_PATH=${IPFS_PATH:-$HOME/.ipfs}
 export IPFS_STAGING=${IPFS_STAGING:-$IPFS_PATH/staging}
