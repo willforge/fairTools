@@ -80,7 +80,7 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <hr>
 <textarea id=selected_text cols=76 rows=5 disabled></textarea>
 
-<br>survey: <span id=survey><i>:survey</i></span> <i>(median w/ score_db)</i>
+<br>survey: <span id=survey><i>:survey</i></span> <i>(median w/ score_db, all votes)</i>
 <br>nb votes: <span id=nbv><i>:nbv</i></span>
 <br>median: <span id=median><i>:median</i></span> <i>(median w/ history_db)</i>
 <br>nb pers: <span id=nbp><i>:nbp</i></span>
@@ -92,9 +92,9 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 
 <br><button onclick="score_sync(event);" id="score-sync-button">sync score</button>
 <button onclick="dot_create(event);">create a dot</button>
-<br>qmjson: <span id=qmjson><i>:qmjson</i></span>
-<br>qmhash: <span id=qmhash><i>:qmhash</i></span>
-<br>qmresult: <span id=qmresult><i>:qmresult</i></span> (/public/share/\*-result.json)
+<br>qmjson: <span id=qmjson><i>:qmjson</i></span> <i>(/public/logs/\*-score.json)</i>
+<br>qmhash: <span id=qmhash><i>:qmhash</i></span> <i>(hash of voted node)</i>
+<br>qmresult: <span id=qmresult><i>:qmresult</i></span> <i>(/public/share/\*-result.json)</i>
 
 </div>
 
@@ -815,7 +815,7 @@ async function node_rank(ev) {
   document.getElementsByName('node_urn')[0].value = node_urn;
   document.getElementsByName('rankers_nid')[0].value = rankers_nid;
   
-  /* var score_db; // global */
+  /* var score_db; // a global var to allow reuse w/o recomputation */
   let jsonf = `/public/logs/${node_urn}-state.json`
   let n = 0;
   let median = 0;
