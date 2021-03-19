@@ -92,8 +92,9 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 
 <br><button onclick="score_sync(event);" id="score-sync-button">sync score</button>
 <button onclick="dot_create(event);">create a dot</button>
-<br>qmjson: <span id=qmjson><i>:qmjson</i></span> <i>(/public/logs/\*-score.json)</i>
 <br>qmhash: <span id=qmhash><i>:qmhash</i></span> <i>(hash of voted node)</i>
+<br>qmjson: <span id=qmjson><i>:qmjson</i></span> <i>(/public/logs/\*-score.json)</i>
+<br>qmhistory: <span id=qmhistory><i>:qmhistory</i></span> <i>(/public/logs/\*-history.json)</i>
 <br>qmresult: <span id=qmresult><i>:qmresult</i></span> <i>(/public/share/\*-result.json)</i>
 
 </div>
@@ -290,6 +291,7 @@ async function history_pull(ev) {
       return map_db_write(historyf,history_db)
       .then( qm => {
         document.getElementById('history_status').innerHTML = `<img title="${qm}" src="../img/check-mark.png" height="24">`;
+        document.getElementById('qmhistory').innerHTML = `<a href="${gw_url}/ipfs/${qm}">${qm}"</a>`;
         return qm;
       })
       .catch(console.error);
@@ -348,6 +350,16 @@ function score_db_update(_) {
 
   document.getElementById('median').innerHTML = score_db.median;
   document.getElementById('nbp').innerHTML = score_db.n;
+
+  // leave a record in history_db
+  // add history trail
+  let ts = Date.now(); // timestamp
+  let key = `${ts}:${shortqm(peerid)}`;
+  let op = 'A';
+  let record = `${key} ${ts} ${op} ${peerid} ${score} ${median}`; /// !!!
+   // paper-trail (auditable) published under fixed label path
+  let promised_qmhistory = history_append(ts,qmhash,qmjson,record);
+
   return score_db;
 }
 
@@ -722,8 +734,9 @@ async function node_meta_create(qm) {
   //mfsCopy(qmjson,score_jsonf);
 
   
+  let key = `${ts}:${shortqm(peerid)}`;
   let op = 'I';
-  let record = `${ts} ${op} ${peerid} ${grade},${median}`; // history record (w/ metadata)
+  let record = `${key} ${ts} ${op} ${peerid} ${score} ${median}`; // history record (w/ metadata)
   // paper-trail (auditable) published under fixed label path
   let qmhistory = await history_append(ts,qm,qmjson,record);
   return qmhistory;
