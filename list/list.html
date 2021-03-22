@@ -318,8 +318,15 @@ function score_db_update(_) {
     onevote[peer] = [ts,...history_db[key]];
     console.log(callee+'.onevote[%s]=%o ts:%s',peer.substr(-4),history_db[key],ts)
     */
+    let op = history_db[key][1];
     let peer = history_db[key][2];
-    onevote[peer] = history_db[key]; // overwrite previous grades and keep the last one
+    if (op === 'A') {
+      onevote[peer] = history_db[key]; // overwrite previous grades and keep the last one
+    } else if (op === 'M') {
+        console.log(callee+'.median:',median);
+    } else {
+      console.log(callee+'.history_db[%s]: %s (skipped)',key,history_db[key]);
+    }
   }
   console.log(callee+'.onevote:',onevote);
 
@@ -331,7 +338,7 @@ function score_db_update(_) {
 
   for (let key of Object.keys(onevote)) {
       let [ts,op,peer,grade,median] = onevote[key];
-      if (op == 'A') {
+      if (op === 'A') {
         score_db.n += 1
         if (typeof(score_db.score[grade]) == 'undefined') {
            score_db.score[grade] = [ts,1,peer]; // create a new record !
@@ -340,8 +347,6 @@ function score_db_update(_) {
            score_db.score[grade][1] += 1 // weight of the voted score
            score_db.score[grade][2] = peer // peerkey who voted last
        }
-      } else if (op == 'M') {
-        console.log(callee+'.median:',median);
       }
   }
   console.log(callee+'.score_db.score:',score_db.score);
@@ -437,7 +442,7 @@ function history_concat(hist) {
     console.debug(callee+'.uniq_key: %s',uniq_key);
 
     if (typeof(grade) != 'undefined') {
-       console.warn(callee+".history_db[%s]: %s",uniq_key,history_db[uniq_key] );
+       console.debug(callee+".history_db[%s]: %s (i.e. not seen)",uniq_key,history_db[uniq_key] );
        if (typeof(history_db[uniq_key]) == 'undefined') {
          history_db[uniq_key] = [ts,op,peer,grade,median];
        } else { // ?
