@@ -83,7 +83,7 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 
 <br>survey: <span id=survey><i>:survey</i></span> <i>(median w/ score_db, all votes)</i>
 <br>nb votes: <span id=nbv><i>:nbv</i></span>
-<br><button onclick="survey_pull(event);" id="survey_pull">pull survey</button>
+<br><button onclick="survey_pull(event);" name="survey_pull">pull survey</button>
 <br>median: <span id=median><i>:median</i></span> <i>(median w/ history_db)</i>
 <br>nb pers: <span id=nbp><i>:nbp</i></span>
 <br>score: <input type="number" name="score" min="0" max="20" value="12" onchange="update_value(event);">
@@ -117,8 +117,8 @@ const qmwebui='Qmb3cY3zFJ5isjJ5H9cP47Vfqa6pqNwypbuo2TiBGjUmLd';
 var list_label = 'Fair List';
 var list_labelp = 'fair-list';
 var peerid;
-var peerids;
-var rankers;
+var peerids = [];
+var rankers = [];
 var score_db = {};
 var score_lock = false;
 var history_lock = false;
@@ -458,7 +458,7 @@ function numerically(a,b) {
  return a-b ; // numerical sort !
 }
 
-async function pull_survey(ev) { // collect and merge all json files 
+async function survey_pull(ev) { // collect and merge all json files 
 
    let qm = document.getElementsByName('qmhash')[0].value;
    let node_urn = getNid(`uri:ipfs:${qm}`);
@@ -511,7 +511,7 @@ async function update_score_db(remote_score) {
     score_db = remote_score;
   } else {
      let new_n = 0
-     for (let grade in Object.keys(score_db.score)) {
+     for (let grade of Object.keys(score_db.score)) {
         //           0        1           2
         let [remote_ts,remote_w,remote_peer] = remote_score.score[grade]; // ipns
         let [local_ts,local_w,local_peer] = score_db.score[grade]; // mfs
