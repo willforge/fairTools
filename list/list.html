@@ -21,6 +21,7 @@
 <div class=content>
 <h2>Median Sorted List from a Labeled Group<span id=listname></span></h2>
 api url: <input name=api_url placeholder="api url" size="32" onchange="update_api_url(event)">
+<br>repo: <span id=repo_path><i>:repo_path</i></span>
 <br>peerid: <span id=peerid><i>:peerid</i></span>
 <br>editor_token_nid: <span id=editor_token_nid><i>:editor_token_nid</i></span>
 <br>editor_token_hash: <span id=editor_token_hash><i>:editor_token_hash</i></span>
@@ -82,6 +83,7 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 
 <br>survey: <span id=survey><i>:survey</i></span> <i>(median w/ score_db, all votes)</i>
 <br>nb votes: <span id=nbv><i>:nbv</i></span>
+<br><button onclick="surver_pull(event);" id="survey_pull">pull survey</button>
 <br>median: <span id=median><i>:median</i></span> <i>(median w/ history_db)</i>
 <br>nb pers: <span id=nbp><i>:nbp</i></span>
 <br>score: <input type="number" name="score" min="0" max="20" value="12" onchange="update_value(event);">
@@ -90,7 +92,6 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <br><button onclick="node_rank(event);">rank node</button>
 <button onclick="history_pull(event);">pull history</button><span id=history_status></span>
 
-<br><button onclick="score_sync(event);" id="score-sync-button">sync score</button>
 <button onclick="dot_create(event);">create a dot</button>
 <br>qmhash: <span id=qmhash><i>:qmhash</i></span> <i>(hash of voted node)</i>
 <br>qmjson: <span id=qmjson><i>:qmjson</i></span> <i>(/public/logs/\*-score.json)</i>
@@ -228,7 +229,7 @@ function update_qmhash(ev) {
   .catch(console.error)
   
   // lookup (local) median for the text qmhash ...
-  let promised_qmjson = node_meta_load(qmhash)
+  let promised_qmjson = get_qmjson(qmhash)
   .then( async (qmjson) => {
     console.log(callee+'.qmjson:',qmjson);
     if (typeof(qmjson) != 'undefined') {
@@ -288,7 +289,7 @@ async function history_pull(ev) {
    }
    Promise.all(promised_trigger_histories)
    .then( _ => { 
-      return map_db_write(historyf,history_db)
+      return map_db_write(historyf,history_db) // replace *-history.log w/ history_db
       .then( qm => {
         document.getElementById('history_status').innerHTML = `<img title="${qm}" src="../img/check-mark.png" height="24">`;
         document.getElementById('qmhistory').innerHTML = `<a href="${gw_url}/ipfs/${qm}">${qm}"</a>`;
@@ -310,8 +311,8 @@ function score_db_update(_) {
   sorted_keys =  Object.keys(history_db).sort(alphabetically)
   console.log(callee+'.sorted_keys:',sorted_keys)
 
-  let onevote = {};
-  for (key of sorted_keys) {
+  let onevote = {}; // garantee vote unicity ( 1 peer == 1 vote )
+  for (let key of sorted_keys) {
     /* old format ... *
     let [ts,peer] = key.split(',');
     onevote[peer] = [ts,...history_db[key]];
@@ -322,13 +323,13 @@ function score_db_update(_) {
   }
   console.log(callee+'.onevote:',onevote);
 
-  // reset scores ...
+  // reset scores ... {compute from scratch}
   score_db.tic = Date.now();
   score_db.n = 0;
   score_db.score = {}
   // mymap.forEach( (k,v) => { console.log(callee+'.peer:',k); });
 
-  for (key of Object.keys(onevote)) {
+  for (let key of Object.keys(onevote)) {
       let [ts,op,peer,grade,median] = onevote[key];
       if (op == 'A') {
         score_db.n += 1
@@ -338,7 +339,9 @@ function score_db_update(_) {
            score_db.score[grade][0] = ts // time at which the vote is casted
            score_db.score[grade][1] += 1 // weight of the voted score
            score_db.score[grade][2] = peer // peerkey who voted last
-        }
+       }
+      } else if (op == 'M') {
+        console.log(callee+'.median:',median);
       }
   }
   console.log(callee+'.score_db.score:',score_db.score);
@@ -352,13 +355,20 @@ function score_db_update(_) {
   document.getElementById('nbp').innerHTML = score_db.n;
 
   // leave a record in history_db
-  // add history trail
-  let ts = Date.now(); // timestamp
-  let key = `${ts}:${shortqm(peerid)}`;
-  let op = 'A';
-  let record = `${key} ${ts} ${op} ${peerid} ${score} ${median}`; /// !!!
-   // paper-trail (auditable) published under fixed label path
-  let promised_qmhistory = history_append(ts,qmhash,qmjson,record);
+  let qmhash = document.getElementsByName('qmhash')[0].value;
+  // get qmjson from saved score_db
+  let score_jsonf = `/public/logs/${node_urn}-state.json`;
+  let promised_qmjson = get_qmjson(qmhash)
+     .then( qmjson => {
+           // add history trail
+           let ts = Date.now(); // timestamp
+           let key = `${ts}:${shortqm(peerid)}`;
+           let op = 'M'; // flag record w/ median tag
+           let record = `${key} ${ts} ${op} ${peerid} - ${median}`; /// !!!
+           // paper-trail (auditable) published under fixed label path
+           let promised_qmhistory = history_append(ts,qmhash,qmjson,record);
+     })
+     .catch(console.error);
 
   return score_db;
 }
@@ -384,7 +394,7 @@ function trigger_history_concat(hist) {
          // no reject: wait indefinetly ...
          
       }).then(hist => {
-        if ( ! history_concat(hist) ) { history_lock = false; }
+        if ( ! history_concat(hist) ) { history_lock = false; console.log('history_lock: abort') }
         /*
         try { if ( ! history_concat(hist) ) { throw "failed merge" }; }
         catch(err) { history_lock = false }
@@ -447,7 +457,7 @@ function numerically(a,b) {
  return a-b ; // numerical sort !
 }
 
-async function score_sync(ev) {
+async function pull_survey(ev) { // collect and merge all json files 
 
    let qm = document.getElementsByName('qmhash')[0].value;
    let node_urn = getNid(`uri:ipfs:${qm}`);
@@ -680,12 +690,12 @@ function display_pin_image(name,status) { // output
 }
 
 
-async function node_meta_load(qm) {
+async function get_qmjson(qm) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let node_urn = getNid(`uri:ipfs:${qm}`);
   let score_jsonf = `/public/logs/${node_urn}-state.json`;
-  return mfsExists(score_jsonf).then( a =>
-    { let [exists,qmjson] = a; return (exists) ? qmjson : undefined; })
+  return mfsExists(score_jsonf).then( array =>
+    { let [exists,qmjson] = array; return (exists) ? qmjson : undefined; })
   .catch(console.error);
   // getMFSFileHash(score_jsonf);
 }
@@ -757,8 +767,10 @@ async function history_append(ts,qm,qmjson, record) {
 
   let historyf = `/public/logs/${node_urn}-history.log`;
   if ((await mfsExists(historyf))[0] ) {
+      console.log(callee+': -e ',historyf);
       qmhistory = await ipfsLogAppend(historyf,record+"\n");
   } else {
+      console.log(callee+': !-e %s -> create new one ',historyf);
       qmhistory = await ipfsLogAppend(historyf,`# paper trail for ${node_urn}: ${qm} ts:${ts} qmjson:${qmjson}\n${record}\n`);
   }
   console.log(callee+'.qmhistory:',qmhistory);
@@ -1041,11 +1053,11 @@ async function node_list(peers) {
      }
   } 
   console.log(callee+'.logs:',logs);
-  let data = load_sorted_log(logs);
+  let data = load_sorted_records_from_log(logs);
   return data
 }
 
-function load_sorted_log(log) {
+function load_sorted_records_from_log(log) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let data = log.slice(0,-1).split('\n'); // might have \r\n !
   console.log(callee+'.data:',data);
