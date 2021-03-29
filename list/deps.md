@@ -16,12 +16,12 @@ grade: is an element of a ordered set of 21 values.
 ranker: a peer who graded a document (type of peer)
 editor: a peer who created a documents (type of peer)
 
-editors-token-label: "I have submitted a proposal to Qmezgbyq...hJZ" (depends on PUBLICID: QmezgbyqFCEybpSxCtGNxfRD9uDxC53aNv5PfhB3fGUhJZ)
+editors-token-label: "I have submitted a proposal to Qmezgb...hJZ" (depends on PUBLICID: [QmezgbyqFCEybpSxCtGNxfRD9uDxC53aNv5PfhB3fGUhJZ][3])
 editors-token-nid: constant string (computed by hashing editors-token-label) ex: r1dm4qjb0srtx
 editors-token-hash: hash of editors-token-nid ex: z6CfPrwfR1oK17V4vUhRL81jwN7QaGXfxrgQiQU4WRff 
 
 node: hash of a document (qmhash)
-short-hash: 12-character-substring of node (ex: QmXXXX...YYY)
+short-hash: 12-character-substring of node (ex: [QmQx8t...wYN][4])
 document-key: string uniquely defining a document (concatenation of subject and short-hash)
 
 node-urn: 13-character-token for the node (computed by hashing the string uri:ipfs:node)
@@ -42,13 +42,17 @@ editors: list of editors providing the editors-token's hash
 rankers: list of ranked providing the rankers-token's hash
 
 record: description of a ranking operations with timestamp and ranker identification and grade, (median is added for information)
-        ex: "1614021178217:QmTeqJ...RwS 1614021178217 A QmTeqJutKAtVyX39qvhAGfjQFesbubamN8dvVPMg5jYRwS 6 5"
-history: chronologic list of records for a given node along w/ auditing data (ex: /public/logs/2masw23xbf4qy-history.log )
+        ex: ``1614021178217:QmTeqJ...RwS 1614021178217 A QmTeqJutKAtVyX39qvhAGfjQFesbubamN8dvVPMg5jYRwS 6 5``
+history: chronologic list of records for a given node along w/ auditing data (ex: [/public/logs/2masw23xbf4qy-history.log][1] )
 
-median: median of set of all collected grades form history after uniquify and rankers verification
+median: median of set of all collected grades from history after uniquify and rankers verification
 score: state of ranked node obtained by executing history and computing median (stores collected grades)
-score-db: file corresponding to score ex: /public/logs/2masw23xbf4qy-state.json
+score-db: file corresponding to score (ex: [/public/logs/2masw23xbf4qy-state.json][2])
+          it contains the total number of rankers, the computed median and an array of all grades with weight,
+          and last ranker id and timestamp.
 
 
-
-
+[1]: http://127.0.0.1:8080/ipfs/Qmb3cY3zFJ5isjJ5H9cP47Vfqa6pqNwypbuo2TiBGjUmLd/#/files/public/logs/2masw23xbf4qy-history.log
+[2]: http://127.0.0.1:8080/ipfs/Qmb3cY3zFJ5isjJ5H9cP47Vfqa6pqNwypbuo2TiBGjUmLd/#/files/public/logs/2masw23xbf4qy-state.json
+[3]: http://127.0.0.1:8080/ipns/QmezgbyqFCEybpSxCtGNxfRD9uDxC53aNv5PfhB3fGUhJZ
+[4]: http://127.0.0.1:8080/ipfs/QmQx8tSugvyMCanAcMw1Dg6PRAFLdidfua1bZsGymQEwYN 
