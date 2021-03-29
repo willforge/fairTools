@@ -1101,7 +1101,7 @@ function load_sorted_records_from_log(log) {
   }
 
   let sorted_records = Object.keys(selected).sort( (a,b) => {
-    return compare(selected[a][0],selected[b][0]);
+    return compare(selected[b][0],selected[a][0]); // sort by decreasing importance !
   }).map( k => { return selected[k]; });
 
   console.log(callee+'.sorted_records:',sorted_records);
@@ -1110,6 +1110,7 @@ function load_sorted_records_from_log(log) {
 }
 
 function by_stamp(a,b) {
+ // sort by increaseing stamp
  return compare(a[0],b[0]);
 }
 
