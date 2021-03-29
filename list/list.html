@@ -838,6 +838,8 @@ async function publish_root() {
   document.getElementById('root_hash').innerHTML = `<a href=${gw_url}/ipfs/${root_hash}>${root_hash}</a>`;
   if (typeof(root_hash) != 'undefined') {
   //console.debug(callee+'.root_hash:',root_hash);
+  // update ipns_cache to have is ready for history_pull() 
+  ipns_cache[peerid] = root_hash;
   return ipfsNamePublish('self','/ipfs/'+root_hash);
   } else {
    console.error(callee+'.root_hash: %s /!\\ ',root_hash);
@@ -911,10 +913,12 @@ async function node_rank(ev) {
    let op = 'A';
    let record = `${key} ${ts} ${op} ${peerid} ${score} ${median}`; /// !!!
    // paper-trail (auditable) published under fixed label path
-   let promised_qmhistory = history_append(ts,qmhash,qmjson,record);
-
-  // score need to be publish ...
-  let promised_root_hash = publish_root().catch(console.error);
+   let promised_qmhistory = history_append(ts,qmhash,qmjson,record)
+   .then( qm => {
+     console.debug(callee+'.qmhistory:', qm);
+     // score & history,  need to be publish once history is appended ...
+     return promised_root_hash = publish_root().catch(console.error);
+   }).catch(console.warn)
 
 
    // announce score is cast ...
