@@ -139,7 +139,7 @@ function update_value(ev) {
 
 var sn=0;
 var rank = [];
-var history_db = {}; // local database that holds all the votes w/ their metadata (10M records !!!)
+var global_db = {}; // global database that holds all the votes for all the texts w/ their metadata (200 x 10M records !!!)
 
 // -----------------------------------------------------------------------------
 /// GLOBAL DEFINITONS ...
@@ -261,6 +261,7 @@ async function history_pull(ev) {
    let [callee, caller] = functionNameJS(); // logInfo("message !")
    let qmhash = document.getElementsByName('qmhash')[0].value;
    let node_urn = getNid(`uri:ipfs:${qmhash}`);
+   if (typeof(global_db[node_urn]) == 'undefined') { global_db[node_urn] = {} }
    let historyf = `/public/logs/${node_urn}-history.log`;
    document.getElementById('history_status').innerHTML='<font color=orange>busy</font>';
 
@@ -275,38 +276,40 @@ async function history_pull(ev) {
         let promisedPing = ipfsPing(ranker);
       }
       cb = function(p) {
-         console.log(callee+'.cb.p:',p);
+         console.debug(callee+'.cb.p:',p);
          document.getElementById('x'+ranker+'_ipns_status').innerHTML = `<img title="${p}" src="../img/check-mark.png" height="24">`;
       };
       document.getElementById('ipns_status').innerHTML = '<img src="../img/spinner.gif" height="24">';
-      let ranker_path = await ipfsNameResolve(peer,cb);
+      let ranker_path = await ipfsNameResolve(ranker,cb);
       document.getElementById('ipns_status').innerHTML = '<img src="../img/check-mark.png" height="24">';
       // if (! await mfsSilentExists(`${ranker_path}${historyf}`)) { continue; }
       let promised_histo = ipfsGetContentByPath(`${ranker_path}${historyf}`)
-      .then(trigger_history_concat)
+      .then(hist => { return trigger_history_concat(node_urn,hist); })
       .catch(console.log);
       promised_trigger_histories.push(promised_histo);
    }
    Promise.all(promised_trigger_histories)
    .then( _ => { 
+      let history_db = global_db[node_urn];
       return map_db_write(historyf,history_db) // replace *-history.log w/ history_db
       .then( qm => {
         document.getElementById('history_status').innerHTML = `<img title="${qm}" src="../img/check-mark.png" height="24">`;
-        document.getElementById('qmhistory').innerHTML = `<a href="${gw_url}/ipfs/${qm}">${qm}"</a>`;
+        document.getElementById('qmhistory').innerHTML = `<a href="${gw_url}/ipfs/${qm}">${qm}</a>`;
         return qm;
       })
       .catch(console.error);
    })
    .catch(err => { console.trace(callee+'.err:',err); return err; })
-   .finally(score_db_update);
+   .finally( qm => { console.trace(callee+'.qm: %s for %s',qm,node_urn); return score_db_update(node_urn); });
+   } else {
+     console.info(callee+'.rankers.length:',rankers.length);
    }
 }
 
-function score_db_update(_) {
+function score_db_update(node_urn) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
-  console.log(callee+'._:',_)
-  console.log(callee+'.caller:',caller)
-
+  console.trace(callee+'.node_urn:',node_urn)
+  let history_db = global_db[node_urn];
   console.log(callee+'.history_db:',history_db)
   sorted_keys =  Object.keys(history_db).sort(alphabetically)
   console.log(callee+'.sorted_keys:',sorted_keys)
@@ -360,14 +363,11 @@ function score_db_update(_) {
   document.getElementById('nbp').innerHTML = score_db.n;
 
   // leave a record in history_db
-  let qmhash = document.getElementsByName('qmhash')[0].value;
-  // get qmjson from saved score_db
-  let node_urn = getNid(`uri:ipfs:${qmhash}`);
-  let score_jsonf = `/public/logs/${node_urn}-state.json`;
-  let promised_qmjson = get_qmjson(qmhash)
+  let promised_qmjson = get_qmjson_by_urn(node_urn)
      .then( qmjson => {
            // add history trail
            let ts = Date.now(); // timestamp
+           let qmhash = document.getElementsByName('qmhash')[0].value;
            let key = `${ts}:${shortqm(peerid)}`;
            let op = 'M'; // flag record w/ median tag
            let record = `${key} ${ts} ${op} ${peerid} - ${median}`; /// !!!
@@ -379,7 +379,7 @@ function score_db_update(_) {
   return score_db;
 }
 
-function trigger_history_concat(hist) {
+function trigger_history_concat(node_urn,hist) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
    if (typeof(hist.Code) == 'undefined') {
       /* console.log(callee+'.hist:',hist.substr(0,76)+'...'); */
@@ -400,7 +400,7 @@ function trigger_history_concat(hist) {
          // no reject: wait indefinetly ...
          
       }).then(hist => {
-        if ( ! history_concat(hist) ) { history_lock = false; console.log('history_lock: abort') }
+        if ( ! history_concat(node_urn,hist) ) { history_lock = false; console.log('history_lock: abort') }
         /*
         try { if ( ! history_concat(hist) ) { throw "failed merge" }; }
         catch(err) { history_lock = false }
@@ -414,8 +414,9 @@ function trigger_history_concat(hist) {
 }
 
 
-function history_concat(hist) {
+function history_concat(node_urn,hist) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
+
   if (hist.match(/\r/)) { hist = hist.replace(/\r/g,''); }
   let lines = hist.slice(0,-1).split(/\n/);
   for (let line of lines) {
@@ -442,14 +443,17 @@ function history_concat(hist) {
     console.debug(callee+'.uniq_key: %s',uniq_key);
 
     if (typeof(grade) != 'undefined') {
-       console.debug(callee+".history_db[%s]: %s (i.e. not seen)",uniq_key,history_db[uniq_key] );
+       if (typeof(global_db[node_urn]) == 'undefined') { global_db[node_urn] = {} } // should be already initialized ...
+       let history_db = global_db[node_urn];
        if (typeof(history_db[uniq_key]) == 'undefined') {
+         console.debug(callee+".history_db[%s]: %s (i.e. not seen)",uniq_key,history_db[uniq_key] );
          history_db[uniq_key] = [ts,op,peer,grade,median];
        } else { // ?
          console.warn(callee+".warning: duplicate  ... w/:",grade,uniq_key );
          console.warn(callee+".history_db[%s]: %s",uniq_key,history_db[uniq_key] );
          // throw " seen !";
        }
+       global_db[node_urn] = history_db;
     }
   }
   return true;
@@ -518,7 +522,7 @@ async function update_score_db(remote_score) {
      let new_n = 0
      for (let grade of Object.keys(score_db.score)) {
         //           0        1           2
-        let [remote_ts,remote_w,remote_peer] = remote_score.score[grade]; // ipns
+        let [remote_ts,remote_w,remote_peer] = remote_score.score[grade]; // ipns ... TODO error is grade don't exists
         let [local_ts,local_w,local_peer] = score_db.score[grade]; // mfs
 
         if (remote_w > local_w) {
@@ -632,6 +636,7 @@ async function get_rankers_by_qm(qm) {
   let rankers_token_label = `I have ranked a proposal on ${node_urn}`;
   let rankers_nid = getNid(`urn:text:${rankers_token_label}`);
   console.log(callee+'.rankers_nid:',rankers_nid);
+  document.getElementsByName('rankers_nid')[0].value = rankers_nid;
 
   rankers_token_hash = await ipfsGetToken(rankers_nid); // Global
   document.getElementById('rankers_token_hash').innerHTML=`<a href="${gw_url}/ipfs/${rankers_token_hash}" target="_new">${rankers_token_hash}</a>`;
@@ -696,6 +701,14 @@ function display_pin_image(name,status) { // output
 }
 
 
+async function get_qmjson_by_urn(urn) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  let score_jsonf = `/public/logs/${urn}-state.json`;
+  return mfsExists(score_jsonf).then( array =>
+    { let [exists,qmjson] = array; return (exists) ? qmjson : undefined; })
+  .catch(console.error);
+  // getMFSFileHash(score_jsonf);
+}
 async function get_qmjson(qm) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let node_urn = getNid(`uri:ipfs:${qm}`);
@@ -892,8 +905,6 @@ async function node_rank(ev) {
   document.getElementById('qmjson').innerHTML = `<a href="${gw_url}/ipfs/${qmjson}">${qmjson}</a>`;
   document.getElementById('survey').innerHTML = median;
   document.getElementById('nbv').innerHTML = n;
-  // score need to be publish ...
-  let promised_root_hash = publish_root().catch(console.error);
 
    // add history trail
    let key = `${ts}:${shortqm(peerid)}`;
@@ -901,6 +912,9 @@ async function node_rank(ev) {
    let record = `${key} ${ts} ${op} ${peerid} ${score} ${median}`; /// !!!
    // paper-trail (auditable) published under fixed label path
    let promised_qmhistory = history_append(ts,qmhash,qmjson,record);
+
+  // score need to be publish ...
+  let promised_root_hash = publish_root().catch(console.error);
 
 
    // announce score is cast ...
