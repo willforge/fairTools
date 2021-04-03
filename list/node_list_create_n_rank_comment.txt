@@ -1,0 +1,169 @@
+## Comments for node_list_create_n_rank.html
+
+This file is the last working code + comments.
+one letter things should be avoided.
+names should obey strict conventions to be easily understandable.
+the dependencies between code elements should be clear for future IRP
+
+Conventions :
+<name>_<verb> : snake prefered order unless it an eventhandler (which are <verb>_<name>)
+<some_thing>p : is the slugified version of <some_thing>
+<some_thing>f : is a file-pathname (relative or absolute)
+
+## bash convention
+filepath = /path-to/foldera/rootname.ext
+dirname = /path-to/folder
+headname = /path-to/folder/rootname
+basename = rootname.ext
+
+see also perl: (dirname,basename,undef,ext) = (fpath,fname,rname,ext) = &fname(filepathname)
+
+what is notify ? is a way to tell the network an update (of something define by the token) is available 
+ notify == setToken(token_nid) == pinAdd(token_hash)
+
+  
+
+
+
+
+urn: "{urn|uri}:{namespace|resolver}:{path|locator|identifier}"
+see also [RFC8141](https://tools.ietf.org/html/rfc8141)
+example: 
+// URI = [URN|URL|URC|URI]
+// URN: Francois Colonna  (unique and persitent name) == is a "URI w/ a propery of name"
+// URI: Francois C. #2425 + Paris 13 (both location and name)
+// URL: Paris 13
+// URC: citation i.e. metadata
+
+  urn:list:label        -> list = { ...nodes }
+  urn:text:label        -> for rankers
+  uri:text:*            -> editors token (used to located editors)
+  uri:ipfs:qm
+  uri:ipns:keyid
+
+  node_urn = urn:list:node:title
+  node_urn = uri:ipfs:qmnode
+
+let node_urn0 = getNid(`urn:list:node:${titlep}`); // named !
+let node_urn1 = getNid(`uri:ipfs:${qmhash}`); // unique
+.
+
+token = { label,(urn),nid,hash }
+From a label to a hash :
+label     -> token_label     -> token_urn          -> token_nid     -> token_hash
+"fairnet" -> "I use fairnet" -> "uri:text:{label}" -> 35e0hagvp4p15 -> z83ajNoNw5p9R6fCe75mB3eqPw9NyPh2x
+```sh
+perl -S nid.pl "uri:text:I use fairnet"  | ipfs add --hash sha1 --cid-base base58btc
+```
+
+Ambiguities :
+key : has to be renamed more clearly. (timestamp-hash)
+uniq_key = ts + ':' + shortqm(peer). unique_timestamp-hash)
+qmhash : node_qmhash or text_qmhash
+score_db : too much complicated, must be split in smaller components.
+jsonf : /public/logs/${node_urn}-state.json is the file that holds the state for score_db
+node_list : list of nodes given by a list-label
+
+
+Definitions :
+api url; local ipfs api initialized by api_config.js in order to match ($IPFS_PATH/config)
+repo : repository where files are stored $IPFS_PATH/blocks
+findprovs : api command form IPFS DHT to locate peerids who have a given hash
+```sh
+curl -s -X POST http://127.0.0.1:5001/api/v0/dht/findprovs?arg=z83ajNoNw5p9R6fCe75mB3eqPw9NyPh2x
+```
+
+
+node : an object we want to rank (in our particular case, it is a text)
+node_meta: meta data associated w/ a node i.e. scores, history, median
+           meta data are initialized upon creation of node
+          (the associated json file needs to be shared and replicated ...
+           i.e. its qm needs to be published)
+
+peer : 
+editor : a peer that creates a text
+editor_token_label : <string> 
+editor_token_nid : 2masw23xbf4qy 
+
+ranker : a peer that gives a grade to a node (text)
+rankers :
+rankers_token_label : `I have ranked a proposal on ${node_urn}`
+rankers_nid : getNid(`urn:text:${rankers_token_label}`)  why text ???
+
+grade : the grade (i.e. "note" in French, here from 0 to 20) given by a ranker to a node
+key : couples timestamp with Hash
+node_json :
+nbp : nombre de persons (html's tagid)
+nbv : nombre de votes (html's tagid)
+
+score : derived from all the grades received for a given text
+score_db : global database that holds all the votes after processing lines in history-log
+score_db = foreach text there is score_db defined as { median, size, score:array[0:20] }
+
+score_db : calculate the median 
+score_db[median] : median of grades w/i score_db
+score_db[n]    : score_db.n = sumOf(weights)
+score_db[tic]    : Date.now() 
+score_db.score[grade] = {ts,weight,peer} // ts and peer have NO functionality they are here just for audit & debug
+score_jsonf : `/public/logs/${node_urn}-state.json` (filename)
+
+global_db : global database that holds all the votes for all the texts w/ their metadata (200 x 10M records !!!)
+history_db = global_db[node_urn]
+history_db[key][x] :: x = ts,op,peer,grade,median; (meta data) */
+history_db[key][x] :: gives 
+peer = history_db[key][2]
+onevote[peer] = history_db[key]
+
+onevote = {} garantees vote unicity ( 1 peer == 1 vote )
+onevote[peer] : history_db[key]; */
+onevote[key] : [ts,op,peer,grade,median] 
+onevote :: example */
+
+​peer   12D3KooWHpj1ercuLscv78Ezz4TADdwSgNkmNmd4qH8dfCCcwZHX:
+key   ​0: "1615835787234"
+key  ​​1: "A"
+key  ​​2: "12D3KooWHpj1ercuLscv78Ezz4TADdwSgNkmNmd4qH8dfCCcwZHX"
+key  ​​3: "6"
+key  4: "6.625"
+
+list_label : an arbitrary string that labels the current list of nodes (texts)
+list_token_label : label of list_token 
+list_token_nid = getNid(`uri:tree:${list_token_label}`) why tree ?? -- legacy from when list were trees !!!)
+
+findprovs on list_token (i.e. for a specific set of nodes) 
+editors_token is much broader : i.e all the participants i.e. the everyone who created and published a node
+
+
+## function classes :
+
+1. lambda functions list:
+ sha256 
+2. asynchronous promised (resolvable)
+
+3. input / read data functions list:
+ all access functions
+
+4. side-effect functions list (output function):
+  (printf)
+
+(what about rejected promises ??)
+
+
+
+
+## async functions list :
+async function update_token_hash(token_hash_id,nid)
+async function find_rankers(ev)
+async function score_sync(ev)
+async function update_score_db(remote_score)
+async function get_rankers_by_qm(qm)
+async function node_meta_create(qm)
+async function map_db_write(file, db)
+async function history_append(ts,qm,qmjson, record)
+async function list_add_node(path,qm)
+async function publish_root()
+async function find_peers(ev)
+async function get_list(ev)
+async function node_list(peers)
+async function display_provs(peerids)
+async function display_rankers(rankers)

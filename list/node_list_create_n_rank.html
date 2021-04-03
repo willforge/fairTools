@@ -6,7 +6,7 @@
 <!--
   findprovs on editor_token
  
-  load all texts under each nid keys
+  load all texts under a labelled list from all online participants
 
   /my/submission/complaints/title/a-specific-topic_history-nid.log
   /public/./submission/complaints/title/a-specific-topic_history-nid.log
@@ -57,7 +57,7 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <br>discovery: search for token_hash: <span id=searched_token_hash><i>:searched_token_hash</i></span>
 <br>providers <span id=providers_status></span>:
 <div id=peerids></div>
-<br><button id=list-button onclick="get_list(event);">get node list</button>
+<br><button id=list-button onclick="get_node_list(event);">get node list</button>
 <span id=list_status></span>
 <br>history_lock: <span id=history_lock_status>?</span>
 <a id=history_link class="webui node_urn" target="_webui" href="webui:/#/files/public/logs/:node_urn-history.log"><i>:node_urn</i>-history.log</a>
@@ -186,13 +186,13 @@ async function update_token_hash(token_hash_id,nid) {
 }
 
 function update_qmhash_value(ev) {
-  let qmselect = document.getElementsByName('qmhash')[0];
+  let qmselect = document.ge -> rankerstElementsByName('qmhash')[0];
   let qmhash = ev.target.value;
   qmselect.options[0].value = qmhash;
   qmselect.options[0].text = `as above: ${shortqm(qmhash)}`;
   return qmhash
 } 
-function update_qmhash(ev) {
+function update_qmhash(ev) { // build DOM html select list, node's payload, and return json
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let qmhash = document.getElementsByName('qmhash')[0].value;
   let node_urn = getNid(`uri:ipfs:${qmhash}`);
@@ -309,7 +309,7 @@ async function history_pull(ev) {
 function score_db_update(node_urn) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   console.trace(callee+'.node_urn:',node_urn)
-  let history_db = global_db[node_urn];
+  let history_db = global_db[node_urn]
   console.log(callee+'.history_db:',history_db)
   sorted_keys =  Object.keys(history_db).sort(alphabetically)
   console.log(callee+'.sorted_keys:',sorted_keys)
@@ -481,8 +481,8 @@ async function survey_pull(ev) { // collect and merge all json files
       document.getElementById('ipns_status').innerHTML = '<img src="../img/spinner.gif" height="24">';
       let ranker_path= await ipfsNameResolve(ranker);
       document.getElementById('ipns_status').innerHTML = '<img src="../img/check-mark.png" height="24">';
-      let jsonf = `/public/logs/${node_urn}-state.json`;
-      let promised_json = ipfsGetJsonByPath(`${ranker_path}${jsonf}`)
+      let score_jsonf = `/public/logs/${node_urn}-state.json`;
+      let promised_json = ipfsGetJsonByPath(`${ranker_path}${score_jsonf}`)
       .then(trigger_score_update)
       .catch(console.log);
    }
@@ -862,12 +862,12 @@ async function node_rank(ev) {
   document.getElementsByName('rankers_nid')[0].value = rankers_nid;
   
   /* var score_db; // a global var to allow reuse w/o recomputation */
-  let jsonf = `/public/logs/${node_urn}-state.json`
+  let score_jsonf = `/public/logs/${node_urn}-state.json`
   let n = 0;
   let median = 0;
-  if ( (await mfsExists(jsonf))[0] ) {
-    console.log(callee+`.jsonf: -e ${jsonf}`);
-    score_db = await getJsonByMFSPath(jsonf);
+  if ( (await mfsExists(score_jsonf))[0] ) {
+    console.log(callee+`.score_jsonf: -e ${score_jsonf}`);
+    score_db = await getJsonByMFSPath(score_jsonf);
     n = score_db.n + 1;
     score_db.peerid = peerid;
     score_db.n = n;
@@ -879,7 +879,7 @@ async function node_rank(ev) {
     score_db.median = median;
     
   } else {
-     console.log(callee+`.jsonf: ! -e ${jsonf}`);
+     console.log(callee+`.score_jsonf: ! -e ${score_jsonf}`);
      n = 1;
      median = parseInt(score);
      let allowed_grades = Array.from(Array(21).keys()); // [ 0 .. 20 ];
@@ -901,7 +901,7 @@ async function node_rank(ev) {
 
   }
   console.debug(callee+'.score_db:',score_db);
-  let qmjson = await ipfsWriteJson(jsonf,score_db)
+  let qmjson = await ipfsWriteJson(score_jsonf,score_db)
   console.log(callee+'.qmjson:',qmjson);
 
   document.getElementById('qmjson').innerHTML = `<a href="${gw_url}/ipfs/${qmjson}">${qmjson}</a>`;
@@ -1002,8 +1002,9 @@ function compute_median(db,thres) {
 function node_urn_update(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let title = ev.target.value;
-  console.debug(callee+'.title:',title);
-  var node_urn = getNid(`uri:list:node:${title}`);
+  let titlep = slugify(title);
+  console.debug(callee+'.titlep:',titlep);
+  var node_urn = getNid(`uri:list:node:${titlep}`);
   document.getElementsByName('node_urn')[0].value = node_urn;
 
 }
@@ -1017,7 +1018,7 @@ async function find_peers(ev) {
     document.getElementById('searched_token_hash').innerHTML=shortqm(searched_token_hash);
     console.debug(callee+'.searched_token_hash:',searched_token_hash);
     display_status('providers','pending');
-    peerids = await ipfsFindProvs(searched_token_hash);
+    peerids = await ipfsFindProvs(searched_token_hash); // i.e. peers_find
     display_status('providers','ok');
     display_provs(peerids);
     
@@ -1039,7 +1040,7 @@ function build_qmhash_select(selid,list) {
   return true;
 }
 
-async function get_list(ev) {
+async function get_node_list(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
    document.getElementById('list_status').innerHTML='<font color=orange>busy</font>';
     let list = await node_list(peerids)
