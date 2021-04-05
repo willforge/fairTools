@@ -1,0 +1,31 @@
+<!DOCTYPE html><meta charset="utf8">
+<script src=../js/config.js></script>
+<script src=../js/sha256.js></script>
+
+<link rel="stylesheet" href="style.css">
+<div id=container>
+<!-- ----------------------------------------- -->
+<div id=inputs>
+label: <input name=label>
+<input type=submit value=fetch onclick="fetch(event);">
+<br>date: <input type=date name=date value='' placeholder="date" onmouseover="this.valueAsDate = new Date();">
+</div>
+<div id=status><i>:status</i></div>
+<!-- ----------------------------------------- -->
+<div id=lists><i>:lists</i></div>
+<div id=peers><i>:peers</i></div>
+
+<div id=text><i>:text</i></div>
+<div id=rankers><i>:rankers</i></div>
+<div id=scores><i>:scores</i></div>
+<div id=history><i>:history</i></div>
+<!-- ----------------------------------------- -->
+</div name=container>
+<script src=../js/ipns_cache.js></script>
+<script src=../js/api_config.js></script>
+<script src=../js/essential.js></script>
+<script src=../js/ipfs.js></script>
+<script src=../js/functions.js></script>
+<script src=../js/BaseN.js></script>
+<script src=../js/Base32.js></script>
+<script src=app.js></script>
