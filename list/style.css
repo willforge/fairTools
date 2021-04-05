@@ -1,0 +1,41 @@
+#container {
+ display: grid;
+ height: 100vh;
+ width: 100%;
+ grid-direction: horizontal;
+ grid-gap: 1rem;
+ grid-template-columns: 2fr 1fr;
+
+}
+#inputs {
+ width: 100%;
+}
+#status {
+ border: 1px dashed #300233;
+}
+
+
+#lists {
+  border: 1px dashed #300233;
+}
+
+#peers {
+  border: 1px dashed #300233;
+
+}
+
+#text {
+  border: 1px dashed #300233;
+  grid-row: 3 / span 3;
+}
+#rankers {
+  border: 1px dashed #300233;
+}
+
+#scores {
+  border: 1px dashed #300233;
+}
+
+#history {
+  border: 1px dashed #300233;
+}
