@@ -11,8 +11,11 @@ var peerid;
 var peerids = [];
 var rankers = [];
 var score_db = {};
+var median_db = {};
 var score_lock = false;
 var history_lock = false;
+var nodeid_db = {}; // map: qm -> nodeid
+var last_node_urn_db = {}; // map: nodeid -> node_urn
 
 
 let score = document.getElementsByName('score')[0].value;
@@ -246,6 +249,8 @@ function score_db_update(node_urn) {
   console.log(callee+'.score_db.score:',score_db.score);
   median = compute_median(score_db,0.5);
   score_db.median = median;
+  median_db[node_urn] = median;
+  //median_db[nodeid_db[qm]] = median;
   console.log(callee+'.score_db:',score_db)
   console.info(callee+'.median:',median)
   console.info(callee+'.score_db.n:',score_db.n)
@@ -921,8 +926,15 @@ function build_qmhash_select(selid,list) {
   }
   for (let record of list) {
      let option = document.createElement('option');
-     option.text = `${shortqm(record[1])} by ${record[3]}`;
-     option.value = `${record[1]}`;
+     let author, subject;
+     let [median,node_urn,stamp,qm,peer,nodeid,nodepath] = record;
+     if (typeof(nodeid) != 'undefined' &&  nodeid.match(':')) {
+       [author,subject] = nodeid.split(':')
+     } else {
+       author = 'anonymous'; subject = nodeid;
+     }
+     option.text = `${median}: ${subject} by ${author} ${shortqm(qm)}`;
+     option.value = qm;
      selid.add(option);
   }
   return true;
@@ -944,7 +956,9 @@ async function get_node_list(ev) {
 async function node_list(peers) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   console.log(callee+'.list_labelp:',list_labelp);
-  let logs = '';
+  let list_logf = `/public/logs/${list_labelp}.log`;
+  let logs = ''; 
+      logs = await getMFSFileContent(list_logf);
   for(let peer of peers) {
      //if (peer == '12D3KooWJDBrt6re8zveUPZKwC3QPBid4iCguyMVuWbKMXb5HeTa') { continue; }
      let checked = document.getElementsByName('p'+peer)[0].checked;
@@ -958,6 +972,7 @@ async function node_list(peers) {
      document.getElementById('ipns_status').innerHTML = '<img src="../img/spinner.gif" height="24">';
      let root_path = await ipfsNameResolve(peer,cb);
      document.getElementById('ipns_status').innerHTML = '<img src="../img/check-mark.png" height="24">';
+
      if (root_path != qmempty) {
         let list_log_path = `${root_path}/public/logs/${list_labelp}.log`;
         let buf = await ipfsGetContentByPath(list_log_path);
@@ -966,6 +981,8 @@ async function node_list(peers) {
      }
   } 
   console.log(callee+'.logs:',logs);
+  // possible uniquify before write ... TODO
+  let promised_write = ipfsWriteContent(list_logf,logs)
   let data = load_sorted_records_from_log(logs);
   return data
 }
@@ -977,21 +994,51 @@ function load_sorted_records_from_log(log) {
   let records = [];
   for (let rec of data) {
     if (rec.match(/^(?:---|#)/) ) { continue }
+    if (rec.match(!/^(?:\d+:)/) ) { continue }
     let a_rec = rec.split(' ');
-    a_rec[0] = a_rec[0].slice(0,-1); // chomp
+    a_rec[0] = a_rec[0].slice(0,-1); // chomp (remove ':')
     records.push(a_rec);
   }
   console.log(callee+'.records:',records);
-  let selected = {};
+  let selected = {}; // keep the last records of each nodeid but keep all the first node_urn
+
   for (let rec of records.sort(by_stamp)) {
     let [stamp,qm,peer,nodeid,nodepath] = rec;
+    let node_urn = getNid(`uri:ipfs:${qm}`);
+    last_node_urn_db[nodeid] = node_urn; // last urn !
     console.log(callee+'.stamp: %s, nodeid: %s',stamp,nodeid);
-    selected[nodeid] = rec
+    if (typeof(nodeid_db[qm]) == 'undefined') {
+      nodeid_db[qm] = nodeid; // first nodeid (for "copyright" !)
+    }
+    if (typeof(selected[node_urn]) == 'undefined') {
+      let median = median_db[node_urn] || 20;
+      let key = String.fromCharCode(0x41 + median) + ':' + stamp;
+      selected[node_urn] = [key,node_urn,...rec]
+    }
+    let median = median_db[nodeid] || 20;
+    let key = String.fromCharCode(0x41 + 5 + median) + ':' + stamp;
+    selected[nodeid] = [key,node_urn,...rec]
   }
 
-  let sorted_records = Object.keys(selected).sort( (a,b) => {
-    return compare(selected[b][0],selected[a][0]); // sort by decreasing importance !
-  }).map( k => { return selected[k]; });
+  var seen = {};
+
+  function notviewed(k) {
+        let qm = selected[k][3];
+        if (typeof(seen[qm]) != 'undefined') {
+          seen[qm]++;
+        } else {
+          seen[qm] = 0;
+        } 
+        //console.debug('notviewed.qm: %s #%d',qm,seen[qm]);
+        return (seen[qm]) ? false : true;
+  }
+
+  let sorted_records = Object.keys(selected).
+      sort( (a,b) => {
+       return compare(selected[b][0],selected[a][0]); // sort by decreasing importance !
+      }).
+      filter(notviewed).
+      map( k => { return selected[k]; });
 
   console.log(callee+'.sorted_records:',sorted_records);
   return sorted_records;
