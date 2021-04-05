@@ -21,6 +21,7 @@ echo "$peerkey: $fn"
 
 ping -c 1 gateway.ipfs.io 1>/dev/null &
 ping -c 1 ipfs.blockringtm.ml
+ipfs swarm connect /ip4/212.129.2.151/tcp/24001/ws/ipfs/$blockring
 
 export IPFS_CONTAINER=${IPFS_CONTAINER:-ipfs-node}
 export IPFS_PATH=${IPFS_PATH:-$HOME/.ipfs}
@@ -32,5 +33,6 @@ ipfs() {
 }
 fi
 
+ipfs dht findpeer $peerkey
 ipfs ping -n 2 $peerkey
 ipfs swarm connect /ip4/212.129.2.151/tcp/24001/ws/ipfs/$peerkey
