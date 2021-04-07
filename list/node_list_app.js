@@ -711,7 +711,10 @@ async function list_add_node(path,qm) {
 }
 
 function publish(ev) {
-  return publish_root();
+     // score & history,  need to be publish once history is appended ...
+     return promised_root_hash = publish_root()
+     .then(console.log)
+     .catch(console.error);
 }
 async function notify(ev) {
   let published_token = await ipfsSetToken(list_token_nid);
@@ -719,7 +722,7 @@ async function notify(ev) {
   return published_token;
 }
 function publish_and_notify(ev) {
- let promises = [ notify({}), publish_root({}) ];
+ let promises = [ notify({}), publish_root() ];
  return Promise.all(promises);
 }
 
@@ -746,6 +749,7 @@ async function node_rank(ev) {
   let ts = Date.now(); // timestamp
   let score = document.getElementsByName('score')[0].value;
   let qmhash = document.getElementsByName('qmhash')[0].value;
+  let promised_pin = ipfsPinAdd(qmhash);
   let node_urn = getNid(`uri:ipfs:${qmhash}`);
 
   let rankers_token_label = `I have ranked a proposal on ${node_urn}`;
@@ -809,8 +813,6 @@ async function node_rank(ev) {
    let promised_qmhistory = history_append(ts,qmhash,qmjson,record)
    .then( qm => {
      console.debug(callee+'.qmhistory:', qm);
-     // score & history,  need to be publish once history is appended ...
-     return promised_root_hash = publish_root().catch(console.error);
    }).catch(console.warn)
 
 
@@ -862,7 +864,7 @@ function compute_median(db,thres) {
           let w = db.score[grade][1];
           if (w != 0) {
              let log = `[p:${p+1}..${p+w}]: grade:${grade} w:${w}`;
-             let num_grade = parseInt(grade);
+    
              if (p < nmm) {
                 medianm = num_grade;
                 wmm = w
@@ -957,10 +959,13 @@ async function node_list(peers) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   console.log(callee+'.list_labelp:',list_labelp);
   let list_logf = `/public/logs/${list_labelp}.log`; // ex: fair-list.log
-  let logs = ''; 
-      logs = await getMFSFileContent(list_logf);
-  for(let peer of peers) {
-     //if (peer == '12D3KooWJDBrt6re8zveUPZKwC3QPBid4iCguyMVuWbKMXb5HeTa') { continue; }
+  let peer = peerid;
+  let seen = {};
+  let logs = [];
+  let buf = await getMFSFileContent(list_logf)
+      logs.push(...uniquify(buf));
+  console.log(callee+'.logs:',logs);
+  for(peer of peers) {
      let checked = document.getElementsByName('p'+peer)[0].checked;
      if (! checked) { console.info(callee+'.peer.skipped:',peer); continue; }
  
@@ -975,27 +980,52 @@ async function node_list(peers) {
 
      if (root_path != qmempty) {
         let list_log_path = `${root_path}/public/logs/${list_labelp}.log`;
-        let buf = await ipfsGetContentByPath(list_log_path);
+        let buf = await ipfsGetContentByPath(list_log_path)
+                  .then( obj => { 
+                     if (typeof(obj) == 'object') {
+                       return `# Error fetching ${peer}'s ${list_labelp}.log\n`
+                     } else {
+                       return obj;
+                     }
+                  });
         console.log(callee+'.buf:',buf);
-        logs += buf;
+        logs.push(...uniquify(buf));;
      }
   } 
   console.log(callee+'.logs:',logs);
-  // possible uniquify before write ... TODO
+
+  function uniquify(buf) { // uniquify before write
+      let uniq = [];
+          buf = buf.replace(/\r/g,'');
+      let lines = buf.slice(0,-1).split('\n'); // might have \r\n !
+        for (let line of lines) {
+           if (! line.match(/^\d+:/) ) {
+              if (! line.match(`# ${peer}`)) {
+                line += `# ${peer}`
+              }
+              console.log(callee+'.line: "%s" wrong!',line)
+              continue;
+            }
+           if (typeof(seen[line]) == 'undefined') {
+              seen[line] = 1;
+              uniq.push(line)
+           }
+        }
+      return uniq
+  }
+  
   // save the aggregated list_log
-  let promised_write = ipfsWriteContent(list_logf,logs)
-  let data = load_sorted_records_from_log(logs);
-  return data
+  let promised_write = ipfsWriteContent(list_logf,logs.join('\n'))
+  let sorted_logs = log_sort_by_importance(logs);
+  return sorted_logs
 }
 
-function load_sorted_records_from_log(logs) {
+function log_sort_by_importance(logs) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
-  let data = logs.slice(0,-1).split('\n'); // might have \r\n !
-  console.log(callee+'.data:',data);
   let records = [];
-  for (let rec of data) {
+  for (let rec of logs) {
     if (rec.match(/^(?:---|#)/) ) { continue }
-    if (rec.match(!/^(?:\d+:)/) ) { continue }
+    if (! rec.match(/^(?:\d+:)/) ) { continue }
     let a_rec = rec.split(' ');
     a_rec[0] = a_rec[0].slice(0,-1); // chomp (remove ':')
     records.push(a_rec);

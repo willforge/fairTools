@@ -10,11 +10,11 @@ pinata=QmNfpLrQQZr5Ns9FAJKpyzgnDL2GgC6xBug1yUZozKFgu4
 
 
 case "$1" in 
- michel*) peerkey=$michelc;;
- franc*) peerkey=$emilea;;
- emile*) peerkey=$emilea;;
- alain*) peerkey=$alainbr;;
- mary*) peerkey=$marys;;
+ mic*) peerkey=$michelc;;
+ fran*) peerkey=$emilea;;
+ emil*) peerkey=$emilea;;
+ al*) peerkey=$alainbr;;
+ mar*) peerkey=$marys;;
  pina*) peerkey=$pinata;;
  *) peerkey=$blockring;;
 esac
