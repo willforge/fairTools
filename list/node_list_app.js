@@ -956,7 +956,7 @@ async function get_node_list(ev) {
 async function node_list(peers) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   console.log(callee+'.list_labelp:',list_labelp);
-  let list_logf = `/public/logs/${list_labelp}.log`;
+  let list_logf = `/public/logs/${list_labelp}.log`; // ex: fair-list.log
   let logs = ''; 
       logs = await getMFSFileContent(list_logf);
   for(let peer of peers) {
@@ -982,14 +982,15 @@ async function node_list(peers) {
   } 
   console.log(callee+'.logs:',logs);
   // possible uniquify before write ... TODO
+  // save the aggregated list_log
   let promised_write = ipfsWriteContent(list_logf,logs)
   let data = load_sorted_records_from_log(logs);
   return data
 }
 
-function load_sorted_records_from_log(log) {
+function load_sorted_records_from_log(logs) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
-  let data = log.slice(0,-1).split('\n'); // might have \r\n !
+  let data = logs.slice(0,-1).split('\n'); // might have \r\n !
   console.log(callee+'.data:',data);
   let records = [];
   for (let rec of data) {
@@ -1012,15 +1013,25 @@ function load_sorted_records_from_log(log) {
     }
     if (typeof(selected[node_urn]) == 'undefined') {
       let median = median_db[node_urn] || 20;
-      let key = String.fromCharCode(0x41 + median) + ':' + stamp;
+      let key = String.fromCharCode(0x41 + median) + ':' + stamp; // key for sort by importance
       selected[node_urn] = [key,node_urn,...rec]
     }
-    let median = median_db[nodeid] || 20;
-    let key = String.fromCharCode(0x41 + 5 + median) + ':' + stamp;
+    let median = median_db[nodeid] || median_db[node_urn] || 20;
+    let key = String.fromCharCode(0x41 + 5 + median) + ':' + stamp; // key for sort by importance
     selected[nodeid] = [key,node_urn,...rec]
   }
 
   var seen = {};
+
+  let sorted_records = Object.keys(selected).
+      sort( (a,b) => {
+       return compare(selected[b][0],selected[a][0]); // sort by decreasing importance !
+      }).
+      filter(notviewed).
+      map( k => { return selected[k]; });
+
+  console.log(callee+'.sorted_records:',sorted_records);
+  return sorted_records;
 
   function notviewed(k) {
         let qm = selected[k][3];
@@ -1032,16 +1043,6 @@ function load_sorted_records_from_log(log) {
         //console.debug('notviewed.qm: %s #%d',qm,seen[qm]);
         return (seen[qm]) ? false : true;
   }
-
-  let sorted_records = Object.keys(selected).
-      sort( (a,b) => {
-       return compare(selected[b][0],selected[a][0]); // sort by decreasing importance !
-      }).
-      filter(notviewed).
-      map( k => { return selected[k]; });
-
-  console.log(callee+'.sorted_records:',sorted_records);
-  return sorted_records;
 
 }
 
