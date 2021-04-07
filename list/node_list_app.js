@@ -864,7 +864,7 @@ function compute_median(db,thres) {
           let w = db.score[grade][1];
           if (w != 0) {
              let log = `[p:${p+1}..${p+w}]: grade:${grade} w:${w}`;
-    
+             let num_grade = parseInt(grade);
              if (p < nmm) {
                 medianm = num_grade;
                 wmm = w
