@@ -9,13 +9,16 @@ var list_label = 'Fair List';
 var list_labelp = 'fair-list';
 var peerid;
 var peerids = [];
+var nlist = [];
+var nodeid_db = {}; // map: qm -> nodeid
+var last_node_urn_db = {}; // map: nodeid -> node_urn
+
 var rankers = [];
 var score_db = {};
 var median_db = {};
 var score_lock = false;
 var history_lock = false;
-var nodeid_db = {}; // map: qm -> nodeid
-var last_node_urn_db = {}; // map: nodeid -> node_urn
+var tnow = Date.now() / (1000 * 29 * 59);
 
 
 let score = document.getElementsByName('score')[0].value;
@@ -258,12 +261,17 @@ function score_db_update(node_urn) {
   document.getElementById('median').innerHTML = score_db.median;
   document.getElementById('nbp').innerHTML = score_db.n;
 
+  // re-sort qmhash list ...
+  let qmhash = document.getElementsByName('qmhash')[0].value;
+  let sorted_list = list_sort_by_importance(nlist);
+  let qmselect = document.getElementsByName('qmhash')[0];
+  build_qmhash_select(qmselect, sorted_list, qmhash);
+
   // leave a record in history_db
   let promised_qmjson = get_qmjson_by_urn(node_urn)
      .then( qmjson => {
            // add history trail
            let ts = Date.now(); // timestamp
-           let qmhash = document.getElementsByName('qmhash')[0].value;
            let key = `${ts}:${shortqm(peerid)}`;
            let op = 'M'; // flag record w/ median tag
            let record = `${key} ${ts} ${op} ${peerid} - ${median}`; /// !!!
@@ -572,7 +580,6 @@ function update_rankers_token_pin(ev) {
      })
      .catch(console.log);
   }
-  // TODO
 }
 
 function display_pin_image(name,status) { // output
@@ -922,20 +929,34 @@ async function find_peers(ev) {
 }
 
 
-function build_qmhash_select(selid,list) {
+function build_qmhash_select(selid,list,qmselected) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
   for ( let i=selid.length-1; i > 0; i-- ) {
    selid.remove(i);
   }
   for (let record of list) {
      let option = document.createElement('option');
      let author, subject;
-     let [median,node_urn,stamp,qm,peer,nodeid,nodepath] = record;
+     // record format :
+     let [key,node_urn,median,ts,qm,peer,nodeid,nodepath] = record;
+     let rank = Math.ceil(key / (21 * tnow) * 12)
+     console.debug(callee+'.key:',key,key/(21*tnow));
+     let map = {12:'A++',11:'A+',10:'A',9:'B+',8:'B',7:'C+',6:'C',5:'C-',4:'D+',3:'D',2:'E',1:'F',0:'-'}
      if (typeof(nodeid) != 'undefined' &&  nodeid.match(':')) {
        [author,subject] = nodeid.split(':')
      } else {
-       author = 'anonymous'; subject = nodeid;
+       author = nodeid; subject = 'unknown'
      }
-     option.text = `${median}: ${subject} by ${author} ${shortqm(qm)}`;
+     if (qm == qmselected) {
+       // TODO deselect : seleid.indexSelected
+       option.selected = true;
+     }
+     if (rank == 13) {
+       let date = new Date(ts)
+       option.text = `NEW: "${subject}" by ${author} ${shortqm(qm)}; ${date.toISOString()}`
+     } else {
+       option.text = `${map[rank]}: "${subject}" by ${author} ${shortqm(qm)}, median=${median} rk:${rank}`;
+     }
      option.value = qm;
      selid.add(option);
   }
@@ -945,12 +966,14 @@ function build_qmhash_select(selid,list) {
 async function get_node_list(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
    document.getElementById('list_status').innerHTML='<font color=orange>busy</font>';
-    let list = await node_list(peerids)
-    console.debug(callee+'.list:',list);
+    nlist = await node_list(peerids)
+    console.debug(callee+'.nlist:',nlist);
+    let sorted_list = list_sort_by_importance(nlist);
+
     let qmselect = document.getElementsByName('qmhash')[0];
-    build_qmhash_select(qmselect, list);
+    build_qmhash_select(qmselect, sorted_list);
     document.getElementById('list_status').innerHTML='<font color=green>OK</font>';
-  return list;
+  return sorted_list;
 }
 
 
@@ -962,8 +985,13 @@ async function node_list(peers) {
   let peer = peerid;
   let seen = {};
   let logs = [];
+  let [exists,qmlog] = await mfsExists(list_logf);
+  if (exists) {
   let buf = await getMFSFileContent(list_logf)
       logs.push(...uniquify(buf));
+  } else {
+    logs = [`# list of nodes from labeled list : ${list_label} by ${peer}`];
+  }
   console.log(callee+'.logs:',logs);
   for(peer of peers) {
      let checked = document.getElementsByName('p'+peer)[0].checked;
@@ -983,6 +1011,7 @@ async function node_list(peers) {
         let buf = await ipfsGetContentByPath(list_log_path)
                   .then( obj => { 
                      if (typeof(obj) == 'object') {
+                       console.warn(callee+".Error: fetching %s's %s.log",peer,list_labelp)
                        return `# Error fetching ${peer}'s ${list_labelp}.log\n`
                      } else {
                        return obj;
@@ -997,6 +1026,7 @@ async function node_list(peers) {
   function uniquify(buf) { // uniquify before write
       let uniq = [];
           buf = buf.replace(/\r/g,'');
+          buf = buf.replace(']',']\n')
       let lines = buf.slice(0,-1).split('\n'); // might have \r\n !
         for (let line of lines) {
            if (! line.match(/^\d+:/) ) {
@@ -1016,14 +1046,13 @@ async function node_list(peers) {
   
   // save the aggregated list_log
   let promised_write = ipfsWriteContent(list_logf,logs.join('\n'))
-  let sorted_logs = log_sort_by_importance(logs);
-  return sorted_logs
+  return logs;
 }
 
-function log_sort_by_importance(logs) {
+function list_sort_by_importance(list) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let records = [];
-  for (let rec of logs) {
+  for (let rec of list) {
     if (rec.match(/^(?:---|#)/) ) { continue }
     if (! rec.match(/^(?:\d+:)/) ) { continue }
     let a_rec = rec.split(' ');
@@ -1035,27 +1064,32 @@ function log_sort_by_importance(logs) {
 
   for (let rec of records.sort(by_stamp)) {
     let [stamp,qm,peer,nodeid,nodepath] = rec;
+    let ts = parseInt(stamp)
+    console.log(callee+'.ts:',ts);
+    let date = new Date(ts);
+    console.log(callee+'.date:',date.toString());
     let node_urn = getNid(`uri:ipfs:${qm}`);
     last_node_urn_db[nodeid] = node_urn; // last urn !
-    console.log(callee+'.stamp: %s, nodeid: %s',stamp,nodeid);
+    console.log(callee+'.stamp: %s, nodeid: %s : %o',stamp,node_urn,rec);
     if (typeof(nodeid_db[qm]) == 'undefined') {
       nodeid_db[qm] = nodeid; // first nodeid (for "copyright" !)
     }
     if (typeof(selected[node_urn]) == 'undefined') {
-      let median = median_db[node_urn] || 20;
-      let key = String.fromCharCode(0x41 + median) + ':' + stamp; // key for sort by importance
-      selected[node_urn] = [key,node_urn,...rec]
+      let median = median_db[node_urn] || 12;
+      let key = importance(median-1,ts-1,node_urn) // less importance for old version ...
+      selected[node_urn] = [key,node_urn,median,ts,qm,peer,nodeid,nodepath]
     }
-    let median = median_db[nodeid] || median_db[node_urn] || 20;
-    let key = String.fromCharCode(0x41 + 5 + median) + ':' + stamp; // key for sort by importance
-    selected[nodeid] = [key,node_urn,...rec]
+    let median = median_db[nodeid] || median_db[node_urn] || 21;
+    let key = importance(median,ts,nodeid); // criteria for importance sort 
+    selected[nodeid] = [key,node_urn,median,ts,qm,peer,nodeid,nodepath]
   }
 
   var seen = {};
 
   let sorted_records = Object.keys(selected).
       sort( (a,b) => {
-       return compare(selected[b][0],selected[a][0]); // sort by decreasing importance !
+         return selected[b][0] - selected[a][0]; // sort by decreasing (numerical) importance !
+         //return compare(selected[b][0],selected[a][0]); // sort by decreasing (alphabetical) importance !
       }).
       filter(notviewed).
       map( k => { return selected[k]; });
@@ -1064,7 +1098,9 @@ function log_sort_by_importance(logs) {
   return sorted_records;
 
   function notviewed(k) {
-        let qm = selected[k][3];
+        //  0   1        2      3     4  5    6      7
+        // [key,node_urn,median,stamp,qm,peer,nodeid,nodepath] = selected[k];
+        let qm = selected[k][4];
         if (typeof(seen[qm]) != 'undefined') {
           seen[qm]++;
         } else {
@@ -1074,6 +1110,15 @@ function log_sort_by_importance(logs) {
         return (seen[qm]) ? false : true;
   }
 
+}
+
+function importance(median,ts,urn) {
+    //let date = new Date(parseInt(stamp));
+    // String.fromCharCode(0x41 + median) + ':' + date.toISOString(); // key for sort by importance
+    let tom = ts / 1000 / (29 * 59);
+    let key = median * tnow + tom
+    console.log('importance:',median,ts,urn,tom,key)
+    return key;
 }
 
 function by_stamp(a,b) {
