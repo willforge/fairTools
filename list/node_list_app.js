@@ -1045,7 +1045,7 @@ async function node_list(peers) {
   }
   
   // save the aggregated list_log
-  let promised_write = ipfsWriteContent(list_logf,logs.join('\n'))
+  let promised_write = ipfsWriteContent(list_logf,logs.join('\n')+'\n')
   return logs;
 }
 
