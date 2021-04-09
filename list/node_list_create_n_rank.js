@@ -1074,33 +1074,41 @@ async function node_list(peers) {
 
 function load_node_medians(nlist) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
-  let records = [];
-  for (let rec of nlist) {
-    if (rec.match(/^(?:---|#)/) ) { continue }
-    if (! rec.match(/^(?:\d+:)/) ) { continue }
-    let a_rec = rec.split(' ');
-    a_rec[0] = a_rec[0].slice(0,-1); // chomp (remove ':')
-    records.push(a_rec);
-    let [stamp,qm,peer,nodeid,nodepath] = a_rec;
+  let seen = {};
+  for (let log of nlist) {
+    if (log.match(/^(?:---|#)/) ) { continue }
+    if (! log.match(/^(?:\d+:)/) ) { continue }
+    let rec = log.split(' ');
+    rec[0] = rec[0].slice(0,-1); // chomp (remove ':')
+    let [stamp,qm,peer,nodeid,nodepath] = rec;
     let node_urn = getNid(`uri:ipfs:${qm}`);
     let promised_node_state = get_qmjson(qm)
-       .then( async (qmjson) => {
+       .then( qmjson => {
           console.log(callee+'.qmjson:',qmjson);
           if (typeof(qmjson) != 'undefined') {
-             let buf = await ipfsGetContentByHash(qmjson); // /!\ return a json if not a text 
-             if (typeof(buf.median) != 'undefined') {
-               median_db[node_urn] = node_json.median
-               //median_db[nodeid] = node_json.median ... TODO 
-             } else {
-               console.warn(callee+'.info: qmjson not a json');
-             }
+             let promised_json = ipfsGetContentByHash(qmjson) // /!\ return a json if not a text 
+             .then( buf => {
+                if (typeof(buf.median) != 'undefined') {
+                  median_db[node_urn] = buf.median
+                  if (typeof(seen[node_urn]) == 'undefined' || seen[node_urn] <= stamp) {
+                    median_db[nodeid] = buf.median; // keep the most recent stamp
+                    seen[node_urn] = stamp;
+                  }
+                  return buf.median;
+                } else {
+                  console.warn(callee+'.info: qmjson not a json');
+                  return void(0);
+                }
+             })
+             .catch(console.warn)
           }
+          return qmjson
 
         })
         .catch(console.warn)
   }
-
-  
+  console.log(callee+'.median_db:',median_db);
+  return median_db
 }
 
 function list_sort_by_importance(list) {
