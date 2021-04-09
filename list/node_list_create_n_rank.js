@@ -203,6 +203,7 @@ async function history_pull(ev) {
    .finally( qm => { console.trace(callee+'.qm: %s for %s',qm,node_urn); return score_db_update(node_urn); });
    } else {
      console.info(callee+'.rankers.length:',rankers.length);
+     document.getElementById('history_status').innerHTML = `<img title="${qm}" src="../img/error-mark.png" height="24">`;
    }
 }
 
