@@ -72,7 +72,9 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <br>rankers <span id=rankers_status></span>:
 <div id=rankers></div>
 <br>rankers_nid: <input name=rankers_nid value=":rankers_nid" disabled>
-<br>rankers_token: <span id=rankers_token_hash><i>:rankers_token_hash</i></span><img id="rankers_token_pin_img"> <input type=checkbox name=rankers_token_pin onchange="update_rankers_token_pin(event)">
+<br>rankers_token: <span id=rankers_token_hash><i>:rankers_token_hash</i></span><img id="rankers_token_pin_img">
+<button name=add_rankers_token_pin onchange="add_rankers_token_pin(event)">pinAdd</button>
+<input type=checkbox name=rankers_token_pin onchange="update_rankers_token_pin(event)">
 
 <hr>
 <textarea id=selected_text cols=76 rows=5 disabled></textarea>
@@ -86,9 +88,9 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <input type="range" name="value" min="0" max="20" onchange="display_score(event);" class="slider">
 <br>score_lock: <span id=score_lock_status>?</span>
 <br><button onclick="node_rank(event);">rank node</button>
-<button onclick="publish_root(event);">sign</button>
+<button onclick="publish_root(event);">sign (all) nodes</button>
+<br>
 <button onclick="history_pull(event);">pull history</button><span id=history_status></span>
-
 <button onclick="dot_create(event);">create a dot</button>
 <br>qmhash: <span id=qmhash><i>:qmhash</i></span> <i>(hash of voted node)</i>
 <br>qmjson: <span id=qmjson><i>:qmjson</i></span> <i>(/public/logs/\*-state.json)</i>

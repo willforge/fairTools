@@ -17,4 +17,6 @@ ipfs() {
 fi
 
 ipfs ping -n 2 $peerkey
-ipfs swarm connect /ip4/212.129.2.151/tcp/24001/ws/ipfs/$peerkey
+ipfs swarm connect /ip4/212.129.2.151/tcp/24001/ws/p2p/$peerkey
+ipfs swarm connect /ip4/78.203.137.54/udp/1578/quic/p2p/$peerkey
+ipfs swarm connect /ip4/78.203.137.54/tcp/4001/p2p/$peerkey

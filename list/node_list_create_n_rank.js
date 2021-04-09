@@ -163,7 +163,7 @@ async function history_pull(ev) {
    document.getElementById('history_status').innerHTML='<font color=orange>busy</font>';
 
    let promised_trigger_histories = [];
-   if (rankers.length > 1) {
+   if (rankers.length >= 1) {
    for (let ranker of rankers) {
       let checked = document.getElementsByName('x'+ranker)[0].checked;
       if (! checked) { console.info(callee+'.ranker.skipped:',ranker); continue; }
@@ -196,7 +196,10 @@ async function history_pull(ev) {
       })
       .catch(console.error);
    })
-   .catch(err => { console.trace(callee+'.err:',err); return err; })
+   .catch(err => {
+      console.trace(callee+'.err:',err); return err;
+      document.getElementById('history_status').innerHTML = `<img title="${qm}" src="../img/error-mark.png" height="24">`;
+   })
    .finally( qm => { console.trace(callee+'.qm: %s for %s',qm,node_urn); return score_db_update(node_urn); });
    } else {
      console.info(callee+'.rankers.length:',rankers.length);
@@ -541,16 +544,36 @@ async function get_rankers_by_qm(qm) {
 
   rankers_token_hash = await ipfsGetToken(rankers_nid); // Global
   document.getElementById('rankers_token_hash').innerHTML=`<a href="${gw_url}/ipfs/${rankers_token_hash}" target="_new">${rankers_token_hash}</a>`;
-  let pin_status = await getPinStatus(rankers_token_hash);
-  console.log(callee+'.pin_status:',pin_status);
-  display_pin_image('rankers_token_pin',pin_status);
+
+  let promized_pin_status = getPinStatus(rankers_token_hash).then(
+      pin_status => {
+       console.log(callee+'.pin_status:',pin_status);
+       display_pin_image('rankers_token_pin',pin_status); 
+       return pin_status;
+   })
+   .catch(console.warn);
 
   display_status('rankers','pending');
   rankers = await ipfsFindProvs(rankers_token_hash);
+  console.log(callee+'.rankers:',rankers);
   display_status('rankers','ok');
   display_rankers(rankers);
-  console.log(callee+'.rankers:',rankers);
   return rankers
+}
+function add_rankers_token_pin(ev) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  return ipfsPinAdd(rankers_token_hash)
+     .then( json => {
+        console.log(callee+'.json:',json);
+        if (json.Pins[0]) {
+         return getPinStatus(rankers_token_hash)
+          .then( status => { display_pin_image('rankers_token_pin',status); return status; })
+         .catch(console.error)
+        } else {
+         return Promise.reject( false );
+        } 
+     })
+     .catch(console.warn);
 }
 function update_rankers_token_pin(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
@@ -968,6 +991,7 @@ async function get_node_list(ev) {
    document.getElementById('list_status').innerHTML='<font color=orange>busy</font>';
     nlist = await node_list(peerids)
     console.debug(callee+'.nlist:',nlist);
+    let promised_medians = load_node_medians(nlist);
     let sorted_list = list_sort_by_importance(nlist);
 
     let qmselect = document.getElementsByName('qmhash')[0];
@@ -975,7 +999,6 @@ async function get_node_list(ev) {
     document.getElementById('list_status').innerHTML='<font color=green>OK</font>';
   return sorted_list;
 }
-
 
 
 async function node_list(peers) {
@@ -1047,6 +1070,37 @@ async function node_list(peers) {
   // save the aggregated list_log
   let promised_write = ipfsWriteContent(list_logf,logs.join('\n')+'\n')
   return logs;
+}
+
+function load_node_medians(nlist) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  let records = [];
+  for (let rec of nlist) {
+    if (rec.match(/^(?:---|#)/) ) { continue }
+    if (! rec.match(/^(?:\d+:)/) ) { continue }
+    let a_rec = rec.split(' ');
+    a_rec[0] = a_rec[0].slice(0,-1); // chomp (remove ':')
+    records.push(a_rec);
+    let [stamp,qm,peer,nodeid,nodepath] = a_rec;
+    let node_urn = getNid(`uri:ipfs:${qm}`);
+    let promised_node_state = get_qmjson(qm)
+       .then( async (qmjson) => {
+          console.log(callee+'.qmjson:',qmjson);
+          if (typeof(qmjson) != 'undefined') {
+             let buf = await ipfsGetContentByHash(qmjson); // /!\ return a json if not a text 
+             if (typeof(buf.median) != 'undefined') {
+               median_db[node_urn] = node_json.median
+               //median_db[nodeid] = node_json.median ... TODO 
+             } else {
+               console.warn(callee+'.info: qmjson not a json');
+             }
+          }
+
+        })
+        .catch(console.warn)
+  }
+
+  
 }
 
 function list_sort_by_importance(list) {
