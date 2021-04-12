@@ -55,8 +55,6 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <div id=peerids></div>
 <br><button id=list-button onclick="get_node_list(event);">get node list</button>
 <span id=list_status></span>
-<br>history_lock: <span id=history_lock_status>?</span>
-<a id=history_link class="webui node_urn" target="_webui" href="webui:/#/files/public/logs/:node_urn-history.log"><i>:node_urn</i>-history.log</a>
 <!-- br>qmhash: <input name=qminput placeholder="node-hash" onchange="update_qmhash_value(event);" size=43> (manual entry) -->
 <br>qmhash:
 <select name=qmhash onchange="update_qmhash(event);">
@@ -66,6 +64,8 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <br>node_hash: <span id=node_hash><i>:node_hash</i></span>
 <br>node_urn: <input name=node_urn value=":node_urn" disabled>
 <br>node_token: <input name=node_token_hash value=":node_token_hash" size=43 disabled>
+<br>history_lock: <span id=history_lock_status>?</span>
+<a id=history_link class="webui node_urn" target="_webui" href="webui:/#/files/public/logs/:node_urn-history.log"><i>:node_urn</i>-history.log</a>
 <br>
 <br><button id=rankers-button onclick="find_rankers(event);">find rankers on DHT</button>
 <br>ipns: <span id=ipns_status><i>:status</i></span>

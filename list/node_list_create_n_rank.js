@@ -197,7 +197,7 @@ async function history_pull(ev) {
       .catch(console.error);
    })
    .catch(err => {
-      console.trace(callee+'.err:',err); return err;
+      console.trace(callee+'.err:',err);
       document.getElementById('history_status').innerHTML = `<img title="${err}" src="../img/error-mark.png" height="24">`;
       return err;
    })
