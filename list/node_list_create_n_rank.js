@@ -198,12 +198,13 @@ async function history_pull(ev) {
    })
    .catch(err => {
       console.trace(callee+'.err:',err); return err;
-      document.getElementById('history_status').innerHTML = `<img title="${qm}" src="../img/error-mark.png" height="24">`;
+      document.getElementById('history_status').innerHTML = `<img title="${err}" src="../img/error-mark.png" height="24">`;
+      return err;
    })
    .finally( qm => { console.trace(callee+'.qm: %s for %s',qm,node_urn); return score_db_update(node_urn); });
    } else {
      console.info(callee+'.rankers.length:',rankers.length);
-     document.getElementById('history_status').innerHTML = `<img title="${qm}" src="../img/error-mark.png" height="24">`;
+     document.getElementById('history_status').innerHTML = `<img title="${qmhash}" src="../img/error-mark.png" height="24">`;
    }
 }
 
