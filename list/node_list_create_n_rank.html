@@ -82,8 +82,6 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <br>survey: <span id=survey><i>:survey</i></span> <i>(median w/ score_db, all votes)</i>
 <br>nb votes: <span id=nbv><i>:nbv</i></span>
 <br><button onclick="survey_pull(event);" name="survey_pull">pull survey</button>
-<br>median: <span id=median><i>:median</i></span> <i>(median w/ history_db)</i>
-<br>nb pers: <span id=nbp><i>:nbp</i></span>
 <br>score: <input type="number" name="score" min="0" max="20" value="12" onchange="update_value(event);">
 <input type="range" name="value" min="0" max="20" onchange="display_score(event);" class="slider">
 <br>score_lock: <span id=score_lock_status>?</span>
@@ -91,7 +89,9 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <button onclick="publish_root(event);">sign (all) nodes</button>
 <br>
 <button onclick="history_pull(event);">pull history</button><span id=history_status></span>
-<button onclick="dot_create(event);">create a dot</button>
+<!-- <button onclick="dot_create(event);">create a dot</button> -->
+<br>median: <span id=median><i>:median</i></span> <i>(median w/ history_db)</i>
+<br>nb pers: <span id=nbp><i>:nbp</i></span>
 <br>qmhash: <span id=qmhash><i>:qmhash</i></span> <i>(hash of voted node)</i>
 <br>qmjson: <span id=qmjson><i>:qmjson</i></span> <i>(/public/logs/\*-state.json)</i>
 <br>qmhistory: <span id=qmhistory><i>:qmhistory</i></span> <i>(/public/logs/\*-history.json)</i>
