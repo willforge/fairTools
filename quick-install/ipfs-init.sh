@@ -96,7 +96,7 @@ else
   exit 251
 fi
 keylist=12D3KooWJEgKKeZuawJLDu7TP5qCwmq8RSA5fkdHxREVLoavaPmt
-qmlist=$(ipfs name resolve $keylist | sed -e 's,/ipfs/,,')
+qmlist=$(_ipfs name resolve $keylist | sed -e 's,/ipfs/,,')
 echo "Important-Info: |-"
 sed -e 's/^/ /' <<EOT
 your docker ip address is ${yellow}$dockerip${nc}
@@ -111,10 +111,14 @@ enter ${green}/ip4/$dockerip/tcp/$api_port${nc} in point (3.) of the page.
 our application is running at 
 
 xdg-open ${green}http://$dockerip:$gw_port/ipns/$keylist/list/node_list_create_n_rank.html${nc}
-or
-xdg-open ${green}http://$dockerip:$gw_port/ipfs/$qmlist/list/node_list_create_n_rank.html${nc}
-
-${cyan}Happy fairJourney !${nc}
 EOT
+
+if [ "x$qmlist" != 'x' ]; then
+echo or
+echo "xdg-open ${green}http://$dockerip:$gw_port/ipfs/$qmlist/list/node_list_create_n_rank.html${nc}"
+fi
+echo ''
+
+echo "${cyan}Happy fairJourney !${nc}"
 
 echo .
