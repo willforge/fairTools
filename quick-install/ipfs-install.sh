@@ -49,6 +49,7 @@ if ! docker ps -f name=$IPFS_CONTAINER | grep -q -w $IPFS_CONTAINER; then
 else
   if [ "x$was_running" = 'x' ]; then
     echo "docker: ${green}$IPFS_CONTAINER is running${nc}"
+    echo "info: ${0##*/} ${green}successful${nc}"
   fi
 fi
 
