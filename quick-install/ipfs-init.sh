@@ -21,7 +21,7 @@ dockerip=$(docker exec $IPFS_CONTAINER ifconfig eth0 | grep inet | sed -n -e 's/
 
 # dockerized ipfs is _ipfs
 _ipfs() {
- docker exec $IPFS_CONTAINER ipfs $@
+ docker exec $IPFS_CONTAINER ipfs "$@"
 }
 IPFS_PATH=$(_ipfs repo stat | grep RepoPath: | sed -e 's/  */ /g' | cut -d' ' -f 2)
 
@@ -56,9 +56,9 @@ fi
 
 #curl -s -D - -X POST "http://$dockerip:$api_port/api/v0/id"
 if curl -s -D - -X POST "${api_url}add?file=test&pin=true&raw-leaves=true&hash=sha3-224&cid-base=base58btc" -F "file=fairTeam" | grep -q z6CfPs4KMZEFsrvodUfZTtYjMWpxAbPsdZGzv3o1wtYj; then
-echo "info: POST test ${green}successful${red}; welcome to fairTeam"
+echo "info: POST test ${green}successful${nc}; welcome to fairTeam"
 else
-  echo "info: POST test ${red}failed${red}"
+  echo "info: POST test ${red}failed${nc}"
   echo "please: |-"
   echo " reboot your IPFS node"
   echo " by running:"

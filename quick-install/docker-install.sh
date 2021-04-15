@@ -16,7 +16,7 @@ if ! which sudo > /dev/null; then
   apt-get -y install sudo 
 fi
 
-if ! which lsb-releace > /dev/null; then
+if ! which lsb-release > /dev/null; then
   sudo apt-get install lsb-release
 fi
 
