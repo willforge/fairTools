@@ -45,7 +45,24 @@ gw_url="http://$dockerip:$gw_port"
 api_url="http://$dockerip:$api_port/api/v0/"
 
 # adding CORS parameters
-allowed_origins="['http://$dockerip:$gw_port', 'http://$dockerip:$api_port', 'http://localhost', 'http://127.0.0.1:5001', 'http://127.0.0.1:48084', 'https://ipfs.blockringtm.ml', 'https://webui.ipfs.io']"
+allowed_origins="[
+'http://$dockerip:$gw_port',
+'http://$dockerip:$api_port',
+'http://localhost',
+'http://127.0.0.1:8080',
+'http://127.0.0.1:5001',
+'http://127.0.0.1:48084',
+'https://ipfs.blockringtm.ml',
+'https://playcode.io',
+'https://js.do',
+'https://cdpn.io',
+'https://fiddle.jshell.net',
+'https://replit.com',
+'http://bl.ocks.org',
+'https://bl.ocks.org',
+'https://gateway.pinata.cloud',
+'https://gateway.ipfs.io',
+'https://webui.ipfs.io']"
 allowed_origins=$(echo $allowed_origins | sed -e 's,'"'"',",g')
 if ! _ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin | grep -q blockringtm.ml; then
 _ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin "$allowed_origins"
@@ -77,7 +94,7 @@ bootstraps='[
 "/ip6/2604:a880:800:10::4a:5001/tcp/4001/p2p/QmSoLV4Bbm51jM9C4gDYZQ9Cy3U6aXMJDAbzgu2fzaDs64",
 "/ip6/2a03:b0c0:0:1010::23:1001/tcp/4001/p2p/QmSoLer265NRgSp2LA3dPaeykiS1J6DifTC88f5uVQKNAd"
 ]'
-_ipfs config --json Bootstraps "$(echo "$bootstraps" | tr -d '\n' )"
+_ipfs config --json Bootstrap "$(echo "$bootstraps" | tr -d '\n' )"
 
 # adding OVH peer
 peers='[{"Addrs":["/ip4/212.129.2.151/tcp/24001/ws"],"ID":"Qmd2iHMauVknbzZ7HFer7yNfStR4gLY1DSiih8kjquPzWV"}]'
@@ -114,8 +131,8 @@ xdg-open ${green}http://$dockerip:$gw_port/ipns/$keylist/list/node_list_create_n
 EOT
 
 if [ "x$qmlist" != 'x' ]; then
-echo or
-echo "xdg-open ${green}http://$dockerip:$gw_port/ipfs/$qmlist/list/node_list_create_n_rank.html${nc}"
+echo "  or"
+echo " xdg-open ${green}http://$dockerip:$gw_port/ipfs/$qmlist/list/node_list_create_n_rank.html${nc}"
 fi
 echo ''
 
