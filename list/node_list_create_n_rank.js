@@ -577,6 +577,18 @@ function add_rankers_token_pin(ev) {
      })
      .catch(console.warn);
 }
+function rm_rankers_token_pin(ev) {
+  let [callee, caller] = functionNameJS(); // logInfo("message !")
+  return ipfsPinRm(rankers_token_hash)
+     .then( json => {
+        console.log(callee+'.json:',json);
+        return getPinStatus(rankers_token_hash)
+          .then( status => { display_pin_image('rankers_token_pin',status); return status; }
+          )
+         .catch(console.error)
+     })
+     .catch(console.warn);
+}
 function update_rankers_token_pin(ev) {
   let [callee, caller] = functionNameJS(); // logInfo("message !")
   let pin_state = ev.target.checked;

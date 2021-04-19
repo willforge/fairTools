@@ -73,8 +73,9 @@ api url: <input name=api_url placeholder="api url" size="32" onchange="update_ap
 <div id=rankers></div>
 <br>rankers_nid: <input name=rankers_nid value=":rankers_nid" disabled>
 <br>rankers_token: <span id=rankers_token_hash><i>:rankers_token_hash</i></span><img id="rankers_token_pin_img">
-<button name=add_rankers_token_pin onchange="add_rankers_token_pin(event)">pinAdd</button>
-<input type=checkbox name=rankers_token_pin onchange="update_rankers_token_pin(event)">
+<button name=add_rankers_token_pin onclick="add_rankers_token_pin(event)">pinAdd</button>
+<button name=rm_rankers_token_pin onclick="rm_rankers_token_pin(event)">pinRm</button>
+<!--input type=checkbox name=rankers_token_pin onchange="update_rankers_token_pin(event)"-->
 
 <hr>
 <textarea id=selected_text cols=76 rows=5 disabled></textarea>

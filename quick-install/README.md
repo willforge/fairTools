@@ -32,7 +32,8 @@
 4. docker image rm ipfs/go-ipfs
 
 
-[1]: http://127.0.0.1:8080/ipns/list.fairNet.ml/welcome.html
+[1a]: http://127.0.0.1:8080/ipns/list.fairNet.ml/welcome.html
+[1]: http://list.fairNet.ml.ipns.localhost:8080/welcome.html
 [2]: http://127.0.0.1:8080/ipns/list.fairNet.ml/list/node_list_create_n_rank.html
 [3]: http://127.0.0.1:8080/ipns/list.fairNet.ml/fairTeam.html
 [4]: http://127.0.0.1:8080/ipns/docs.ipfs.io/reference/http/api/

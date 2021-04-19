@@ -53,6 +53,7 @@ allowed_origins="[
 'http://127.0.0.1:5001',
 'http://127.0.0.1:48084',
 'https://ipfs.blockringtm.ml',
+'http://list.fairnet.ml.ipns.localhost:8080',
 'https://playcode.io',
 'https://js.do',
 'https://cdpn.io',
