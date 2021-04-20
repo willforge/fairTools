@@ -1,0 +1,30 @@
+<!DOCTYPE html><meta charset="utf8">
+<link rel="stylesheet" href="style.css">
+
+<div>
+<h2>FairTeam connector</h2>
+
+<p>The page allow you to connect to the FairTeam members
+</p>
+
+<p>your peerid is <span id=peerid><i>:peerid</i></span>
+
+<h4>Here are a list of our (online) members you can connect with:</h4>
+<div id=peers></div>
+
+</div>
+
+
+<script src=js/discover.js></script>
+<script>
+ discover.peer_connect('Qmd2iHMauVknbzZ7HFer7yNfStR4gLY1DSiih8kjquPzWV','ws');
+ //discover.connect('12D3KooWNDdUVFotQfQVsHogQB3bE5kLhSREh36gMuHnKBJmoEsR','4001');
+ discover.peer_connect('QmcfHufAK9ErQ9ZKJF7YX68KntYYBJngkGDoVKcZEJyRve','quic');
+ discover.token = 'z6CfPs4KMZEFsrvodUfZTtYjMWpxAbPsdZGzv3o1wtYj';
+ discover.api_url = 'https://ipfs.blockringtm.ml/api/v0/';
+ discover.api_url = 'http://127.0.0.1:5001/api/v0/';
+ discover.peerid().then(p => { document.getElementById('peerid').innerText = p });
+ discover.join();
+ discover.findprovs('z6CfPs4KMZEFsrvodUfZTtYjMWpxAbPsdZGzv3o1wtYj');
+</script>
+

@@ -1,0 +1,28 @@
+<!DOCTYPE html><meta charset="utf8">
+<link rel="stylesheet" href="style.css">
+
+<div>
+<h2>Welcome to the FairTeam</h2>
+
+<p>We a a bunch of souls running the fairNetwork ...
+<button onclick=discover.join(event)>Join !</button>
+</p>
+
+<p>your peerid is <span id=peerid><i>:peerid</i></span>
+
+<h4>Here are a list of our (online) members :</h4>
+<div id=peers></div>
+
+</div>
+
+
+
+<script src=js/discover.js></script>
+<script>
+ discover.token = 'z6CfPs4KMZEFsrvodUfZTtYjMWpxAbPsdZGzv3o1wtYj';
+ discover.api_url = 'https://ipfs.blockringtm.ml/api/v0/';
+ discover.api_url = 'http://127.0.0.1:5001/api/v0/';
+ discover.peerid().then(p => { document.getElementById('peerid').innerText = p });
+ discover.peers();
+</script>
+
