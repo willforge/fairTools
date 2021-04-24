@@ -1,10 +1,11 @@
 <!DOCTYPE html><meta charset="utf8">
+<link rel="icon" href="img/favicon.webp">
 <link rel="stylesheet" href="style.css">
 
 <div>
 <h2>FairTeam connector</h2>
 
-<p>The page allow you to connect to the FairTeam members
+<p>This page allows you to connect to the FairTeam members
 </p>
 
 <p>your peerid is <span id=peerid><i>:peerid</i></span>
@@ -12,6 +13,11 @@
 <h4>Here are a list of our (online) members you can connect with:</h4>
 <div id=peers></div>
 
+
+<br><small id=mention>
+You need to have an <a href=https://ipfs.io>IPFS</a> node running locally and have <a href=":origin">:origin</a>
+in your "Allow-Origins" list, for this page to be functional.
+</small>
 </div>
 
 
@@ -25,6 +31,9 @@
  discover.api_url = 'http://127.0.0.1:5001/api/v0/';
  discover.peerid().then(p => { document.getElementById('peerid').innerText = p });
  discover.join();
- discover.findprovs('z6CfPs4KMZEFsrvodUfZTtYjMWpxAbPsdZGzv3o1wtYj');
+
+ let el = document.getElementById('mention');
+ el.innerHTML = el.innerHTML.replace(/:origin/g,location.origin);
+
 </script>
 

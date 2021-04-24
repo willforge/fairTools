@@ -120,7 +120,11 @@ function update_qmhash(ev) { // build DOM html select list, node's payload, and 
   let promise_text = ipfsGetContentByHash(qmhash)
   .then( text => {
      console.log(callee+'.text:',text);
-     document.getElementById('selected_text').innerHTML = text;
+     if (text.Code == 0) {
+       document.getElementById('selected_text').innerText = `Error: text is unavailable ${text.Message}`;
+     } else {
+       document.getElementById('selected_text').innerHTML = text;
+     }
      return text;
   })
   .catch(console.error)
@@ -543,6 +547,14 @@ async function get_rankers_by_qm(qm) {
   let rankers_nid = getNid(`urn:text:${rankers_token_label}`);
   console.log(callee+'.rankers_nid:',rankers_nid);
   document.getElementsByName('rankers_nid')[0].value = rankers_nid;
+
+  let history_logf = `/public/logs/${node_urn}-history.log`
+  mfsExists(history_logf).then( _ => {
+     if (_[0]) { // logfile exists
+      console.debug(callee+'.ipfsPinAdd.on:',rankers_token_hash);
+      return ipfsPinAdd(rankers_token_hash);
+     }
+  }).catch(console.warn)
 
   rankers_token_hash = await ipfsGetToken(rankers_nid); // Global
   document.getElementById('rankers_token_hash').innerHTML=`<a href="${gw_url}/ipfs/${rankers_token_hash}" target="_new">${rankers_token_hash}</a>`;
