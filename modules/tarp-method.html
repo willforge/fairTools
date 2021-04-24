@@ -1,0 +1,30 @@
+<meta charset=utf8>
+<!--
+<script src="https://cdn.jsdelivr.net/npm/requirejs@2.3.6/bin/r.min.js"></script>
+-->
+<script src="https://cdn.jsdelivr.net/gh/letorbi/tarp.require@1.4.3/require.js"></script>
+<!-- see also : https://github.com/letorbi/tarp.require/tree/master/test -->
+<script>
+Tarp.require({ expose: true });
+// Importing the module library containing
+// area and perimeter functions.
+// " ./ " is used if both the files are in the same folder.
+//const lib =  require('./library');
+var lib = require('./library');
+console.log('lib:',lib);
+  
+let length = 10;
+let breadth = 5;
+  
+// Calling the functions 
+// defined in the lib module
+
+async function main() {
+let area = (await lib).area(length, breadth);
+let perimeter = (await lib).perimeter(length, breadth);
+
+console.log('area: ',area);
+console.log('perimeter: ',perimeter);
+}
+main();
+</script>

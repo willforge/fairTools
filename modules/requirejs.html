@@ -1,0 +1,33 @@
+<meta charset=utf8>
+<script src="require.js"></script>
+<!-- see also : https://requirejs.org/docs/api.html#defsimple -->
+<script>
+let length = 10;
+let breadth = 5;
+
+// Importing the module library containing
+// area and perimeter functions.
+// " ./ " is used if both the files are in the same folder.
+/*
+requirejs.config({
+    baseUrl: '.',
+    paths: {
+        library: './library'
+    }
+});
+*/
+
+require(['libraryjs'],function(mod) {
+console.log('mod:',mod);
+// Calling the functions 
+// defined in the lib module
+let area = mod.area(length, breadth);
+let perimeter = mod.perimeter(length, breadth);
+
+console.log('area: ',area);
+console.log('perimeter: ',perimeter);
+
+});
+  
+</script>
+
