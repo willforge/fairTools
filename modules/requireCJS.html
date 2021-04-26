@@ -1,0 +1,26 @@
+<meta charset=utf8>
+<!-- //  CJS module format style ! -->
+
+<script src="https://cdn.jsdelivr.net/npm/requirejs@2.3.6/require.js"></script>
+<!-- see also :
+   - https://requirejs.org/docs/api.html#defsimple
+   - https://requirejs.org/docs/commonjs.html
+-->
+<script>
+let length = 10;
+let breadth = 5;
+
+require(['libraryRCJS'],function(mod) {
+console.log('mod:',mod);
+// Calling the functions 
+// defined in the lib module
+let area = mod.area(length, breadth);
+let perimeter = mod.perimeter(length, breadth);
+
+console.log('area: ',area);
+console.log('perimeter: ',perimeter);
+
+});
+  
+</script>
+
