@@ -75,7 +75,7 @@ true
 [0]: https://gateway.ipfs.io/ipns/list.fairNet.ml/quick-install/README.html
 [1]: http://list.fairNet.ml.ipns.localhost:8080/welcome.html
 [2]: http://127.0.0.1:8080/ipns/list.fairNet.ml/list/node_list_create_n_rank.html
-[3]: http://127.0.0.1:8080/ipns/list.fairNet.ml/fairTeam.html
+[3]: http://ipfs.blockring™.ml/ipns/list.fairNet.ml/fairTeam.html
 [4]: http://127.0.0.1:8080/ipns/docs.ipfs.io/reference/http/api/
 [5]: http://gateway.ipfs.io/ipns/$key$/
 

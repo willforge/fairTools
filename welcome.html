@@ -18,6 +18,11 @@
 <ul>
 <li><a href=list/node_list_create_n_rank.html>Node-List Create &amp; Rank</a>
 </ul>
+<br><small id=mention>
+You need to have an <a href=https://ipfs.io>IPFS</a> node running locally and have <a href=":origin">:origin</a>
+in your "Allow-Origins" list, for this page to be functional (read our <a href="quick-install/README.html">quick-install</a> guide)
+</small>
+
 </div>
 
 
@@ -29,5 +34,8 @@
  discover.api_url = 'http://127.0.0.1:5001/api/v0/';
  discover.peerid().then(p => { document.getElementById('peerid').innerText = p });
  discover.peers();
+
+ let el = document.getElementById('mention');
+ el.innerHTML = el.innerHTML.replace(/:origin/g,location.origin);
 </script>
 

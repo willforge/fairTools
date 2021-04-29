@@ -1,6 +1,47 @@
 <!DOCTYPE html><meta charset="utf8">
-<script src=../js/config.js></script>
-<script src=../js/sha256.js></script>
+<script src="https://cdn.jsdelivr.net/npm/requirejs@2.3.6/require.js"></script>
+<!-- ----------------------------------------- -->
+<script>/* main script */
+const deps = [
+'../lib/js/config',
+'../lib/js/sha256'
+'../lib/js/findpeers'
+];
+require(deps,cb);
+
+async function cb(config_mod,sha256_lib,findpees_lib) {
+
+   const config = config_mod.config;
+   console.log('api_url:',config.api_url); 
+
+   let label = document.getElementsByName('label')[0].value;
+   let token = findpeers_lib.getToken(label)
+   let peers = findpeers_lib.findpeers(token)
+
+  let test = sha256_lib.sha256('Hello World');
+  console.log('sha.test:',test);
+   // test if api gateway answers ...
+   //let ready = await ipfs.isready(api_url);
+   return void(0);
+};
+
+function next_cb2() {
+   require(['../lib/js/sortlist'],list_cb);
+   function list_cb(list => {
+      let texts = list.getTexts();
+      let sorted_list = list.sort(texts);
+      list.display(sorted_list);
+      next_cb3();
+      return (sorted_list);
+   });
+}
+function next_cb3() {
+}
+
+
+
+</script>
+<!-- ----------------------------------------- -->
 
 <link rel="stylesheet" href="style.css">
 <div id=container>
@@ -21,6 +62,7 @@ label: <input name=label>
 <div id=history><i>:history</i></div>
 <!-- ----------------------------------------- -->
 </div name=container>
+<!--
 <script src=../js/ipns_cache.js></script>
 <script src=../js/api_config.js></script>
 <script src=../js/essential.js></script>
@@ -29,3 +71,4 @@ label: <input name=label>
 <script src=../js/BaseN.js></script>
 <script src=../js/Base32.js></script>
 <script src=app.js></script>
+-->
