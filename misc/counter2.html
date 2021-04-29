@@ -1,0 +1,25 @@
+<meta charset=utf8>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/requirejs@2.3.6/require.js"></script>
+<script>
+// Use CommonJS module.
+//require(["./commonJSCounterModule"],function(mod) {
+//const promised = require(["./commonJSCounterModule"],(mod) => {
+
+const cb = mod => {
+
+var cnt = mod.setValue(3);
+console.log('cnt:',cnt);
+mod.increase();
+console.log('cnt:', mod.getValue());
+mod.reset();
+console.log('cnt:', mod.getValue());
+
+};
+
+const f = require(["./commonJSCounterModule"],cb);
+console.log('f:',f);
+
+</script>
