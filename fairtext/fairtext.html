@@ -1,59 +1,16 @@
 <!DOCTYPE html><meta charset="utf8">
-<script src="https://cdn.jsdelivr.net/npm/requirejs@2.3.6/require.js"></script>
 <!-- ----------------------------------------- -->
-<script>/* main script */
-const deps = [
-'../lib/js/config',
-'../lib/js/sha256'
-'../lib/js/findpeers'
-];
-require(deps,cb);
-
-async function cb(config_mod,sha256_lib,findpees_lib) {
-
-   const config = config_mod.config;
-   console.log('api_url:',config.api_url); 
-
-   let label = document.getElementsByName('label')[0].value;
-   let token = findpeers_lib.getToken(label)
-   let peers = findpeers_lib.findpeers(token)
-
-  let test = sha256_lib.sha256('Hello World');
-  console.log('sha.test:',test);
-   // test if api gateway answers ...
-   //let ready = await ipfs.isready(api_url);
-   return void(0);
-};
-
-function next_cb2() {
-   require(['../lib/js/sortlist'],list_cb);
-   function list_cb(list => {
-      let texts = list.getTexts();
-      let sorted_list = list.sort(texts);
-      list.display(sorted_list);
-      next_cb3();
-      return (sorted_list);
-   });
-}
-function next_cb3() {
-}
-
-
-
-</script>
-<!-- ----------------------------------------- -->
-
 <link rel="stylesheet" href="style.css">
 <div id=container>
-<!-- ----------------------------------------- -->
 <div id=inputs>
-label: <input name=label>
-<input type=submit value=fetch onclick="fetch(event);">
+list-label: <input name=list_label>
+<input type=submit value=fetch name='fetch'>
 <br>date: <input type=date name=date value='' placeholder="date" onmouseover="this.valueAsDate = new Date();">
+<br>list-token: <span id=list_token><i>:list_token</i></span>
 </div>
 <div id=status><i>:status</i></div>
 <!-- ----------------------------------------- -->
-<div id=lists><i>:lists</i></div>
+<div id=list><i>:list</i></div>
 <div id=peers><i>:peers</i></div>
 
 <div id=text><i>:text</i></div>
@@ -62,13 +19,13 @@ label: <input name=label>
 <div id=history><i>:history</i></div>
 <!-- ----------------------------------------- -->
 </div name=container>
-<!--
-<script src=../js/ipns_cache.js></script>
-<script src=../js/api_config.js></script>
-<script src=../js/essential.js></script>
-<script src=../js/ipfs.js></script>
+<!-- script src=../js/ipns_cache.js></script> -->
+<!-- <script src=../js/api_config.js></script> -->
+<script src=../js/sha256.js></script>
+
+<script src=../lib/js/essential.js></script>
+<script src=../lib/js/ipfs.js></script> <!-- modified for IRP ! -->
 <script src=../js/functions.js></script>
 <script src=../js/BaseN.js></script>
 <script src=../js/Base32.js></script>
-<script src=app.js></script>
--->
+<script src=fairtext.js></script>

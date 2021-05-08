@@ -2,20 +2,20 @@
  display: grid;
  height: 100vh;
  width: 100%;
- grid-direction: horizontal;
  grid-gap: 1rem;
  grid-template-columns: 2fr 1fr;
-
+ grid-auto-flow: row dense;
 }
 #inputs {
  width: 100%;
 }
+i { color: grey; }
 #status {
  border: 1px dashed #300233;
 }
 
 
-#lists {
+#list {
   border: 1px dashed #300233;
 }
 
