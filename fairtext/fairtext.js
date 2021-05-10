@@ -45,7 +45,7 @@ function provide_list_log() {
 }
 
 async function provide_peers() {
-  let token_hash = await provide_list_token();
+  let token_hash = await provide_list_token('get');
   return find_peers_stream(token_hash);
 }
 
@@ -61,13 +61,16 @@ async function resolve_peers(streamed_objs) {
       let refresh_display = false;
       for (p of peerids) {
          if (typeof(p) != 'undefined') {
-            if (typeof(ipfs.ipns_cache[p]) == 'undefined') {
-                refresh_display = true;
+            console.log('ipfs.ipns_cache[p]:',ipfs.ipns_cache[p]);
+            if (typeof(ipfs.ipns_cache[p]) == 'undefined' || 
+                       ipfs.ipns_cache[p] != 'pending' &&
+                       ! ipfs.ipns_cache[p].match('/ipfs/')) {
                 ipfs.ipns_cache[p] = 'pending';
-                ipfs.ipfsResolve(`/ipns/${p}/public`).then( qm => {
-                  if (typeof(qm) != 'undefined') {
-                    console.debug('ipns_cache[%s]: %s (updated)',p,qm)
-                    ipfs.ipns_cache[p] = qm;
+                ipfs.ipfsResolve(`/ipns/${p}/public`).then( ipath => {
+                  if (typeof(ipath) != 'undefined') {
+                    console.debug('ipns_cache[%s]: %s (updated)',p,ipath)
+                    ipfs.ipns_cache[p] = ipath;
+                    refresh_display = true;
                   }
                   update_list_log(ipfs.ipns_cache[p],`/logs/${read_reg.list_slug}.log`)
                 }).catch(console.warn)
@@ -81,6 +84,12 @@ async function resolve_peers(streamed_objs) {
 
 function display_peers(peers) {
   console.log('display.peers:',peers);
+  let peerids = peers.map(p => p.Responses[0].ID)
+  let el = document.getElementById('peerlist');
+  let ul = '<li>';
+  ul += peerids.map(p => { return ipfs.shortqm(p);}).join('\n</li><li>');
+  ul += '</li>\n';
+  el.innerHTML = ul
 }
 function update_list_log(qmpeer,mfspath) {
   let callee = essential.functionNameJS()[0];
@@ -93,21 +102,34 @@ function read_list_label() {
   let elem = document.getElementsByName('list_label')[0];
   let slug = essential.slugify(elem.value);
          read_reg.list_label = elem.value || 'Fair List';
-  return read_reg.list_slub = slug || 'fair-list';
+  return read_reg.list_slug = slug || 'fair-list';
 }
 
 function provide_list_token() {
-  if ( typeof read_reg.list_label == 'undefined' || read_reg.list_label == null) { read_list_label(); }
+
+  if ( typeof read_reg.list_label == 'undefined' ||
+              read_reg.list_label == null) { read_list_label(); }
+  console.log('provide_list_token.list_slug:',read_reg.list_slug)
+
   let statement = `I have submitted a proposal to ${shortqm(PUBLICID)} for ${read_reg.list_label}`
   let token_nid = ipfs.getNid(`uri:tree:${statement}`)
-  let promised_token_hash = ipfs.ipfsGetToken(token_nid);
-  return promised_token_hash.then(
+
+  return ipfs.mfsExists(`/public/logs/${read_reg.list_slug}.log`).then( _ => {
+    let promised_token_hash;
+    if (_[0]) { // list_slug.log exists
+      promised_token_hash = ipfs.ipfsSetToken(token_nid);
+    } else {
+      promised_token_hash = ipfs.ipfsGetToken(token_nid);
+    }
+    return promised_token_hash.then(
      hash => {
       irp_reg.list_token = hash;
       console.log('provide_list_token.hash:',hash);
       // TODO: invalidate  list_token,list_label,list_slig in upstream 
       return hash; }
-   ); // all provides are promises
+     ); // all provides are promises
+  })
+  .catch(console.warn);
 }
 
 window.fairtext = fairtext;
