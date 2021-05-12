@@ -1,6 +1,10 @@
 // fairtext ...
 
 (function(){
+
+var i = 0;
+var refresh_display = false;
+
 // GLOBAL DEFINITIONS ...
 var fairtext = {}
 // tokens discovery:
@@ -35,6 +39,7 @@ elem.addEventListener('click', fetch,useCapture);
 
 function fetch(ev) {
    provide_list_log();
+   // TODO: periodically refresh peers list
    /* build_list(); */
 }
 
@@ -50,34 +55,50 @@ async function provide_peers() {
 }
 
 function find_peers_stream(hash) {
+ 
   return ipfsFindPeersStream(hash,resolve_peers,display_peers);
 }
 
 async function resolve_peers(streamed_objs) {
    let peerids = [];
+   let newpeers = [];
    if (streamed_objs.length > 0) {
-      peers.push(...streamed_objs.filter( (o) => o.Type == 4 ));
-      peerids = peers.map((o) => o.Responses[0].ID );
-      let refresh_display = false;
-      for (p of peerids) {
+      newpeers.push(...streamed_objs.filter( (o) => o.Type == 4 ));
+      peerids = newpeers.map((o) => o.Responses[0].ID );
+      if (peerids.length > 0) {
+        console.info('stream#%s %s peers: %o',i++,peerids.length,peerids);
+      }
+      for (let p of peerids) {
          if (typeof(p) != 'undefined') {
-            console.log('ipfs.ipns_cache[p]:',ipfs.ipns_cache[p]);
+            console.log('ipfs.ipns_cache[%s]:',shortqm(p),ipfs.ipns_cache[p]);
             if (typeof(ipfs.ipns_cache[p]) == 'undefined' || 
                        ipfs.ipns_cache[p] != 'pending' &&
                        ! ipfs.ipns_cache[p].match('/ipfs/')) {
                 ipfs.ipns_cache[p] = 'pending';
-                ipfs.ipfsResolve(`/ipns/${p}/public`).then( ipath => {
+                ipfs.ipfsPeerConnect(p,undefined); // (1) undefined means any layers are ok
+                ipfs.ipfsResolve(`/ipns/${p}/public`).then( ipath => { // (2)
                   if (typeof(ipath) != 'undefined') {
+                    console.log('%s.ipath:',shortqm(p),ipath);
                     console.debug('ipns_cache[%s]: %s (updated)',p,ipath)
                     ipfs.ipns_cache[p] = ipath;
                     refresh_display = true;
+                    update_list_log(ipfs.ipns_cache[p],`/logs/${read_reg.list_slug}.log`) // (3)
+                  } else {
+                    console.log('%s.ipath:',shortqm(p),ipath);
+                    if (ipfs.ipns_cache[p] == 'pending') {
+                      ipfs.ipns_cache[p] = undefined; // TODO what ???
+                    }
                   }
-                  update_list_log(ipfs.ipns_cache[p],`/logs/${read_reg.list_slug}.log`)
                 }).catch(console.warn)
             }
          }
       }
-      if (refresh_display) { display_peers(peers); refresh_display = false; }
+      // Promise.any().then();
+      peers.push(...newpeers);
+      if (refresh_display) {
+         console.log('%s #peers:',i,peers.length);
+         display_peers(peers); refresh_display = false;
+      }
    }
    return peerids;
 }
@@ -91,10 +112,23 @@ function display_peers(peers) {
   ul += '</li>\n';
   el.innerHTML = ul
 }
-function update_list_log(qmpeer,mfspath) {
+function update_list_log(qmpeer,logpath) {
   let callee = essential.functionNameJS()[0];
+  let local_logf = '/public' + logpath
+  let remote_logf = qmpeer + logpath
+
+  if (mfsExists(local_logf)[0]) {
+  }
+  let date = 'today';
+  let time = 'now';
+  let slug = read_reg.list_slug;
+  let peerid = ipfs.peerid;
+  let buf = `# ${slug}.log from ${peerid} on ${date} at ${time}\n`;
+
   // TODO ...  get log + append list_slug.log
-  console.log(`${callee}.${qmpeer}${mfspath}: need update`)
+  console.log(`${callee}.${qmpeer}${logpath}: need update`)
+  let log1 = ipfs.mfsGetContentByPath(local_logf).then()
+  let log2 = ipfs.ipfsGetContentByPath(remote_logf).then()
 }
 
 
