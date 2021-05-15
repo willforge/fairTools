@@ -103,6 +103,7 @@ async function resolve_peers(streamed_objs) {
    return peerids;
 }
 
+
 function display_peers(peers) {
   console.log('display.peers:',peers);
   let peerids = peers.map(p => p.Responses[0].ID)
