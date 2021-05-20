@@ -170,7 +170,7 @@ function update_list_log(proms) {
     for (let result of results) {
       let buf = result[1]
       logs += buf; // assume this operation is atomic (i.e. 1 JS thread)
-      console.log('buf[%s]:',ipfs.shortqm(result[0]),buf)
+      console.log('buf[%s]:',ipfs.shortqm(result[0]),{'lines': buf.split('\n')})
     }
     return logs  
   })
