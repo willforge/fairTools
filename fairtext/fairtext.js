@@ -176,7 +176,8 @@ function update_list_log(proms) {
     // uniquify:
     logs = uniquify(logs);
     console.log('logs:',{'lines': logs.split('\n')})
-    return ipfs.ipfsWriteContent(local_logf,logs,{ raw: true });
+    return ipfs.ipfsWriteContent(local_logf,logs,{ raw: true })
+    .then( hash => { console.debug(callee+'.logs.hash:', hash); return hash; })
   })
 
 }).catch(console.error);
