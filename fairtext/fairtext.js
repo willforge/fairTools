@@ -53,7 +53,7 @@ function provide_list_log() {
 }
 
 async function provide_peers() {
-  let token_hash = await provide_list_token();
+  let token_hash = await provide_list_token(); // 2nd set !
   return find_peers_stream(token_hash);
 }
 
@@ -68,7 +68,7 @@ async function resolve_peers(streamed_objs) {
    let offset = peers.length - 1 ;
    if (streamed_objs.length > 0) {
       newpeers.push(...streamed_objs.filter( (o) => o.Type == 4 ));
-      peerids = newpeers.map((o) => {id: o.Responses[0].ID} );
+      peerids = newpeers.map((o) => { return {id: o.Responses[0].ID}; } );
       if (peerids.length > 0) {
         console.info('stream#%s %s peers: %o',i++,peerids.length,peerids);
       }
@@ -131,6 +131,7 @@ function update_list_log(proms) {
   let callee = essential.functionNameJS()[0];
   let slug = read_reg.list_slug;
   let logpath = `/logs/${slug}.log`;
+  console.log(callee+'.proms:', proms);
 
   let local_logf = '/public' + logpath
   return mfsExists(local_logf).then( _ => {
@@ -172,11 +173,43 @@ function update_list_log(proms) {
       logs += buf; // assume this operation is atomic (i.e. 1 JS thread)
       console.log('buf[%s]:',ipfs.shortqm(result[0]),{'lines': buf.split('\n')})
     }
-    return logs  
+    // uniquify:
+    logs = uniquify(logs);
+    console.log('logs:',{'lines': logs.split('\n')})
+    return ipfs.ipfsWriteContent(local_logf,logs,{ raw: true });
   })
 
 }).catch(console.error);
 
+}
+
+function uniquify(buf) {
+  let lines = buf.replace(/\r/g,'').split('\n').slice(0,-1);
+  let seen = {'':null}; // to skip all empty lines
+  let uniq = '';
+  for (let rec of lines) {
+    rec = correct_ts(rec);
+    if (typeof seen[rec] == 'undefined') {
+      uniq += rec+'\n';
+      seen[rec]++;
+    }
+  }
+  return uniq;
+}
+
+function correct_ts(rec) { // QmPhpQ8DUiyKqrFiginKeiHbF3w1ARGwkj6s8jkQGgTEX8
+   let fields = rec.split(' ');
+   let ts = fields[0].slice(0,-1);
+   if (ts == '0') {
+      rec = ''; // remove line
+      console.log('correct_ts: remove record:',ts);
+   } else if (ts.length < 11) {
+      console.log('correct_ts:',ts);
+      let stamp = parseInt(ts) * 1000;
+      fields[0] = stamp + ':'
+      rec = fields.join(' ')
+   }
+  return rec;
 }
 
 
@@ -199,8 +232,10 @@ function provide_list_token() {
   return ipfs.mfsExists(`/public/logs/${read_reg.list_slug}.log`).then( _ => {
     let promised_token_hash;
     if (_[0]) { // list_slug.log exists
+      console.log('provide_list_token.setToken:',token_nid)
       promised_token_hash = ipfs.ipfsSetToken(token_nid);
     } else {
+      console.log('provide_list_token.GetToken:',token_nid)
       promised_token_hash = ipfs.ipfsGetToken(token_nid);
     }
     return promised_token_hash.then(
