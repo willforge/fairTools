@@ -204,7 +204,7 @@ function uniquify(buf) {
 function correct_ts(rec) { // QmPhpQ8DUiyKqrFiginKeiHbF3w1ARGwkj6s8jkQGgTEX8
    let fields = rec.split(' ');
    let ts = fields[0].slice(0,-1);
-   if rec.match(/^#/) { return rec; }
+   if ( rec.match(/^#/) ) { return rec; }
    if (rec.match(/^\D/) ) {
       rec = ''; // remove line
       console.log('correct_ts: remove record:',ts);
