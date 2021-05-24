@@ -2,8 +2,11 @@
 
 (function(){
 
-var i = 0;
-var refresh_display = false;
+ var i = 0;
+ var refresh_display = false;
+
+// console.log('isoDateTime:',essential.isoDateTime())
+
 
 // GLOBAL DEFINITIONS ...
 var fairtext = {}
@@ -139,8 +142,8 @@ function update_list_log(proms) {
     return ipfs.mfsGetContentByPath(local_logf);
   } else {
  
-    let date = 'today';
-    let time = 'now';
+
+    let [date,time] = essential.isoDateTime()
     let buf = `# ${slug}.log from ${ipfs.peerid} on ${date} at ${time}\n`;
 
     return buf;
@@ -171,7 +174,7 @@ function update_list_log(proms) {
     for (let result of results) {
       let buf = result[1]
       logs += buf; // assume this operation is atomic (i.e. 1 JS thread)
-      console.log('buf[%s]:',ipfs.shortqm(result[0]),{'lines': buf.split('\n')})
+      console.log(callee+'.promise.all.buf[%s]:',ipfs.shortqm(result[0]),{'lines': buf.split('\n')})
     }
     // uniquify:
     logs = uniquify(logs);
@@ -185,7 +188,7 @@ function update_list_log(proms) {
 }
 
 function uniquify(buf) {
-  let lines = buf.replace(/\r/g,'').split('\n').slice(0,-1);
+  let lines = buf.replace(/\r/g,'').slice(0,-1).split('\n');
   let seen = {'':null}; // to skip all empty lines
   let uniq = '';
   for (let rec of lines) {
@@ -204,7 +207,7 @@ function correct_ts(rec) { // QmPhpQ8DUiyKqrFiginKeiHbF3w1ARGwkj6s8jkQGgTEX8
    if (ts == '0') {
       rec = ''; // remove line
       console.log('correct_ts: remove record:',ts);
-   } else if (ts.length < 11) {
+   } else if (ts != '#' && ts.length < 11) {
       console.log('correct_ts:',ts);
       let stamp = parseInt(ts) * 1000;
       fields[0] = stamp + ':'
