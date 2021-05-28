@@ -2,11 +2,10 @@
 
 (function(){
 
- var i = 0;
- var refresh_display = false;
-
+var i = 0;
+var refresh_display = false;
+var log_resolve_promises = []; // keep track of pending promises
 // console.log('isoDateTime:',essential.isoDateTime())
-
 
 // GLOBAL DEFINITIONS ...
 var fairtext = {}
@@ -61,13 +60,18 @@ async function provide_peers() {
 }
 
 function find_peers_stream(hash) {
-  return ipfsFindPeersStream(hash,resolve_peers,display_peers);
+  log_resolve_promises = []; // keep track of pending promises
+  return ipfsFindPeersStream(hash,resolve_peers,display_peers)
+  .finally( _ => {
+      if (log_resolve_promises.length > 0) {
+         Promise.allSettled(log_resolve_promises).then(update_list_log)
+      }
+  });
 }
 
 async function resolve_peers(streamed_objs) {
    let newpeers = [];
    let peerids =[] // peerids of arriving newpeers
-   let log_resolve_promises = []; // keep track of pending promises
    let offset = peers.length - 1 ;
    if (streamed_objs.length > 0) {
       newpeers.push(...streamed_objs.filter( (o) => o.Type == 4 ));
@@ -104,7 +108,7 @@ async function resolve_peers(streamed_objs) {
                     return Promise.reject(p); // !!!!! ???
                   }
                 }).catch(console.error)
-                log_resolve_promises.push(promise)
+                log_resolve_promises.push(promise) // <--
             }
          }
       }
@@ -113,9 +117,6 @@ async function resolve_peers(streamed_objs) {
       if (refresh_display) {
          console.log('%s #peers:',i,peers.length);
          display_peers(peers); refresh_display = false;
-      }
-      if (log_resolve_promises.length > 0) {
-         Promise.allSettled(log_resolve_promises).then(update_list_log)
       }
    }
    return peerids;
@@ -142,7 +143,6 @@ function update_list_log(proms) {
     return ipfs.mfsGetContentByPath(local_logf);
   } else {
  
-
     let [date,time] = essential.isoDateTime()
     let buf = `# ${slug}.log from ${ipfs.peerid} on ${date} at ${time}\n`;
 
@@ -170,7 +170,7 @@ function update_list_log(proms) {
     .then(buf => [peerid,buf]);
   remote_promises.push(promise)
   }
-  Promise.all(remote_promises).then( results => {
+  return Promise.all(remote_promises).then( results => {
     for (let result of results) {
       let buf = result[1]
       logs += buf; // assume this operation is atomic (i.e. 1 JS thread)
@@ -181,7 +181,9 @@ function update_list_log(proms) {
     console.log('logs:',{'lines': logs.split('\n')})
     return ipfs.ipfsWriteContent(local_logf,logs,{ raw: true })
     .then( hash => { console.debug(callee+'.logs.hash:', hash); return hash; })
+    .then( hash => { ipfs.ipfsPublishByPath('/public'); })
   })
+  
 
 }).catch(console.error);
 
@@ -195,6 +197,8 @@ function uniquify(buf) {
     rec = correct_ts(rec);
     if (typeof seen[rec] == 'undefined') {
       uniq += rec+'\n';
+      seen[rec] = 1;
+    } else {
       seen[rec]++;
     }
   }
@@ -205,6 +209,7 @@ function correct_ts(rec) { // QmPhpQ8DUiyKqrFiginKeiHbF3w1ARGwkj6s8jkQGgTEX8
    let fields = rec.split(' ');
    let ts = fields[0].slice(0,-1);
    if ( rec.match(/^#/) ) { return rec; }
+   if ( rec.match(/^NaN:/) ) { return rec.replace('NaN:','#'); }
    if (rec.match(/^\D/) ) {
       rec = ''; // remove line
       console.log('correct_ts: remove record:',ts);
@@ -239,6 +244,7 @@ function provide_list_token() {
     if (_[0]) { // list_slug.log exists
       console.log('provide_list_token.setToken:',token_nid)
       promised_token_hash = ipfs.ipfsSetToken(token_nid);
+      promised_announce = ipfs.ipfsProvideHash(promised_token_hash);
     } else {
       console.log('provide_list_token.GetToken:',token_nid)
       promised_token_hash = ipfs.ipfsGetToken(token_nid);

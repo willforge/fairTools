@@ -155,12 +155,14 @@ ipfs files cp /ipfs/$spot /etc/spot.json
 dot3=$(ipfs files stat /... --hash);
 echo dot3: $dot3
 echo "publish : /...,/my,/public,/etc"
+
 root=$(ipfs name resolve --timeout 3s)
 if [ "/$root" != '/' ]; then
 qm=${root#*/ipfs/}
 else
 qm=$emptyd
 fi
+# overwrite 4 directories with MFS current folders
 qm=$(ipfs object patch add-link $qm '...' $dot3);
 qm=$(ipfs object patch add-link $qm 'my' $my);
 qm=$(ipfs object patch add-link $qm 'public' $pub);
