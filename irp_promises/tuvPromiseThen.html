@@ -18,7 +18,7 @@
 </html>
 
 <script>
- const register = {};
+ const registry = {};
  
  function getD1(caller) {
      let callee = essential.functionNameJS()[0];
@@ -31,6 +31,17 @@
      return new Promise(
 	 res => {setTimeout(() => {res(d1)}, 5000);})
  }
+ function provideD1(caller) {
+     let callee = essential.functionNameJS()[0];
+     console.log(callee+' called by',caller);
+     if (isValid('D1')) { return registry.D1.value; } else { registry.D1 = { valid: false }; }
+     const d1 = getD1(callee);
+
+     if (registry.D1.value != d1) { invalidate(caller); }
+     registry.D1.value = d1;
+     registry.D1.valid = true;
+     return d1;
+ }
  
  function getD2(caller) {
      let callee = essential.functionNameJS()[0];
@@ -42,6 +53,18 @@
      return new Promise(
 	 res => {setTimeout(() => {res(d2)}, 2000);})
  }
+ function provideD2(caller) {
+     let callee = essential.functionNameJS()[0];
+     console.log(callee+' called by',caller);
+     if (isValid('D2')) { return registry.D2.value; } else { registry.D2 = { valid: false }; }
+     const d2 = getD2(callee);
+
+     if (registry.D2.value != d2) { invalidate(caller); }
+     registry.D2.value = d2;
+     registry.D2.valid = true;
+     return d2;
+ }
+
 
  function getD3(caller) {
      let callee = essential.functionNameJS()[0];
@@ -51,15 +74,26 @@
      let d3 = parseInt(el.value);
      console.log(callee+'.d3:',d3);
 
-     return new Promise(
-	 res => {setTimeout(() => {res(d3)}, 1000);})
+     return new Promise( res => {setTimeout(() => {res(d3)}, 1000);})
+ }
+ function provideD3(caller) {
+     let callee = essential.functionNameJS()[0];
+     console.log(callee+' called by',caller);
+     if (isValid('D3')) { return registry.D3.value; } else { registry.D3 = { valid: false }; }
+     const d3 = getD3(callee);
+
+     if (registry.D3.value != d3) { invalidate(caller); }
+     registry.D3.value = d3;
+     registry.D3.valid = true;
+     return d3;
  }
  
  function provideU(caller) {
      let callee = essential.functionNameJS()[0];
      console.log(callee+' called by',caller);
+     if (isValid('U')) { return registry.U.value; } else { registry.U = { valid: false }; }
 
-     const d2 = getD2(callee);
+     const d2 = provideD2(callee);
      const v = provideV(callee);
 
      const promised_u = Promise.all([d2,v]).
@@ -67,12 +101,14 @@
          console.log("provideU d2",d2);
          console.log("provideU v",v);
          result = d2 + v;
-         return(result);
+         return result;
        })
 
      promised_u.then( u => {
+       if (registry.U.value != u) { invalidate(caller); }
        console.log("result d1+d2 = U",u);
-      register['U'] = u;
+      registry['U'].value = u;
+      registry['U'].valid = true;
      });
      
      return promised_u;
@@ -81,14 +117,17 @@
  function provideV(caller) {
      let callee = essential.functionNameJS()[0];
      console.log(callee+' called by',caller);
+     if (isValid('V')) { return registry.V.value; } else { registry.V = { valid: false }; }
      
-     const d3 = getD3(callee);
+     const d3 = provideD3(callee);
 
      const promised_v = d3.then( d3 => {
        console.log("provideV d3",d3);
        result = 3 * d3;
        console.log("result 3* d3 = V",result);
-       register.V= result;
+       if (registry.V.value != result) { invalidate(caller); }
+       registry.V.value = result;
+       registry.V.valid = true;
        return result;
      })
      
@@ -98,6 +137,7 @@
  function provideT(caller) {
      let callee = essential.functionNameJS()[0];
      console.log(callee+' called by',caller);
+     if (isValid('T')) { return registry.T.value; } else { registry.T = { valid: false }; }
 
      const d1 = getD1(callee);
 
@@ -109,10 +149,25 @@
          result = d1 + u;
          console.log("result d1+u = T ",result);
          document.getElementById("T").innerHTML = result;
-         register.T = result;
-         console.log("register: ",register);
+         if (registry.T.value != result) { invalidate(caller); }
+         registry.T.value = result;
+         registry.T.valid = true;
+         console.log("registry: ",registry);
          return result;
        })
+ }
+
+ function invalidate(parent) {
+  const key = parent.replace('provide','');
+  if (typeof registry[key] != 'undefined') {
+    registry[key].valid = false;
+  } else {
+    registry[key] = { valid: null };
+  }
+  return void(0);
+ }
+ function isValid(key) {
+    return (typeof(registry[key]) !=  'undefined' && registry[key].valid);
  }
  
 </script>
