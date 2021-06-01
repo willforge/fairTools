@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+    <head>
+	<meta charset="utf-8">
+	<script src=../lib/js/essential.js></script>
+    </head>
+    <body>
+	<h3>T = d1 + U(d2 + V(3 * d3) ) </h3>
+	d1 : <input type="number" id="d1" value="1"><br>
+	d2 : <input type="number" id="d2" value="1"><br>
+	d3 : <input type="number" id="d3" value="1"><br>
+	<br>
+	<button onclick="provideT('main')">Compute T</button>
+	<br>
+	T  : <span id="T"></span>
+	
+    </body>
+</html>
+
+<script>
+ const register = {};
+ 
+ function getD1(caller) {
+     let callee = essential.functionNameJS()[0];
+     console.log(callee+' called by',caller);
+
+     let el = document.getElementById("d1");
+     let d1 = parseInt(el.value);
+     console.log(callee+'.d1:',d1);
+     
+     return new Promise(
+	 res => {setTimeout(() => {res(d1)}, 5000);})
+ }
+ 
+ function getD2(caller) {
+     let callee = essential.functionNameJS()[0];
+     console.log(callee+' called by',caller);
+     
+     let el = document.getElementById("d2");
+     let d2 = parseInt(el.value);
+     console.log(callee+'.d2:',d2);
+     return new Promise(
+	 res => {setTimeout(() => {res(d2)}, 2000);})
+ }
+
+ function getD3(caller) {
+     let callee = essential.functionNameJS()[0];
+     console.log(callee+' called by',caller);
+
+     let el = document.getElementById("d3");
+     let d3 = parseInt(el.value);
+     console.log(callee+'.d3:',d3);
+
+     return new Promise(
+	 res => {setTimeout(() => {res(d3)}, 1000);})
+ }
+ 
+ function provideU(caller) {
+     let callee = essential.functionNameJS()[0];
+     console.log(callee+' called by',caller);
+
+     const d2 = getD2(callee);
+     const v = provideV(callee);
+
+     const promised_u = Promise.all([d2,v]).
+       then( proms => { let [d2,v] = proms;
+         console.log("provideU d2",d2);
+         console.log("provideU v",v);
+         result = d2 + v;
+         return(result);
+       })
+
+     promised_u.then( u => {
+       console.log("result d1+d2 = U",u);
+      register['U'] = u;
+     });
+     
+     return promised_u;
+ }
+
+ function provideV(caller) {
+     let callee = essential.functionNameJS()[0];
+     console.log(callee+' called by',caller);
+     
+     const d3 = getD3(callee);
+
+     const promised_v = d3.then( d3 => {
+       console.log("provideV d3",d3);
+       result = 3 * d3;
+       console.log("result 3* d3 = V",result);
+       register.V= result;
+       return result;
+     })
+     
+     return promised_v;
+ }
+ 
+ function provideT(caller) {
+     let callee = essential.functionNameJS()[0];
+     console.log(callee+' called by',caller);
+
+     const d1 = getD1(callee);
+
+     const u = provideU(callee);
+     const promised_t = Promise.all([d1,u]).
+       then( proms => { let [d1,u] = proms;
+         console.log("provideV d1",d1);
+         console.log("provideT u",u);
+         result = d1 + u;
+         console.log("result d1+u = T ",result);
+         document.getElementById("T").innerHTML = result;
+         register.T = result;
+         console.log("register: ",register);
+         return result;
+       })
+ }
+ 
+</script>

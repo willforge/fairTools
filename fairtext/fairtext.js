@@ -28,7 +28,7 @@ let elem = document.getElementsByName('list_label')[0];
 elem.addEventListener('change', read_list_label,useCapture);
 
 elem = document.getElementsByName('fetch')[0];
-elem.addEventListener('click', fetch,useCapture);
+elem.addEventListener('click', pull,useCapture);
 
 // --------------------------------------------------------
 // main :
@@ -39,19 +39,38 @@ elem.addEventListener('click', fetch,useCapture);
 
 // --------------------------------------------------------
 
-function fetch(ev) {
-   provide_list_log();
+function pull(ev) {
+   let callee = essential.functionNameJS()[0];
+   provide_list_log(callee)
+   .then(load_sorted_list);
+
    // TODO: periodically refresh peers list
    /* build_list(); */
 }
 
+function irp_pull(ev) {
+  promise1 = provide_list_log(callee)
+  // /!\ forbiden 
+  promise1.then(logs => { return promise2 = provide_load_sorted_list(promise1.callee) )
+  promise3 = provide_parameter3(callee)
+  
+  Promise.all([promise1,promise3]).then(proms => { return build(proms)})
+
+}
+
 function provide_list_log() {
    //let promized_list_log = await provide_local_list_log(); 
-   let promized_peers = provide_peers(); // never end
+   let promized_logs = provide_peers() // ? never end
+    .then(update_list_log)
 
 
-   return promized_peers;
+   return promized_logs;
    // build_history_log(); 
+}
+
+
+function load_sorted_list() {
+  
 }
 
 async function provide_peers() {
@@ -64,7 +83,7 @@ function find_peers_stream(hash) {
   return ipfsFindPeersStream(hash,resolve_peers,display_peers)
   .finally( _ => {
       if (log_resolve_promises.length > 0) {
-         Promise.allSettled(log_resolve_promises).then(update_list_log)
+         return Promise.allSettled(log_resolve_promises)
       }
   });
 }
@@ -181,7 +200,14 @@ function update_list_log(proms) {
     console.log('logs:',{'lines': logs.split('\n')})
     return ipfs.ipfsWriteContent(local_logf,logs,{ raw: true })
     .then( hash => { console.debug(callee+'.logs.hash:', hash); return hash; })
-    .then( hash => { ipfs.ipfsPublishByPath('/public'); })
+    .then( hash => {
+       let auto_publish = document.getElementsByName('publish')[0].checked;
+       if (auto_publish) {
+        ipfs.ipfsPublishByPath('/public'); // systematic publish
+       } else {
+        console.info(callee+'.skip.publish');
+       }
+    })
   })
   
 
