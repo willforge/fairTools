@@ -5,7 +5,7 @@
 	<script src=../lib/js/essential.js></script>
     </head>
     <body>
-	<h3>T = d1 + U(d2 + V(3 * d3) ) </h3>
+	<h3>T = d1 + U(d2 + V(3 * d3 + d1) ) </h3>
 	d1 : <input type="number" name="d1" value="1"><br>
 	d2 : <input type="number" name="d2" value="1"><br>
 	d3 : <input type="number" name="d3" value="1"><br>
@@ -122,12 +122,14 @@
      console.log(callee+' called by',caller);
      if (isValid('V')) { return registry.V.value; } else { registry.V = { valid: false }; }
      
+     const d1 = provideD1(callee);
      const d3 = provideD3(callee);
 
-     const promised_v = d3.then( d3 => {
+     const promised_v = Promise.all([d1,d3]).then( proms => { let [d1,d3] = proms
+       console.log(callee+'.d1:',d1);
        console.log(callee+'.d3:',d3);
-       result = 3 * d3;
-       console.log(callee+'.result 3* d3 = V =',result);
+       result = 3 * d3 + d1;
+       console.log(callee+'.result 3* d3 + d1 = V =',result);
        if (registry.V.value != result) { invalidate(caller); }
        registry.V.value = result;
        registry.V.valid = true;
