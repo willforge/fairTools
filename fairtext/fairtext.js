@@ -2,26 +2,31 @@
 
 (function(){
 
+// GLOBAL DEFINITIONS ...
+var fairtext = {}
+
 var i = 0;
 const deps = { };
-const registry = { 'fetch': null };
 
 var refresh_display = false;
 var log_resolve_promises = []; // keep track of pending promises
 // console.log('isoDateTime:',essential.isoDateTime())
 
-// GLOBAL DEFINITIONS ...
-var fairtext = {}
 // tokens discovery:
 const PUBLICID = 'QmezgbyqFCEybpSxCtGNxfRD9uDxC53aNv5PfhB3fGUhJZ';
 const editor_token_label = `I have submitted a proposal to ${shortqm(PUBLICID)}`
 const editor_token_nid = getNid(`uri:text:${editor_token_label}`);
 
+// Global Registry
+const mutables = { 'fetch' : null };
+const registry = { };
+fairtext.mutables = mutables;
+fairtext.registry = registry;
 // Read Registry
 var read_reg = {
  list_label: null,
 };
-// IRP registry
+// IRP registry (old)
 var irp_reg = {
 };
 
@@ -59,47 +64,101 @@ function irp_pull(ev) {
 
   const promise = provide_sorted_list(callee);
   promise.then(display_sorted_list)
-
+  return promise;
 }
 
 function provide_sorted_list() {
   let callee = essential.functionNameJS()[0];
-  const list_log = provide(callee,'list_log',provide_list_log);
+  const promized_list_log = provide(callee,'list_log',provide_list_log);
 
-  return Promise.all([list_log]).then( proms => { let [list_log] = proms;
-   return build_sorted_list(list_log);
+  console.debug(callee+'.promized_list_log:',promized_list_log);
+
+  return Promise.all([promized_list_log]).then( proms => { let [list_log] = proms;
+  return build_sorted_list(list_log);
   })
 }
+function display_sorted_list(list) {
+ let el = document.getElementById('list');
+ el.innerHTML = 'list: '+list;
+}
+
+const uniquify_n_split = function(buf) { // uniquify before write
+  let callee = essential.functionNameJS()[0];
+   let seen = {};
+   let uniq = [];
+   buf = buf.replace(/\r/g,'');
+   // buf = buf.replace(']',']\n') // Why ??? 
+   console.log(callee+'.buf:',buf);
+      let lines = buf.slice(0,-1).split('\n'); // might have \r\n !
+   console.log(callee+'.lines:',lines);
+   for (let line of lines) {
+      if ('undefined' == typeof(seen[line])) {
+         seen[line] = 1;
+         let rec = line.split(' ');
+         rec[0] = rec[0].slice(0,-1); // chomp (remove ':')
+         uniq.push(rec)
+      }
+   }
+   return uniq
+}
+
+
 function build_sorted_list(list_log) {
   let callee = essential.functionNameJS()[0];
-  console.log(callee+'.list_log:',list_log);
+  let unsorted_list = list_log.split('\n');
+  console.log(callee+'.unsorted_list:',{'list':unsorted_list});
+  let lines = unsorted_list.sort();
+   console.log(callee+'.lines:',lines);
+   return lines;
+
+  // console.log(callee+'.records:',records);
+  // return records;
 }
 
-function provide(caller,name,raw_provider) {
+function by_stamp(a,b) {
+ return a[0] - b[0];
+}
+function by_first_key(a,b) {
+ // sort by increasing key;
+ return compare(a[0],b[0]);
+}
+
+function provide(caller,name,provide_n_build) {
   let callee = essential.functionNameJS()[0];
   dag_build(caller,name);
-  if (isValid(name)) { return getRegistry(name) } else { setRegistry(name,null); }
-  const value = raw_provider();
-  if (getRegistry(name) != value) { invalidate(caller); }
-  setRegistry(name,value);
-  return value;
+  if (isValid(name)) { return getRegistry(name) } else { setRegistry(name,null,null); }
+  return provide_n_build().then( value => {
+        let newkey= hash(value);
+        if (hasChanged(name,newkey)) {
+          invalidate(caller);
+          setRegistry(name,newkey,value);
+        }
+        })
 }
 
-function getRegistry(key) {
+function getRegistry(name) {
+  let key = mutables[name];
   return registry[key];
 }
-function setRegistry(key,value) {
+function setRegistry(name, key, value) {
+  mutables[name] = key; 
   registry[key] = value;
 }
 
-
+function hash(value) {
+  let len = value.length;
+  return sha1('blob ${len}\0'+value);
+}
 
 function provide_list_log() {
+  let callee = essential.functionNameJS()[0];
    //let promized_list_log = await provide_local_list_log(); 
    let promized_logs = provide_peers() // ? never end
     .then(update_list_log)
 
-
+   promized_logs.then(result => {
+     console.debug(callee+'.promized_logs.return:',result);
+   })
    return promized_logs;
    // build_history_log(); 
 }
@@ -140,11 +199,13 @@ async function resolve_peers(streamed_objs) {
                        ipfs.ipns_cache[p] != 'pending' &&
                        ! ipfs.ipns_cache[p].match('/ipfs/')) {
                 ipfs.ipns_cache[p] = 'pending';
-                ipfs.ipfsPeerConnect(p,undefined).then( proms => { // (1) undefined means any layers are ok
-                  console.log('ipfsPeerConnect.then:',proms);
-                  let el = document.getElementById('console');
-                  el.innerText = JSON.stringify(proms);
-                });
+                if (false) {
+                   ipfs.ipfsPeerConnect(p,undefined).then( proms => { // (1) undefined means any layers are ok
+                         console.log('ipfsPeerConnect.then:',proms);
+                         let el = document.getElementById('console');
+                         el.innerText = JSON.stringify(proms);
+                         });
+                }
                 let promise = ipfs.ipfsResolve(`/ipns/${p}/public`).then( ipath => { // (2)
                   if (typeof(ipath) != 'undefined') {
                     console.log('%s.ipath:',shortqm(p),ipath);
@@ -231,7 +292,7 @@ function update_list_log(proms) {
     // uniquify:
     logs = uniquify(logs);
     console.log('logs:',{'lines': logs.split('\n')})
-    return ipfs.ipfsWriteContent(local_logf,logs,{ raw: true })
+    let promized_write = ipfs.ipfsWriteContent(local_logf,logs,{ raw: true })
     .then( hash => { console.debug(callee+'.logs.hash:', hash); return hash; })
     .then( hash => {
        let auto_publish = document.getElementsByName('publish')[0].checked;
@@ -240,7 +301,9 @@ function update_list_log(proms) {
        } else {
         console.info(callee+'.skip.publish');
        }
+       return hash;
     })
+    return logs;
   })
   
 
@@ -334,8 +397,14 @@ function invalidate(parent,indent) {
   }
   return null;
  }
- function isValid(key) {
-    return ('undefined' != typeof(registry[key]) && registry[key] != null)
+
+ function isValid(name) {
+   return (typeof(mutables[name]) != 'undefined' && registry[name] != null);
+ }
+ function hasChanged(name,hash) {
+  let key = mutables[name];
+  if ('undefined' != typeof registry[key]) { return true; }
+  return (hash != registry[key]);
  }
 
  // build Deps Acyclic Graph ...
