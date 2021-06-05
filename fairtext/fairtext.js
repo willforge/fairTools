@@ -3,6 +3,9 @@
 (function(){
 
 var i = 0;
+const deps = { };
+const registry = { 'fetch': null };
+
 var refresh_display = false;
 var log_resolve_promises = []; // keep track of pending promises
 // console.log('isoDateTime:',essential.isoDateTime())
@@ -28,7 +31,7 @@ let elem = document.getElementsByName('list_label')[0];
 elem.addEventListener('change', read_list_label,useCapture);
 
 elem = document.getElementsByName('fetch')[0];
-elem.addEventListener('click', pull,useCapture);
+elem.addEventListener('click', irp_pull,useCapture);
 
 // --------------------------------------------------------
 // main :
@@ -49,14 +52,47 @@ function pull(ev) {
 }
 
 function irp_pull(ev) {
-  promise1 = provide_list_log(callee)
-  // /!\ forbiden 
-  promise1.then(logs => { return promise2 = provide_load_sorted_list(promise1.callee) )
-  promise3 = provide_parameter3(callee)
-  
-  Promise.all([promise1,promise3]).then(proms => { return build(proms)})
+  let caller = ev.target.name // input name (button)
+  let callee = essential.functionNameJS()[0];
+  console.debug('caller,callee:',caller,callee);
+  dag_build(caller,callee);
+
+  const promise = provide_sorted_list(callee);
+  promise.then(display_sorted_list)
 
 }
+
+function provide_sorted_list() {
+  let callee = essential.functionNameJS()[0];
+  const list_log = provide(callee,'list_log',provide_list_log);
+
+  return Promise.all([list_log]).then( proms => { let [list_log] = proms;
+   return build_sorted_list(list_log);
+  })
+}
+function build_sorted_list(list_log) {
+  let callee = essential.functionNameJS()[0];
+  console.log(callee+'.list_log:',list_log);
+}
+
+function provide(caller,name,raw_provider) {
+  let callee = essential.functionNameJS()[0];
+  dag_build(caller,name);
+  if (isValid(name)) { return getRegistry(name) } else { setRegistry(name,null); }
+  const value = raw_provider();
+  if (getRegistry(name) != value) { invalidate(caller); }
+  setRegistry(name,value);
+  return value;
+}
+
+function getRegistry(key) {
+  return registry[key];
+}
+function setRegistry(key,value) {
+  registry[key] = value;
+}
+
+
 
 function provide_list_log() {
    //let promized_list_log = await provide_local_list_log(); 
@@ -69,9 +105,6 @@ function provide_list_log() {
 }
 
 
-function load_sorted_list() {
-  
-}
 
 async function provide_peers() {
   let token_hash = await provide_list_token(); // 2nd set !
@@ -286,8 +319,39 @@ function provide_list_token() {
   .catch(console.warn);
 }
 
+
+function invalidate(parent,indent) {
+  const key = parent.replace('provide','');
+  if ('undefined' == typeof indent) { indent = 0 };
+  spaces = '................................................'.substr(0,indent);
+  registry[key] = null;
+  console.debug(spaces+'invalidate.registry.%s: invalidated', key);
+  if (typeof deps[parent] != 'undefined') {
+     for (let node of deps[parent]) {
+        console.debug(spaces+'invalidate.deps.node:', node);
+        invalidate(node,indent+1);
+     }
+  }
+  return null;
+ }
+ function isValid(key) {
+    return ('undefined' != typeof(registry[key]) && registry[key] != null)
+ }
+
+ // build Deps Acyclic Graph ...
+ function dag_build(parent,name) {
+   console.log('dag_build:',deps);
+   if (typeof(deps[name])) {
+    deps[name] = [];
+   }
+   deps[name].push(parent);
+   return deps;
+ }
+
+
+/* /!\ PLEASE DO NOT PUT ANY CODE BELOW THIS LINE */
+
 window.fairtext = fairtext;
 return fairtext;
+
 })();
-
-
