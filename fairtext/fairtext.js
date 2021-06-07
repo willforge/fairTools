@@ -1,4 +1,3 @@
-// fairtext ...
 
 (function(){
 
@@ -38,6 +37,8 @@ elem.addEventListener('change', read_list_label,useCapture);
 elem = document.getElementsByName('fetch')[0];
 elem.addEventListener('click', irp_pull,useCapture);
 
+irp_pull({target:{name:'fetch'}});
+
 // --------------------------------------------------------
 // main :
    provide_list_token().then(token => { 
@@ -56,30 +57,97 @@ function pull(ev) {
    /* build_list(); */
 }
 
-function irp_pull(ev) {
+function irp_pull(ev) { // "main" (fetch button has been click!)
   let caller = ev.target.name // input name (button)
   let callee = essential.functionNameJS()[0];
   console.debug('caller,callee:',caller,callee);
-  dag_build(caller,callee);
+  dag_build(caller,callee)
 
   const promise = provide_sorted_list(callee);
-  promise.then(display_sorted_list)
+  promise.then(display_dot);
+  promise.then(display_sorted_list);
   return promise;
 }
 
-function provide_sorted_list() {
+function display_dot() {
+  console.log('display_dot.deps:',deps);
+} 
+
+function provide_sorted_list() { // sorted by median
   let callee = essential.functionNameJS()[0];
-  const promized_list_log = provide(callee,'list_log',provide_list_log);
+  const promized_text_metadata = provide(callee,'text_metadata',provide_text_metadata);
 
-  console.debug(callee+'.promized_list_log:',promized_list_log);
-
-  return Promise.all([promized_list_log]).then( proms => { let [list_log] = proms;
-  return build_sorted_list(list_log);
-  })
+  return build(callee,'sorted_list',build_sorted_list,[promized_text_metadata]);
 }
+
+function provide_list_text() {
+  const promized_list_log = provide(callee,'list_log',provide_list_log);
+  console.debug(callee+'.promized_list_log:',promized_list_log);
+}
+
+function provide_text_metadata() {
+  let callee = essential.functionNameJS()[0];
+
+  const promized_scores = provide(callee,'scores',provide_scores)
+  console.debug(callee+'.promized_scores:',promized_scores);
+
+  let promized_medians = build(callee,'medians',compute_medians,[promized_scores]);
+   console.log(callee+'.promized_medians:',promized_medians);
+
+  // build ...
+  return build(callee,'text_metadata',build_text_metadata,
+          [promized_scores,promized_medians]);
+}
+
+
+function provide_scores() {
+  let callee = essential.functionNameJS()[0];
+  const promized_list_text = provide(callee,'list_text',provide_list_text)
+
+  return build(callee,'scores',build_scores,[promized_list_text]);
+}
+
+function build_text_metadata() {
+   return null;
+}
+
+function build_scores(list_text) {
+  let scores = {};
+  return scores;
+}
+function provide_list_text() {
+  let callee = essential.functionNameJS()[0];
+  //       const promized_list_log = provide(callee,'list_log',provide_list_log);
+  let list_text = ['text1','text2'];
+  return Promise.resolve(list_text);
+}
+
+function compute_medians() {
+  return { text1: 12, text2: 4 }
+}
+
+function build(parent,name,compute,proms) {
+   return Promise.all(proms).then( results => {
+     let value = compute(results);
+     console.log(parent+'.build.'+name+':',value);
+     return value;
+   })
+}
+
 function display_sorted_list(list) {
  let el = document.getElementById('list');
- el.innerHTML = 'list: '+list;
+ let buf = '<ul>';
+ for (let text of list) {
+   let [ts,qmhash,author,textid,path] = text;
+   ts = parseInt(ts.slice(0,-1)); // remove trailing ':'
+   //console.log('ts:',ts);
+   let [date,time] = essential.isoDateTime(ts);
+   buf += `<li>${textid}: <a href="${ipfs.gw_url}/ipfs/${qmhash}">${qmhash}</a>`+
+           ` ${author} <a>${path}</a> (${date} @${time})</li>`;
+ }
+ buf += '</ul>'
+ 
+ el.innerHTML = 'list: '+buf;
 }
 
 const uniquify_n_split = function(buf) { // uniquify before write
@@ -105,11 +173,17 @@ const uniquify_n_split = function(buf) { // uniquify before write
 
 function build_sorted_list(list_log) {
   let callee = essential.functionNameJS()[0];
-  let unsorted_list = list_log.split('\n');
+  let unsorted_list = list_log.split('\n').slice(0,-1);
   console.log(callee+'.unsorted_list:',{'list':unsorted_list});
-  let lines = unsorted_list.sort();
-   console.log(callee+'.lines:',lines);
-   return lines;
+  let lines = unsorted_list.sort().reverse(); // reverse alphabetic
+   let list_texts = [];
+   for (let line of lines) {
+     if (line.match(/^\D+/)) { continue; } // skip non-timestamped lines
+     let fields = line.split(' ');
+     list_texts.push(fields);
+   }
+   console.log(callee+'.list_texts:',list_texts);
+   return list_texts;
 
   // console.log(callee+'.records:',records);
   // return records;
@@ -133,6 +207,7 @@ function provide(caller,name,provide_n_build) {
           invalidate(caller);
           setRegistry(name,newkey,value);
         }
+        return value;
         })
 }
 
@@ -145,9 +220,15 @@ function setRegistry(name, key, value) {
   registry[key] = value;
 }
 
-function hash(value) {
-  let len = value.length;
-  return sha1('blob ${len}\0'+value);
+function hash(anything) {
+  let callee = essential.functionNameJS()[0];
+  // /!\ value need to be a string (can be a serialized json)
+  if (typeof(anything) != 'string') {
+    console.warn(callee+'.typeof(anything):',typeof(anything))
+    anything = JSON.stringify(anything)
+  }
+  let len = anything.length;
+  return sha1(`blob ${len}\0`+anything);
 }
 
 function provide_list_log() {
@@ -212,7 +293,7 @@ async function resolve_peers(streamed_objs) {
                     console.debug('ipns_cache[%s]: %s (updated)',p,ipath)
                     ipfs.ipns_cache[p] = ipath;
                     refresh_display = true;
-                    return Promise.resolve(p);
+                    return Promise.resolve('ipfsResolve failed for: '+p);
                   } else {
                     console.log('%s.ipath:',shortqm(p),ipath);
                     if (ipfs.ipns_cache[p] == 'pending') {
