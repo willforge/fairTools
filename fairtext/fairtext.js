@@ -5,7 +5,7 @@
 var fairtext = {}
 
 var i = 0;
-const deps = { };
+//const deps = { };
 
 var refresh_display = false;
 var log_resolve_promises = []; // keep track of pending promises
@@ -16,11 +16,13 @@ const PUBLICID = 'QmezgbyqFCEybpSxCtGNxfRD9uDxC53aNv5PfhB3fGUhJZ';
 const editor_token_label = `I have submitted a proposal to ${shortqm(PUBLICID)}`
 const editor_token_nid = getNid(`uri:text:${editor_token_label}`);
 
+/*
 // Global Registry
 const mutables = { 'fetch' : null };
 const registry = { };
 fairtext.mutables = mutables;
 fairtext.registry = registry;
+*/
 // Read Registry
 var read_reg = {
  list_label: null,
@@ -48,22 +50,16 @@ irp_pull({target:{name:'fetch'}});
 
 // --------------------------------------------------------
 
-function pull(ev) {
-   let callee = essential.functionNameJS()[0];
-   provide_list_log(callee)
-   .then(load_sorted_list);
-
-   // TODO: periodically refresh peers list
-   /* build_list(); */
-}
-
 function irp_pull(ev) { // "main" (fetch button has been click!)
-  let caller = ev.target.name // input name (button)
+  // let caller = ev.target.name // input name (button)
+  // console.debug('caller:',caller);
   let callee = essential.functionNameJS()[0];
-  console.debug('caller,callee:',caller,callee);
-  dag_build(caller,callee)
+  console.debug('callee:',callee);
+  /*
+  IRP.dag_build(caller,callee) // Q: can we move this init with IRP.js ???
+  */
 
-  const promise = provide_sorted_list(callee);
+  const promise = IRP.provide(callee,'sorted_list',provide_sorted_list);
   promise.then(display_dot);
   promise.then(display_sorted_list);
   return promise;
@@ -71,40 +67,37 @@ function irp_pull(ev) { // "main" (fetch button has been click!)
 
 function display_dot() {
   console.log('display_dot.deps:',deps);
+
 } 
 
 function provide_sorted_list() { // sorted by median
   let callee = essential.functionNameJS()[0];
-  const promized_text_metadata = provide(callee,'text_metadata',provide_text_metadata);
+  const promized_text_metadata = IRP.provide(callee,'text_metadata',provide_text_metadata);
 
-  return build(callee,'sorted_list',build_sorted_list,[promized_text_metadata]);
+  return IRP.build(callee,'sorted_list',build_sorted_list,[promized_text_metadata]);
 }
 
-function provide_list_text() {
-  const promized_list_log = provide(callee,'list_log',provide_list_log);
-  console.debug(callee+'.promized_list_log:',promized_list_log);
-}
 
 function provide_text_metadata() {
   let callee = essential.functionNameJS()[0];
 
-  const promized_scores = provide(callee,'scores',provide_scores)
+  const promized_scores = IRP.provide(callee,'scores',provide_scores)
   console.debug(callee+'.promized_scores:',promized_scores);
 
-  let promized_medians = build(callee,'medians',compute_medians,[promized_scores]);
+  let promized_medians = IRP.build(callee,'medians',compute_medians,[promized_scores]);
    console.log(callee+'.promized_medians:',promized_medians);
 
   // build ...
-  return build(callee,'text_metadata',build_text_metadata,
+  return IRP.build(callee,'text_metadata',build_text_metadata,
           [promized_scores,promized_medians]);
 }
 
 
 function provide_scores() {
   let callee = essential.functionNameJS()[0];
-  const promized_list_text = provide(callee,'list_text',provide_list_text)
+  const promized_list_text = IRP.provide(callee,'list_text',provide_list_text)
 
-  return build(callee,'scores',build_scores,[promized_list_text]);
+  return IRP.build(callee,'scores',build_scores,[promized_list_text]);
 }
 
 function build_text_metadata() {
@@ -117,21 +110,14 @@ function build_scores(list_text) {
 }
 function provide_list_text() {
   let callee = essential.functionNameJS()[0];
-  //       const promized_list_log = provide(callee,'list_log',provide_list_log);
+  //       const promized_list_log = IRP.provide(callee,'list_log',provide_list_log);
+  // console.debug(callee+'.promized_list_log:',promized_list_log);
   let list_text = ['text1','text2'];
   return Promise.resolve(list_text);
 }
 
 function compute_medians() {
   return { text1: 12, text2: 4 }
-}
-
-function build(parent,name,compute,proms) {
-   return Promise.all(proms).then( results => {
-     let value = compute(results);
-     console.log(parent+'.build.'+name+':',value);
-     return value;
-   })
 }
 
 function display_sorted_list(list) {
@@ -171,8 +157,9 @@ const uniquify_n_split = function(buf) { // uniquify before write
 }
 
 
-function build_sorted_list(list_log) {
+function build_sorted_list(args) {
   let callee = essential.functionNameJS()[0];
+  let list_log = args[0];
   let unsorted_list = list_log.split('\n').slice(0,-1);
   console.log(callee+'.unsorted_list:',{'list':unsorted_list});
   let lines = unsorted_list.sort().reverse(); // reverse alphabetic
@@ -197,40 +184,6 @@ function by_first_key(a,b) {
  return compare(a[0],b[0]);
 }
 
-function provide(caller,name,provide_n_build) {
-  let callee = essential.functionNameJS()[0];
-  dag_build(caller,name);
-  if (isValid(name)) { return getRegistry(name) } else { setRegistry(name,null,null); }
-  return provide_n_build().then( value => {
-        let newkey= hash(value);
-        if (hasChanged(name,newkey)) {
-          invalidate(caller);
-          setRegistry(name,newkey,value);
-        }
-        return value;
-        })
-}
-
-function getRegistry(name) {
-  let key = mutables[name];
-  return registry[key];
-}
-function setRegistry(name, key, value) {
-  mutables[name] = key; 
-  registry[key] = value;
-}
-
-function hash(anything) {
-  let callee = essential.functionNameJS()[0];
-  // /!\ value need to be a string (can be a serialized json)
-  if (typeof(anything) != 'string') {
-    console.warn(callee+'.typeof(anything):',typeof(anything))
-    anything = JSON.stringify(anything)
-  }
-  let len = anything.length;
-  return sha1(`blob ${len}\0`+anything);
-}
-
 function provide_list_log() {
   let callee = essential.functionNameJS()[0];
    //let promized_list_log = await provide_local_list_log(); 
@@ -243,7 +196,6 @@ function provide_list_log() {
    return promized_logs;
    // build_history_log(); 
 }
-
 
 
 async function provide_peers() {
