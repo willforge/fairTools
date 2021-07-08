@@ -37,9 +37,9 @@ let elem = document.getElementsByName('list_label')[0];
 elem.addEventListener('change', read_list_label,useCapture);
 
 elem = document.getElementsByName('fetch')[0];
-elem.addEventListener('click', irp_pull,useCapture);
+elem.addEventListener('click', irp_fetch,useCapture);
 
-irp_pull({target:{name:'fetch'}});
+irp_fetch({target:{name:'fetch'}});
 
 // --------------------------------------------------------
 // main :
@@ -50,7 +50,7 @@ irp_pull({target:{name:'fetch'}});
 
 // --------------------------------------------------------
 
-function irp_pull(ev) { // "main" (fetch button has been click!)
+function irp_fetch(ev) { // "main" (fetch button has been click!)
   // let caller = ev.target.name // input name (button)
   // console.debug('caller:',caller);
   let callee = essential.functionNameJS()[0];
@@ -77,19 +77,26 @@ function provide_sorted_list() { // sorted by median
   return IRP.build(callee,'sorted_list',build_sorted_list,[promized_text_metadata]);
 }
 
+function provide_texts_metadata() {
+  let callee = essential.functionNameJS()[0];
+  let promized_texts_metadata = [];
+  let promized_peers =  IRP.provide(callee,'peers',provide_peers);
+
+  for (let peer of peers) {
+     promized_texts_metadata.push( IRP.provide(callee,'text_metadata',provide_text_metadata) );
+  }
+  // build ...
+  return IRP.build(callee,'texts_metadata',build_texts_metadata, promized_texts_metadata);
+}
+  let promized_rankers = IRP.provide(callee,'rankers',provide_rankers);
 
 function provide_text_metadata() {
   let callee = essential.functionNameJS()[0];
-
-  const promized_scores = IRP.provide(callee,'scores',provide_scores)
-  console.debug(callee+'.promized_scores:',promized_scores);
-
-  let promized_medians = IRP.build(callee,'medians',compute_medians,[promized_scores]);
-   console.log(callee+'.promized_medians:',promized_medians);
-
+  let promized_rankers = IRP.provide(callee,'rankers',provide_rankers);
+  let promized_medians = IRP.provide(callee,'median',provide_medians);
   // build ...
   return IRP.build(callee,'text_metadata',build_text_metadata,
-          [promized_scores,promized_medians]);
+          [promized_rankers,promized_medians]);
 }
 
 
@@ -100,7 +107,10 @@ function provide_scores() {
   return IRP.build(callee,'scores',build_scores,[promized_list_text]);
 }
 
-function build_text_metadata() {
+function build_text_metadata(args) {
+  let callee = essential.functionNameJS()[0];
+  console.log(callee+'.args:',args);
+   
    return null;
 }
 
@@ -110,8 +120,15 @@ function build_scores(list_text) {
 }
 function provide_list_text() {
   let callee = essential.functionNameJS()[0];
-  //       const promized_list_log = IRP.provide(callee,'list_log',provide_list_log);
-  // console.debug(callee+'.promized_list_log:',promized_list_log);
+  const promized_list_log = IRP.provide(callee,'list_log',provide_list_log);
+
+  console.debug(callee+'.promized_list_log:',promized_list_log);
+  return IRP.build(callee,'list_text',build_list_text,[promized_list_log]);
+}
+function build_list_text(args) {
+  let callee = essential.functionNameJS()[0];
+  console.log(callee+'.args:',args);
+
   let list_text = ['text1','text2'];
   return Promise.resolve(list_text);
 }
